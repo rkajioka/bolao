@@ -12,6 +12,9 @@ export default function AdminPage() {
         <Link href="/admin/import">
           <Button variant="secondary">Importar CSV</Button>
         </Link>
+        <Link href="/admin/matches">
+          <Button variant="secondary">Resultados</Button>
+        </Link>
       </nav>
     </div>
   );
