@@ -15,6 +15,9 @@ export default function AdminPage() {
         <Link href="/admin/matches">
           <Button variant="secondary">Resultados</Button>
         </Link>
+        <Link href="/admin/knockout">
+          <Button variant="secondary">Mata-mata</Button>
+        </Link>
       </nav>
     </div>
   );
