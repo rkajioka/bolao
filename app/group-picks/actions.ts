@@ -13,6 +13,18 @@ export async function saveGroupPicks(picks: { matchId: string; scoreA: number; s
     return { error: "O prazo para palpites dos grupos já passou." };
   }
 
+  const lockedPicks = await prisma.userMatchPick.findMany({
+    where: {
+      userId: session.userId,
+      matchId: { in: picks.map((p) => p.matchId) },
+      lockedAt: { not: null },
+    },
+    select: { matchId: true },
+  });
+  if (lockedPicks.length > 0) {
+    return { error: "Não é possível alterar palpites trancados." };
+  }
+
   const matchIds = await prisma.match.findMany({
     where: { stage: "GROUP" },
     select: { id: true },
