@@ -22,6 +22,8 @@ export default async function AdminMatchesPage({
   const params = await searchParams;
   const errorKey = params.error;
 
+  const KNOCKOUT_STAGES = ["R16", "QF", "SF", "F", "THIRD"];
+
   const matches = await prisma.match.findMany({
     orderBy: [
       { stage: "asc" },
@@ -30,8 +32,8 @@ export default async function AdminMatchesPage({
       { kickoffAt: "asc" },
     ],
     include: {
-      teamA: { select: { name: true, code: true } },
-      teamB: { select: { name: true, code: true } },
+      teamA: { select: { id: true, name: true, code: true } },
+      teamB: { select: { id: true, name: true, code: true } },
     },
   });
 
@@ -49,7 +51,8 @@ export default async function AdminMatchesPage({
           {errorKey === "score" && "Placar inválido."}
           {errorKey === "notfound" && "Jogo não encontrado."}
           {errorKey === "missing" && "Dados incompletos."}
-          {!["score", "notfound", "missing"].includes(errorKey) && "Erro ao salvar."}
+          {errorKey === "winner" && "Mata-mata com empate: informe o classificado."}
+          {!["score", "notfound", "missing", "winner"].includes(errorKey) && "Erro ao salvar."}
         </Card>
       )}
 
@@ -67,121 +70,158 @@ export default async function AdminMatchesPage({
                   <th className="p-2 font-medium">Placar A</th>
                   <th className="p-2 font-medium">Placar B</th>
                   <th className="p-2 font-medium">Status</th>
+                  <th className="p-2 font-medium">Classificado</th>
                   <th className="p-2 font-medium text-right">Ação</th>
                 </tr>
               </thead>
               <tbody>
-                {matches.map((m) => (
-                  <tr key={m.id} className="border-b border-white/5">
-                    <td className="p-2">
-                      <span className="font-medium">{m.teamA.code}</span>
-                      <span className="mx-1 text-foreground/60">×</span>
-                      <span className="font-medium">{m.teamB.code}</span>
-                      <span className="ml-2">
-                        <Chip className="!py-0.5 !text-xs">
-                          {STAGES[m.stage] ?? m.stage}
-                        </Chip>
-                      </span>
-                    </td>
-                    <td className="p-2">
-                      <input
-                        type="number"
-                        name="scoreA"
-                        form={`form-${m.id}`}
-                        defaultValue={m.scoreA ?? ""}
-                        min={0}
-                        className="w-14 rounded border border-white/10 bg-primary px-2 py-1 text-center text-foreground"
-                      />
-                    </td>
-                    <td className="p-2">
-                      <input
-                        type="number"
-                        name="scoreB"
-                        form={`form-${m.id}`}
-                        defaultValue={m.scoreB ?? ""}
-                        min={0}
-                        className="w-14 rounded border border-white/10 bg-primary px-2 py-1 text-center text-foreground"
-                      />
-                    </td>
-                    <td className="p-2">
-                      <select
-                        name="status"
-                        form={`form-${m.id}`}
-                        defaultValue={m.status}
-                        className="rounded border border-white/10 bg-primary px-2 py-1 text-foreground"
-                      >
-                        <option value="PENDING">Pendente</option>
-                        <option value="LIVE">Ao vivo</option>
-                        <option value="FINISHED">Finalizado</option>
-                      </select>
-                    </td>
-                    <td className="p-2 text-right">
-                      <form id={`form-${m.id}`} action={updateMatchResult}>
-                        <input type="hidden" name="matchId" value={m.id} />
-                        <Button type="submit" className="!py-1.5 !text-xs">
-                          Salvar
-                        </Button>
-                      </form>
-                    </td>
-                  </tr>
-                ))}
+                {matches.map((m) => {
+                  const isKnockout = KNOCKOUT_STAGES.includes(m.stage);
+                  return (
+                    <tr key={m.id} className="border-b border-white/5">
+                      <td className="p-2">
+                        <span className="font-medium">{m.teamA.code}</span>
+                        <span className="mx-1 text-foreground/60">×</span>
+                        <span className="font-medium">{m.teamB.code}</span>
+                        <span className="ml-2">
+                          <Chip className="!py-0.5 !text-xs">
+                            {STAGES[m.stage] ?? m.stage}
+                          </Chip>
+                        </span>
+                      </td>
+                      <td className="p-2">
+                        <input
+                          type="number"
+                          name="scoreA"
+                          form={`form-${m.id}`}
+                          defaultValue={m.scoreA ?? ""}
+                          min={0}
+                          className="w-14 rounded border border-white/10 bg-primary px-2 py-1 text-center text-foreground"
+                        />
+                      </td>
+                      <td className="p-2">
+                        <input
+                          type="number"
+                          name="scoreB"
+                          form={`form-${m.id}`}
+                          defaultValue={m.scoreB ?? ""}
+                          min={0}
+                          className="w-14 rounded border border-white/10 bg-primary px-2 py-1 text-center text-foreground"
+                        />
+                      </td>
+                      <td className="p-2">
+                        <select
+                          name="status"
+                          form={`form-${m.id}`}
+                          defaultValue={m.status}
+                          className="rounded border border-white/10 bg-primary px-2 py-1 text-foreground"
+                        >
+                          <option value="PENDING">Pendente</option>
+                          <option value="LIVE">Ao vivo</option>
+                          <option value="FINISHED">Finalizado</option>
+                        </select>
+                      </td>
+                      <td className="p-2">
+                        {isKnockout ? (
+                          <select
+                            name="winnerTeamId"
+                            form={`form-${m.id}`}
+                            defaultValue={m.winnerTeamId ?? ""}
+                            className="min-w-[6rem] rounded border border-white/10 bg-primary px-2 py-1 text-foreground"
+                          >
+                            <option value="">—</option>
+                            <option value={m.teamA.id}>{m.teamA.code}</option>
+                            <option value={m.teamB.id}>{m.teamB.code}</option>
+                          </select>
+                        ) : (
+                          <span className="text-foreground/50">—</span>
+                        )}
+                      </td>
+                      <td className="p-2 text-right">
+                        <form id={`form-${m.id}`} action={updateMatchResult}>
+                          <input type="hidden" name="matchId" value={m.id} />
+                          <Button type="submit" className="!py-1.5 !text-xs">
+                            Salvar
+                          </Button>
+                        </form>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
 
           <div className="space-y-3 lg:hidden">
-            {matches.map((m) => (
-              <Card key={m.id} className="p-4">
-                <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <span className="font-medium">
-                    {m.teamA.code} × {m.teamB.code}
-                  </span>
-                  <Chip className="!py-0.5 !text-xs">
-                    {STAGES[m.stage] ?? m.stage}
-                  </Chip>
-                </div>
-                <form action={updateMatchResult} className="space-y-3">
-                  <input type="hidden" name="matchId" value={m.id} />
-                  <div className="flex flex-wrap items-center gap-3">
-                    <label className="flex items-center gap-2 text-sm">
-                      <span className="text-foreground/70">Placar A</span>
-                      <input
-                        type="number"
-                        name="scoreA"
-                        defaultValue={m.scoreA ?? ""}
-                        min={0}
-                        className="w-14 rounded border border-white/10 bg-primary px-2 py-1 text-center text-foreground"
-                      />
-                    </label>
-                    <label className="flex items-center gap-2 text-sm">
-                      <span className="text-foreground/70">Placar B</span>
-                      <input
-                        type="number"
-                        name="scoreB"
-                        defaultValue={m.scoreB ?? ""}
-                        min={0}
-                        className="w-14 rounded border border-white/10 bg-primary px-2 py-1 text-center text-foreground"
-                      />
-                    </label>
-                    <label className="flex items-center gap-2 text-sm">
-                      <span className="text-foreground/70">Status</span>
-                      <select
-                        name="status"
-                        defaultValue={m.status}
-                        className="rounded border border-white/10 bg-primary px-2 py-1 text-foreground"
-                      >
-                        <option value="PENDING">Pendente</option>
-                        <option value="LIVE">Ao vivo</option>
-                        <option value="FINISHED">Finalizado</option>
-                      </select>
-                    </label>
+            {matches.map((m) => {
+              const isKnockout = KNOCKOUT_STAGES.includes(m.stage);
+              return (
+                <Card key={m.id} className="p-4">
+                  <div className="mb-3 flex flex-wrap items-center gap-2">
+                    <span className="font-medium">
+                      {m.teamA.code} × {m.teamB.code}
+                    </span>
+                    <Chip className="!py-0.5 !text-xs">
+                      {STAGES[m.stage] ?? m.stage}
+                    </Chip>
                   </div>
-                  <Button type="submit" className="!py-1.5 !text-xs">
-                    Salvar
-                  </Button>
-                </form>
-              </Card>
-            ))}
+                  <form action={updateMatchResult} className="space-y-3">
+                    <input type="hidden" name="matchId" value={m.id} />
+                    <div className="flex flex-wrap items-center gap-3">
+                      <label className="flex items-center gap-2 text-sm">
+                        <span className="text-foreground/70">Placar A</span>
+                        <input
+                          type="number"
+                          name="scoreA"
+                          defaultValue={m.scoreA ?? ""}
+                          min={0}
+                          className="w-14 rounded border border-white/10 bg-primary px-2 py-1 text-center text-foreground"
+                        />
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <span className="text-foreground/70">Placar B</span>
+                        <input
+                          type="number"
+                          name="scoreB"
+                          defaultValue={m.scoreB ?? ""}
+                          min={0}
+                          className="w-14 rounded border border-white/10 bg-primary px-2 py-1 text-center text-foreground"
+                        />
+                      </label>
+                      <label className="flex items-center gap-2 text-sm">
+                        <span className="text-foreground/70">Status</span>
+                        <select
+                          name="status"
+                          defaultValue={m.status}
+                          className="rounded border border-white/10 bg-primary px-2 py-1 text-foreground"
+                        >
+                          <option value="PENDING">Pendente</option>
+                          <option value="LIVE">Ao vivo</option>
+                          <option value="FINISHED">Finalizado</option>
+                        </select>
+                      </label>
+                      {isKnockout && (
+                        <label className="flex items-center gap-2 text-sm">
+                          <span className="text-foreground/70">Classificado</span>
+                          <select
+                            name="winnerTeamId"
+                            defaultValue={m.winnerTeamId ?? ""}
+                            className="rounded border border-white/10 bg-primary px-2 py-1 text-foreground"
+                          >
+                            <option value="">—</option>
+                            <option value={m.teamA.id}>{m.teamA.code}</option>
+                            <option value={m.teamB.id}>{m.teamB.code}</option>
+                          </select>
+                        </label>
+                      )}
+                    </div>
+                    <Button type="submit" className="!py-1.5 !text-xs">
+                      Salvar
+                    </Button>
+                  </form>
+                </Card>
+              );
+            })}
           </div>
         </>
       )}
