@@ -18,6 +18,9 @@ export default function AdminPage() {
         <Link href="/admin/knockout">
           <Button variant="secondary">Mata-mata</Button>
         </Link>
+        <Link href="/admin/goals">
+          <Button variant="secondary">Gols</Button>
+        </Link>
       </nav>
     </div>
   );
