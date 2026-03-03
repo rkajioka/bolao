@@ -9,6 +9,9 @@ export default function AdminPage() {
         <Link href="/admin/teams">
           <Button variant="secondary">Times</Button>
         </Link>
+        <Link href="/admin/import">
+          <Button variant="secondary">Importar CSV</Button>
+        </Link>
       </nav>
     </div>
   );
