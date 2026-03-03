@@ -38,5 +38,30 @@ export async function saveGroupPicks(picks: { matchId: string; scoreA: number; s
   }
 
   revalidatePath("/group-picks");
+  revalidatePath("/group-picks/review");
+  return { ok: true };
+}
+
+export async function lockGroupPicks() {
+  const session = await requireSession();
+
+  const passed = await isGlobalDeadlinePassed();
+  if (passed) {
+    return { error: "O prazo já passou." };
+  }
+
+  const groupMatchIds = await prisma.match.findMany({
+    where: { stage: "GROUP" },
+    select: { id: true },
+  });
+  const ids = groupMatchIds.map((m) => m.id);
+
+  await prisma.userMatchPick.updateMany({
+    where: { userId: session.userId, matchId: { in: ids } },
+    data: { lockedAt: new Date() },
+  });
+
+  revalidatePath("/group-picks");
+  revalidatePath("/group-picks/review");
   return { ok: true };
 }
