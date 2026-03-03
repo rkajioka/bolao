@@ -21,6 +21,9 @@ export default function AdminPage() {
         <Link href="/admin/goals">
           <Button variant="secondary">Gols</Button>
         </Link>
+        <Link href="/admin/audit">
+          <Button variant="secondary">Auditoria</Button>
+        </Link>
       </nav>
     </div>
   );
