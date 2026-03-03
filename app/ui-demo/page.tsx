@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
 import { LockBadge } from "@/components/ui/LockBadge";
 import { ProgressBar } from "@/components/ui/ProgressBar";
+import { ScoreInputDemo } from "./ScoreInputDemo";
 
 export default function UiDemoPage() {
   return (
@@ -41,6 +42,11 @@ export default function UiDemoPage() {
           <ProgressBar value={24} max={48} />
           <ProgressBar value={100} max={100} />
         </div>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-medium">ScoreInput</h2>
+        <ScoreInputDemo />
       </section>
     </div>
   );
