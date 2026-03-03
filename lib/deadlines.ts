@@ -25,3 +25,12 @@ export async function isGlobalDeadlinePassed(): Promise<boolean> {
   if (!deadline) return false;
   return new Date() >= deadline;
 }
+
+/**
+ * Deadline por jogo (mata-mata): 1h antes do kickoff (Brasília = armazenado em UTC).
+ * Retorna true se já passou da hora de palpitarmos (trava 1h antes do jogo).
+ */
+export function isMatchDeadlinePassed(kickoffAt: Date): boolean {
+  const deadline = new Date(kickoffAt.getTime() - DEADLINE_OFFSET_MS);
+  return new Date() >= deadline;
+}
