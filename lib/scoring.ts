@@ -134,3 +134,52 @@ export async function calculateUserTotal(userId: string): Promise<{
 
   return { total, exactCount, outcomeCount };
 }
+
+export type RankingEntry = {
+  userId: string;
+  name: string | null;
+  total: number;
+  exactCount: number;
+  outcomeCount: number;
+};
+
+/**
+ * Retorna o ranking ordenado por: total (desc), exatos (desc), outcomes (desc).
+ * Inclui currentUserId na lista mesmo sem palpites (0 pontos).
+ */
+export async function getRanking(
+  currentUserId?: string | null
+): Promise<RankingEntry[]> {
+  const userIds = await prisma.userMatchPick
+    .findMany({ select: { userId: true }, distinct: ["userId"] })
+    .then((rows) => rows.map((r) => r.userId));
+  const allIds = new Set(userIds);
+  if (currentUserId) allIds.add(currentUserId);
+
+  const users = await prisma.user.findMany({
+    where: { id: { in: Array.from(allIds) } },
+    select: { id: true, name: true },
+  });
+  const userMap = new Map(users.map((u) => [u.id, u.name]));
+
+  const entries: RankingEntry[] = [];
+  for (const userId of allIds) {
+    const { total, exactCount, outcomeCount } =
+      await calculateUserTotal(userId);
+    entries.push({
+      userId,
+      name: userMap.get(userId) ?? null,
+      total,
+      exactCount,
+      outcomeCount,
+    });
+  }
+
+  entries.sort((a, b) => {
+    if (b.total !== a.total) return b.total - a.total;
+    if (b.exactCount !== a.exactCount) return b.exactCount - a.exactCount;
+    return b.outcomeCount - a.outcomeCount;
+  });
+
+  return entries;
+}
