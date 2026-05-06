@@ -1,4 +1,9 @@
-from app.schemas.configuracao_bolao import ConfiguracaoBolaoBase, ConfiguracaoBolaoRead
+from app.schemas.candidato_marcador_brasil import (
+    CandidatoMarcadorBrasilCreate,
+    CandidatoMarcadorBrasilRead,
+    CandidatoMarcadorBrasilUpdate,
+)
+from app.schemas.configuracao_bolao import ConfiguracaoBolaoBase, ConfiguracaoBolaoRead, ConfiguracaoBolaoWrite
 from app.schemas.jogo import (
     GrupoJogosBlock,
     JogoBase,
@@ -91,4 +96,8 @@ __all__ = [
     "MarcadoresBrasilResultadoSync",
     "ConfiguracaoBolaoBase",
     "ConfiguracaoBolaoRead",
+    "ConfiguracaoBolaoWrite",
+    "CandidatoMarcadorBrasilCreate",
+    "CandidatoMarcadorBrasilRead",
+    "CandidatoMarcadorBrasilUpdate",
 ]

@@ -2,6 +2,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field, model_validator
 
+from app.jogo_fases import canonical_fase_mata_mata
+
 
 class PaisNoJogo(BaseModel):
     """Dados mínimos do país para exibição em listagens de jogos (bandeira)."""
@@ -19,17 +21,26 @@ class JogoBase(BaseModel):
     fase: str = Field(min_length=1, max_length=128)
     grupo: str | None = Field(default=None, max_length=16)
     tipo_fase: str = Field(pattern="^(grupos|mata_mata)$")
+    rodada: int | None = Field(default=None, ge=1)
     pais_casa_id: int = Field(ge=1)
     pais_fora_id: int = Field(ge=1)
     data_jogo: datetime
 
     @model_validator(mode="after")
-    def validar_paises_e_grupo(self) -> "JogoBase":
+    def validar_paises_grupo_rodada_e_fase(self) -> "JogoBase":
         if self.pais_casa_id == self.pais_fora_id:
             raise ValueError("País da casa e país de fora devem ser diferentes")
         if self.tipo_fase == "grupos":
             if not self.grupo or not str(self.grupo).strip():
                 raise ValueError("Grupo é obrigatório para jogos da fase de grupos")
+            if self.rodada is None:
+                raise ValueError("Rodada (número ≥ 1) é obrigatória para jogos de fase de grupos")
+            self.fase = str(self.fase).strip()
+        else:
+            if self.rodada is not None:
+                raise ValueError("Rodada não se aplica a mata-mata; omita o campo ou use null")
+            self.rodada = None
+            self.fase = canonical_fase_mata_mata(self.fase)
         return self
 
 
@@ -41,6 +52,7 @@ class JogoUpdate(BaseModel):
     fase: str | None = Field(default=None, min_length=1, max_length=128)
     grupo: str | None = Field(default=None, max_length=16)
     tipo_fase: str | None = Field(default=None, pattern="^(grupos|mata_mata)$")
+    rodada: int | None = Field(default=None, ge=1)
     pais_casa_id: int | None = Field(default=None, ge=1)
     pais_fora_id: int | None = Field(default=None, ge=1)
     data_jogo: datetime | None = None
@@ -77,6 +89,7 @@ class JogoRead(BaseModel):
     fase: str
     grupo: str | None
     tipo_fase: str
+    rodada: int | None = None
     data_jogo: datetime
     pais_casa_id: int
     pais_fora_id: int

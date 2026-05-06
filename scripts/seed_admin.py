@@ -26,9 +26,12 @@ from app.services import usuario_service
 def main() -> None:
     p = argparse.ArgumentParser(description="Cria usuário admin inicial (idempotente por e-mail).")
     p.add_argument("--email", required=True)
-    p.add_argument("--senha", required=True, min_length=8)
+    p.add_argument("--senha", required=True)
     p.add_argument("--nome", required=True)
     args = p.parse_args()
+    if len(args.senha) < 8:
+        print("Erro: --senha deve ter pelo menos 8 caracteres.", file=sys.stderr)
+        sys.exit(1)
     email = args.email.strip().lower()
 
     db: Session = SessionLocal()

@@ -21,15 +21,17 @@ def _agora_utc() -> datetime:
     return datetime.now(UTC)
 
 
-def _assert_jogo_editavel_marcadores_usuario(jogo: Jogo) -> None:
+def _assert_jogo_editavel_marcadores_usuario(db: Session, jogo: Jogo) -> None:
     if jogo.finalizado:
         raise ValueError("O jogo está finalizado; os marcadores não podem ser alterados")
     agora = _agora_utc()
-    inicio = jogo.data_jogo
-    if inicio.tzinfo is None:
-        inicio = inicio.replace(tzinfo=UTC)
-    if agora >= inicio:
-        raise ValueError("Os marcadores não podem ser alterados após o início do jogo")
+    limite = jogo_service.momento_fim_edicao_palpite(db, jogo)
+    if limite.tzinfo is None:
+        limite = limite.replace(tzinfo=UTC)
+    if agora >= limite:
+        raise ValueError(
+            "Os marcadores não podem ser alterados: prazo encerrado (mesma regra dos palpites por jogo)"
+        )
 
 
 def obter_jogo_que_envolve_brasil(db: Session, jogo_id: int) -> Jogo:
@@ -59,7 +61,7 @@ def sincronizar_marcadores_palpite(
     db: Session, usuario_id: int, jogo_id: int, marcadores: list[MarcadorBrasilPalpiteItem]
 ) -> list[MarcadorBrasilPalpite]:
     jogo = obter_jogo_que_envolve_brasil(db, jogo_id)
-    _assert_jogo_editavel_marcadores_usuario(jogo)
+    _assert_jogo_editavel_marcadores_usuario(db, jogo)
 
     palpite = palpite_jogo_service.get_by_usuario_jogo(db, usuario_id, jogo_id)
     if palpite is None:

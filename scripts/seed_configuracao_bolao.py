@@ -16,14 +16,12 @@ from sqlalchemy.orm import Session
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from app.core.config import get_settings  # noqa: E402
 from app.models.configuracao_bolao import ConfiguracaoBolao  # noqa: E402
 
 
 def main() -> None:
-    url = os.environ.get("DATABASE_URL")
-    if not url:
-        print("Defina DATABASE_URL")
-        sys.exit(1)
+    url = get_settings().database_url
     engine = create_engine(url, future=True)
     with Session(engine) as db:
         if db.scalar(select(ConfiguracaoBolao).limit(1)) is not None:

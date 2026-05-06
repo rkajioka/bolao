@@ -4,15 +4,21 @@ from sqlalchemy.orm import Session
 
 from app.auth.dependencies import require_admin, require_primeiro_login_concluido
 from app.database import get_db
+from app.models.candidato_marcador_brasil import CandidatoMarcadorBrasil
 from app.models.marcador_brasil import MarcadorBrasilPalpite, MarcadorBrasilResultado
 from app.models.usuario import Usuario
+from app.schemas.candidato_marcador_brasil import (
+    CandidatoMarcadorBrasilCreate,
+    CandidatoMarcadorBrasilRead,
+    CandidatoMarcadorBrasilUpdate,
+)
 from app.schemas.marcador_brasil import (
     MarcadorBrasilPalpiteRead,
     MarcadorBrasilResultadoRead,
     MarcadoresBrasilPalpiteSync,
     MarcadoresBrasilResultadoSync,
 )
-from app.services import marcador_brasil_service
+from app.services import candidato_marcador_brasil_service, marcador_brasil_service
 
 router = APIRouter(prefix="/marcadores-brasil", tags=["marcadores-brasil"])
 
@@ -22,6 +28,46 @@ def _http_value_error(exc: ValueError) -> HTTPException:
     if "não encontrado" in msg:
         return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+
+@router.get("/candidatos/admin", response_model=list[CandidatoMarcadorBrasilRead])
+def get_candidatos_marcador_brasil_admin(
+    db: Session = Depends(get_db),
+    _admin: Usuario = Depends(require_admin),
+) -> list[CandidatoMarcadorBrasil]:
+    """Lista todos os candidatos (inclui inativos) para gestão no painel admin."""
+    return candidato_marcador_brasil_service.listar_todos(db)
+
+
+@router.get("/candidatos", response_model=list[CandidatoMarcadorBrasilRead])
+def get_candidatos_marcador_brasil(
+    db: Session = Depends(get_db),
+    _user: Usuario = Depends(require_primeiro_login_concluido),
+) -> list[CandidatoMarcadorBrasil]:
+    """Lista nomes ativos para sugestão (dropdown) nos marcadores do Brasil."""
+    return candidato_marcador_brasil_service.listar_ativos(db)
+
+
+@router.post("/candidatos", response_model=CandidatoMarcadorBrasilRead, status_code=status.HTTP_201_CREATED)
+def post_candidato_marcador_brasil(
+    data: CandidatoMarcadorBrasilCreate,
+    db: Session = Depends(get_db),
+    _admin: Usuario = Depends(require_admin),
+) -> CandidatoMarcadorBrasil:
+    return candidato_marcador_brasil_service.criar(db, data)
+
+
+@router.put("/candidatos/{candidato_id}", response_model=CandidatoMarcadorBrasilRead)
+def put_candidato_marcador_brasil(
+    candidato_id: int,
+    data: CandidatoMarcadorBrasilUpdate,
+    db: Session = Depends(get_db),
+    _admin: Usuario = Depends(require_admin),
+) -> CandidatoMarcadorBrasil:
+    row = candidato_marcador_brasil_service.get_by_id(db, candidato_id)
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidato não encontrado")
+    return candidato_marcador_brasil_service.atualizar(db, row, data)
 
 
 @router.get("/me/{jogo_id}", response_model=list[MarcadorBrasilPalpiteRead])

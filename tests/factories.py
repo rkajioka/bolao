@@ -101,6 +101,7 @@ def seed_jogo_grupo_em_breve(db: Session, casa_id: int, fora_id: int) -> Jogo:
             fase="Grupo X",
             grupo="X",
             tipo_fase="grupos",
+            rodada=1,
             pais_casa_id=casa_id,
             pais_fora_id=fora_id,
             data_jogo=datetime.now(UTC) + timedelta(days=2),
@@ -116,6 +117,7 @@ def seed_jogo_grupo_passado(db: Session, casa_id: int, fora_id: int) -> Jogo:
             fase="Grupo Y",
             grupo="Y",
             tipo_fase="grupos",
+            rodada=1,
             pais_casa_id=casa_id,
             pais_fora_id=fora_id,
             data_jogo=datetime.now(UTC) - timedelta(days=1),
@@ -127,7 +129,7 @@ def seed_jogo_mata_mata(db: Session, casa_id: int, fora_id: int) -> Jogo:
     j = jogo_service.create_jogo(
         db,
         JogoCreate(
-            fase="Oitavas",
+            fase="oitavas",
             grupo=None,
             tipo_fase="mata_mata",
             pais_casa_id=casa_id,

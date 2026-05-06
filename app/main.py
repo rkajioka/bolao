@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.routes import (
     auth,
+    configuracao_bolao,
     grupos,
     health,
     jogos,
@@ -39,6 +40,7 @@ app.mount("/static", StaticFiles(directory=str(_static_root)), name="static")
 
 app.include_router(health.router, tags=["health"])
 app.include_router(auth.router)
+app.include_router(configuracao_bolao.router)
 app.include_router(usuarios.router)
 app.include_router(paises.router)
 app.include_router(jogos.router)

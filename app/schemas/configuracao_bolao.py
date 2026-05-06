@@ -22,3 +22,7 @@ class ConfiguracaoBolaoRead(ConfiguracaoBolaoBase):
     id: int
     created_at: datetime
     updated_at: datetime
+
+
+class ConfiguracaoBolaoWrite(ConfiguracaoBolaoBase):
+    """Corpo do PUT — substitui todos os campos configuráveis da linha ativa."""

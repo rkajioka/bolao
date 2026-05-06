@@ -14,6 +14,10 @@ class Jogo(Base):
     grupo: Mapped[str | None] = mapped_column(String(16), nullable=True)
     tipo_fase: Mapped[str] = mapped_column(String(32), nullable=False)
 
+    #: Rodada da fase de grupos (1ª rodada, 2ª…); usada para fechar palpites 1h antes do 1º jogo da rodada.
+    #: Em mata-mata fica null (o bloqueio usa a fase eliminatória).
+    rodada: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
     pais_casa_id: Mapped[int] = mapped_column(ForeignKey("paises.id"), nullable=False)
     pais_fora_id: Mapped[int] = mapped_column(ForeignKey("paises.id"), nullable=False)
 

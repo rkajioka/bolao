@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0d3b2c" />
+  <meta name="theme-color" content="#3f3d88" />
   <title>Bolão da Copa — MVP</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -14,6 +14,13 @@
 
   <section id="view-login" class="view" hidden>
     <header class="app-header">
+      <div class="brand-mark" aria-hidden="true">
+        <svg class="brand-mark-icon" viewBox="0 0 48 48" width="40" height="40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="24" cy="24" r="20" stroke="currentColor" stroke-width="2"/>
+          <path d="M24 8v8M24 32v8M8 24h8M32 24h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="24" cy="24" r="6" stroke="currentColor" stroke-width="2"/>
+        </svg>
+      </div>
       <h1>Bolão da Copa</h1>
       <p class="subtitle">Entre com seu e-mail e senha</p>
     </header>
@@ -39,20 +46,13 @@
     </form>
   </section>
 
-  <section id="view-main" class="view" hidden>
+  <section id="view-main" class="view view-app" hidden>
     <header class="topbar">
       <div class="topbar-inner">
         <strong id="main-user-label">Bolão</strong>
-        <button type="button" id="btn-logout" class="btn btn-ghost">Sair</button>
+        <button type="button" id="btn-logout" class="btn btn-ghost btn-ghost-on-brand">Sair</button>
       </div>
     </header>
-
-    <nav class="main-nav" aria-label="Seções principais">
-      <button type="button" class="nav-pill active" data-panel="palpites">Palpites</button>
-      <button type="button" class="nav-pill" data-panel="especiais">Especiais</button>
-      <button type="button" class="nav-pill" data-panel="grupos">Grupos</button>
-      <button type="button" class="nav-pill" data-panel="ranking">Ranking</button>
-    </nav>
 
     <main id="main" class="main-content">
       <div id="panel-palpites" class="panel active">
@@ -81,7 +81,57 @@
       <div id="panel-ranking" class="panel">
         <div id="ranking-content"></div>
       </div>
+
+      <div id="panel-admin" class="panel">
+        <div class="sub-nav admin-sub-nav" role="tablist" aria-label="Administração">
+          <button type="button" class="sub-pill admin-sub-pill active" data-admin-sub="jogos">Jogos</button>
+          <button type="button" class="sub-pill admin-sub-pill" data-admin-sub="paises">Países</button>
+          <button type="button" class="sub-pill admin-sub-pill" data-admin-sub="usuarios">Usuários</button>
+          <button type="button" class="sub-pill admin-sub-pill" data-admin-sub="marcadores">Marcadores BR</button>
+          <button type="button" class="sub-pill admin-sub-pill" data-admin-sub="especiais-adm">Especiais</button>
+          <button type="button" class="sub-pill admin-sub-pill" data-admin-sub="config">Config</button>
+        </div>
+        <div id="admin-jogos" class="admin-sub-panel active"></div>
+        <div id="admin-paises" class="admin-sub-panel"></div>
+        <div id="admin-usuarios" class="admin-sub-panel"></div>
+        <div id="admin-marcadores" class="admin-sub-panel"></div>
+        <div id="admin-especiais-adm" class="admin-sub-panel"></div>
+        <div id="admin-config" class="admin-sub-panel"></div>
+      </div>
     </main>
+
+    <nav class="main-nav" aria-label="Seções principais">
+      <button type="button" class="nav-pill active" data-panel="palpites">
+        <span class="nav-pill-icon" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        </span>
+        <span class="nav-pill-label">Palpites</span>
+      </button>
+      <button type="button" class="nav-pill" data-panel="especiais">
+        <span class="nav-pill-icon" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9 12 2"/></svg>
+        </span>
+        <span class="nav-pill-label">Especiais</span>
+      </button>
+      <button type="button" class="nav-pill" data-panel="grupos">
+        <span class="nav-pill-icon" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        </span>
+        <span class="nav-pill-label">Grupos</span>
+      </button>
+      <button type="button" class="nav-pill" data-panel="ranking">
+        <span class="nav-pill-icon" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M6 3h12v8a6 6 0 01-12 0V3z"/></svg>
+        </span>
+        <span class="nav-pill-label">Ranking</span>
+      </button>
+      <button type="button" class="nav-pill nav-pill-admin" id="nav-item-admin" data-panel="admin" hidden>
+        <span class="nav-pill-icon" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        </span>
+        <span class="nav-pill-label">Admin</span>
+      </button>
+    </nav>
   </section>
 
   <script src="app.js" defer></script>

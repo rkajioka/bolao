@@ -1,18 +1,50 @@
-/* MVP Bolão — mobile-first (§18). Toque ≥44px, cards verticais, tabelas com scroll. */
+/* Bolão — mobile-first, toque ≥44px. Identidade: #3f3d88 + branco, detalhes dourados. */
 
 :root {
-  --bg: #0a1f18;
-  --surface: #12352a;
-  --card: #164536;
-  --border: #2a6b52;
-  --text: #e8f5ef;
-  --muted: #9bc4b0;
-  --accent: #f4d03f;
-  --accent-2: #27ae60;
-  --danger: #e74c3c;
+  --brand: #3f3d88;
+  --brand-muted: rgba(63, 61, 136, 0.12);
+  --brand-foreground: #ffffff;
+  --gold: #b8860b;
+  --gold-line: rgba(184, 134, 11, 0.35);
+  --bg: #f5f5f8;
+  --surface: #ffffff;
+  --surface-muted: #ececf2;
+  --card: #ffffff;
+  --border: #e0dfe8;
+  --text: #222132;
+  --muted: #65647a;
+  --accent: var(--gold);
+  --accent-2: var(--brand);
+  --danger: #c0392b;
+  --danger-soft: rgba(192, 57, 43, 0.08);
   --radius: 12px;
   --touch: 44px;
+  --nav-h: 56px;
   --font: system-ui, "Segoe UI", Roboto, Ubuntu, sans-serif;
+  /* Largura útil — estreita no celular, mais ampla no desktop (menos “vazio” nas laterais) */
+  --layout-max: 720px;
+  --layout-gutter: 1rem;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --layout-max: 920px;
+    --layout-gutter: 1.25rem;
+  }
+}
+
+@media (min-width: 1100px) {
+  :root {
+    --layout-max: 1180px;
+    --layout-gutter: 1.5rem;
+  }
+}
+
+@media (min-width: 1440px) {
+  :root {
+    --layout-max: 1360px;
+    --layout-gutter: 2rem;
+  }
 }
 
 *,
@@ -39,27 +71,60 @@ body {
   left: -9999px;
   top: 0;
   padding: 0.5rem 1rem;
-  background: var(--accent);
-  color: #000;
-  z-index: 100;
+  background: var(--brand);
+  color: var(--brand-foreground);
+  z-index: 300;
+  font-weight: 600;
 }
 .skip-link:focus {
   left: 0;
 }
 
 .view {
-  max-width: 720px;
+  max-width: var(--layout-max);
   margin: 0 auto;
-  padding: 0.75rem 1rem calc(1rem + env(safe-area-inset-bottom));
+  padding: 0.75rem var(--layout-gutter) calc(1rem + env(safe-area-inset-bottom));
+}
+
+/* display:flex de .view.view-app ganha do [hidden] padrão — sem isso, login + app aparecem juntos. */
+.view[hidden] {
+  display: none !important;
+}
+
+/* Login / primeiro acesso: formulário não estica em monitores ultra-largos */
+.view:not(.view-app) {
+  max-width: min(520px, 100%);
+}
+
+/* App logada: coluna cheia + nav inferior (largura total; conteúdo limitado por --layout-max nos filhos) */
+.view.view-app {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
 }
 
 .app-header {
   text-align: center;
   margin-bottom: 1rem;
 }
+.brand-mark {
+  color: var(--brand);
+  margin-bottom: 0.5rem;
+  display: flex;
+  justify-content: center;
+}
+.brand-mark-icon {
+  display: block;
+}
 .app-header h1 {
   margin: 0 0 0.25rem;
   font-size: clamp(1.35rem, 4vw, 1.75rem);
+  color: var(--text);
+  font-weight: 700;
 }
 .subtitle {
   margin: 0;
@@ -72,6 +137,7 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 1rem;
+  box-shadow: 0 1px 3px rgba(63, 61, 136, 0.06);
 }
 
 .form-card label {
@@ -81,6 +147,15 @@ body {
   margin-bottom: 0.85rem;
   font-size: 0.9rem;
   color: var(--muted);
+}
+
+/* display:flex do label ganha do atributo [hidden] do user-agent; esconder de fato. */
+.form-card label[hidden] {
+  display: none !important;
+}
+
+.admin-jogo-type-block[hidden] {
+  display: none !important;
 }
 
 input,
@@ -101,8 +176,14 @@ textarea {
   color: var(--text);
   width: 100%;
 }
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-color: var(--brand);
+}
 
-/* Placar: inputs numéricos maiores em telas pequenas */
 .score-input {
   font-size: 1.35rem;
   font-weight: 700;
@@ -124,13 +205,19 @@ textarea {
   outline-offset: 2px;
 }
 .btn-primary {
-  background: var(--accent-2);
-  color: #fff;
+  background: var(--brand);
+  color: var(--brand-foreground);
+}
+.btn-primary:focus-visible {
+  outline-color: var(--gold);
 }
 .btn-secondary {
   background: var(--surface);
   color: var(--text);
   border: 1px solid var(--border);
+}
+.btn-secondary:focus-visible {
+  outline-color: var(--brand);
 }
 .btn-ghost {
   background: transparent;
@@ -139,6 +226,13 @@ textarea {
   width: auto;
   min-height: 40px;
   padding: 0 0.75rem;
+}
+.btn-ghost-on-brand {
+  color: rgba(255, 255, 255, 0.95);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+.btn-ghost-on-brand:focus-visible {
+  outline-color: var(--gold);
 }
 .btn:disabled {
   opacity: 0.45;
@@ -149,53 +243,103 @@ textarea {
   position: sticky;
   top: 0;
   z-index: 50;
-  background: rgba(10, 31, 24, 0.92);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--brand);
+  color: var(--brand-foreground);
+  border-bottom: 2px solid var(--gold-line);
+  box-shadow: 0 2px 12px rgba(63, 61, 136, 0.15);
 }
 .topbar-inner {
-  max-width: 720px;
+  max-width: var(--layout-max);
   margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.5rem 1rem;
+  padding: 0.5rem var(--layout-gutter);
+  padding-top: calc(0.5rem + env(safe-area-inset-top));
   min-height: calc(var(--touch) + 4px);
 }
-
-.main-nav {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.5rem;
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 0.5rem 1rem;
+.topbar-inner strong {
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
-@media (min-width: 480px) {
-  .main-nav {
-    grid-template-columns: repeat(4, 1fr);
-  }
+
+/* Barra inferior fixa */
+.main-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  display: flex;
+  justify-content: space-around;
+  align-items: stretch;
+  width: 100%;
+  padding: 0.25rem max(var(--layout-gutter), calc(50% - var(--layout-max) / 2))
+    calc(0.35rem + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -4px 20px rgba(63, 61, 136, 0.08);
 }
 
 .nav-pill {
-  min-height: var(--touch);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  min-height: var(--nav-h);
+  padding: 0.35rem 0.25rem;
+  border: none;
   border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
+  background: transparent;
+  color: var(--muted);
   font-weight: 600;
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
   cursor: pointer;
+  position: relative;
+}
+.nav-pill-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.85;
+}
+.nav-pill-label {
+  line-height: 1.15;
 }
 .nav-pill.active {
-  background: var(--card);
-  border-color: var(--accent);
-  color: var(--accent);
+  color: var(--brand);
+}
+.nav-pill.active .nav-pill-icon {
+  opacity: 1;
+  color: var(--brand);
+}
+.nav-pill.active::after {
+  content: "";
+  position: absolute;
+  bottom: 0.15rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1.25rem;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+}
+.nav-pill:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
 }
 
 .main-content {
-  max-width: 720px;
+  flex: 1;
+  max-width: var(--layout-max);
+  width: 100%;
   margin: 0 auto;
-  padding: 0.5rem 1rem 2rem;
+  padding: 0.75rem var(--layout-gutter);
+  padding-bottom: calc(var(--nav-h) + 2rem + env(safe-area-inset-bottom));
 }
 
 .panel {
@@ -205,24 +349,35 @@ textarea {
   display: block;
 }
 
+/* Segmented control — Palpites */
 .sub-nav {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
+  padding: 3px;
+  margin-bottom: 0.85rem;
+  background: var(--surface-muted);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  gap: 0;
 }
 .sub-pill {
   flex: 1;
-  min-height: var(--touch);
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
+  min-height: calc(var(--touch) - 4px);
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
   font-weight: 600;
+  font-size: 0.9rem;
   cursor: pointer;
 }
 .sub-pill.active {
-  border-color: var(--accent-2);
-  background: var(--card);
+  background: var(--brand);
+  color: var(--brand-foreground);
+  box-shadow: 0 1px 4px rgba(63, 61, 136, 0.2);
+}
+.sub-pill:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
 }
 
 .sub-panel {
@@ -232,13 +387,29 @@ textarea {
   display: block;
 }
 
-/* Cards de jogos — empilhados (§18.2) */
+/* Desktop: duas colunas na lista cronológica (aproveita largura sem mudar o JS) */
+@media (min-width: 900px) {
+  #palpites-crono.sub-panel.active {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    align-items: start;
+  }
+  #palpites-crono.sub-panel.active > p:only-child {
+    grid-column: 1 / -1;
+  }
+  #palpites-crono.sub-panel.active > .game-card {
+    margin-bottom: 0;
+  }
+}
+
 .game-card {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 1rem;
   margin-bottom: 0.75rem;
+  box-shadow: 0 1px 3px rgba(63, 61, 136, 0.05);
 }
 .game-card-header {
   display: flex;
@@ -254,17 +425,22 @@ textarea {
   border-radius: 6px;
   font-size: 0.75rem;
   font-weight: 700;
-  background: var(--surface);
+  background: var(--surface-muted);
   border: 1px solid var(--border);
+  color: var(--muted);
 }
 .badge-live {
-  color: var(--accent);
+  color: var(--brand);
+  border-color: var(--brand-muted);
+  background: var(--brand-muted);
 }
 .badge-lock {
   color: var(--muted);
 }
 .badge-done {
-  color: var(--accent-2);
+  color: var(--brand);
+  background: rgba(63, 61, 136, 0.08);
+  border-color: rgba(63, 61, 136, 0.2);
 }
 
 .match-row {
@@ -319,7 +495,6 @@ textarea {
   min-height: var(--touch);
 }
 
-/* Marcadores Brasil — recolhível (§18.4) */
 details.marcadores-details {
   margin-top: 0.75rem;
   border-top: 1px dashed var(--border);
@@ -332,6 +507,7 @@ details.marcadores-details > summary {
   align-items: center;
   font-weight: 600;
   list-style: none;
+  color: var(--text);
 }
 details.marcadores-details > summary::-webkit-details-marker {
   display: none;
@@ -430,7 +606,6 @@ table.tabela-grupo th {
   }
 }
 
-/* Ranking — cards no mobile, tabela em telas maiores (§18.7) */
 .ranking-cards {
   display: flex;
   flex-direction: column;
@@ -445,11 +620,12 @@ table.tabela-grupo th {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 0.65rem 0.85rem;
+  box-shadow: 0 1px 3px rgba(63, 61, 136, 0.05);
 }
 .ranking-card .pos {
   font-weight: 800;
   font-size: 1.1rem;
-  color: var(--accent);
+  color: var(--brand);
 }
 .ranking-card .avatar {
   width: 40px;
@@ -457,7 +633,7 @@ table.tabela-grupo th {
   border-radius: 50%;
   object-fit: cover;
   border: 1px solid var(--border);
-  background: var(--surface);
+  background: var(--surface-muted);
 }
 .ranking-card .avatar-ph {
   display: inline-block;
@@ -469,6 +645,7 @@ table.tabela-grupo th {
 .ranking-card .pts {
   font-weight: 800;
   font-size: 1.05rem;
+  color: var(--text);
 }
 .ranking-card .extra {
   grid-column: 1 / -1;
@@ -490,6 +667,10 @@ table.tabela-grupo th {
     width: 100%;
     border-collapse: collapse;
     font-size: 0.9rem;
+    background: var(--card);
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--border);
   }
   table.ranking-wide th,
   table.ranking-wide td {
@@ -499,6 +680,7 @@ table.tabela-grupo th {
   }
   table.ranking-wide th {
     color: var(--muted);
+    background: var(--surface-muted);
   }
   table.ranking-wide .num {
     text-align: right;
@@ -514,41 +696,154 @@ table.tabela-grupo th {
   color: var(--muted);
 }
 .pontos-especiais-mini span {
-  background: var(--surface);
+  background: var(--surface-muted);
   padding: 0.2rem 0.45rem;
   border-radius: 6px;
   border: 1px solid var(--border);
 }
 
+/* Toast: base na tela em login; acima da nav na área principal */
 .toast {
   position: fixed;
   bottom: calc(1rem + env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%);
   max-width: min(92vw, 420px);
-  padding: 0.75rem 1rem;
-  background: #1a1a2e;
-  color: #fff;
-  border-radius: 10px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  padding: 0.65rem 1rem;
+  background: rgba(34, 33, 50, 0.94);
+  color: #fafafa;
+  border-radius: 999px;
+  box-shadow: 0 8px 28px rgba(63, 61, 136, 0.25);
   z-index: 200;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+body.app-has-bottom-nav .toast {
+  bottom: calc(var(--nav-h) + 1.25rem + env(safe-area-inset-bottom));
 }
 .toast.error {
-  border: 1px solid var(--danger);
+  border-color: rgba(192, 57, 43, 0.65);
+  background: rgba(45, 28, 28, 0.96);
 }
 
 .blocked-banner {
   padding: 0.65rem 0.85rem;
-  background: rgba(231, 76, 60, 0.15);
-  border: 1px solid var(--danger);
+  background: var(--danger-soft);
+  border: 1px solid rgba(192, 57, 43, 0.28);
   border-radius: 8px;
   margin-bottom: 0.75rem;
   font-size: 0.9rem;
+  color: var(--text);
 }
 
 .grupo-bloco-title {
   margin: 1rem 0 0.5rem;
   font-size: 1rem;
-  color: var(--accent);
+  color: var(--brand);
+  font-weight: 700;
+}
+
+/* Admin — sub-abas e tabelas */
+.admin-sub-nav {
+  flex-wrap: wrap;
+  margin-bottom: 0.85rem;
+}
+.admin-sub-nav .sub-pill {
+  flex: 1 1 calc(33.33% - 4px);
+  min-height: 40px;
+  font-size: 0.78rem;
+  padding: 0.25rem 0.15rem;
+}
+@media (min-width: 520px) {
+  .admin-sub-nav .sub-pill {
+    flex: 1 1 auto;
+    font-size: 0.85rem;
+  }
+}
+
+.admin-sub-panel {
+  display: none;
+}
+.admin-sub-panel.active {
+  display: block;
+}
+
+.admin-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  align-items: center;
+}
+.admin-toolbar .btn {
+  width: auto;
+}
+
+table.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+table.admin-table th,
+table.admin-table td {
+  padding: 0.45rem 0.35rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+table.admin-table th {
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+table.admin-table .admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+table.admin-table .admin-actions .btn {
+  width: auto;
+  min-height: 36px;
+  padding: 0 0.5rem;
+  font-size: 0.78rem;
+}
+
+.admin-form-section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--border);
+}
+.admin-form-section h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  color: var(--brand);
+}
+
+.form-grid-2 {
+  display: grid;
+  gap: 0.75rem;
+}
+@media (min-width: 560px) {
+  .form-grid-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.main-nav .nav-pill-admin .nav-pill-label {
+  font-size: 0.62rem;
+}
+
+.admin-help {
+  font-size: 0.88rem;
+  color: var(--muted);
+  line-height: 1.5;
+  margin: 0 0 1rem;
+  padding: 0.75rem 0.85rem;
+  background: var(--surface-muted);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.admin-help strong {
+  color: var(--text);
 }

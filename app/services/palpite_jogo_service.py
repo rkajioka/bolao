@@ -32,15 +32,18 @@ def _palpite_loaders():
     )
 
 
-def _assert_palpite_aberto(jogo: Jogo) -> None:
+def _assert_palpite_aberto(db: Session, jogo: Jogo) -> None:
     if jogo.finalizado:
         raise ValueError("O jogo está finalizado; o palpite não pode ser alterado")
     agora = _agora_utc()
-    inicio = jogo.data_jogo
-    if inicio.tzinfo is None:
-        inicio = inicio.replace(tzinfo=UTC)
-    if agora >= inicio:
-        raise ValueError("O palpite não pode ser alterado após o início do jogo")
+    limite = jogo_service.momento_fim_edicao_palpite(db, jogo)
+    if limite.tzinfo is None:
+        limite = limite.replace(tzinfo=UTC)
+    if agora >= limite:
+        raise ValueError(
+            "O palpite não pode ser alterado: prazo encerrado (1h antes do primeiro jogo "
+            "da mesma rodada ou da mesma fase de mata-mata) ou o jogo já começou"
+        )
 
 
 def _assert_classificado_no_jogo(jogo: Jogo, classificado_id: int) -> None:
@@ -94,7 +97,7 @@ def create_palpite(db: Session, usuario_id: int, data: PalpiteJogoCreate) -> Pal
     if get_by_usuario_jogo(db, usuario_id, data.jogo_id) is not None:
         raise ValueError("Você já possui palpite neste jogo; use PUT para alterar")
 
-    _assert_palpite_aberto(jogo)
+    _assert_palpite_aberto(db, jogo)
 
     classificado = _classificado_efetivo(db, jogo, data.palpite_classificado_id)
 
@@ -124,7 +127,7 @@ def update_palpite(db: Session, usuario_id: int, palpite_id: int, data: PalpiteJ
     if jogo is None:
         raise ValueError("Jogo não encontrado")
 
-    _assert_palpite_aberto(jogo)
+    _assert_palpite_aberto(db, jogo)
 
     casa = data.palpite_casa if data.palpite_casa is not None else p.palpite_casa
     fora = data.palpite_fora if data.palpite_fora is not None else p.palpite_fora

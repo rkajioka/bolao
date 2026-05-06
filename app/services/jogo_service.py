@@ -7,11 +7,13 @@ Após persistir resultado ou finalizar, dispara `pontuacao_service.recalcular_to
 from __future__ import annotations
 
 from collections import defaultdict
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
+from app.jogo_fases import canonical_fase_mata_mata, fase_mata_mata_slug_ou_none
 from app.models.jogo import Jogo
 from app.schemas.jogo import JogoCreate, JogoResultadoPatch, JogoUpdate
 from app.services import pais_service
@@ -69,6 +71,53 @@ def list_jogos_brasil(db: Session) -> list[Jogo]:
     return list(db.scalars(q).unique().all())
 
 
+def primeiro_inicio_grupo_por_rodada(db: Session, rodada: int) -> datetime | None:
+    """Menor horário de início entre jogos de fase de grupos da mesma rodada."""
+    return db.scalar(
+        select(func.min(Jogo.data_jogo)).where(
+            Jogo.tipo_fase == "grupos",
+            Jogo.rodada == rodada,
+        )
+    )
+
+
+def _fase_mata_mata_normalizada_sql():
+    return func.replace(func.lower(func.trim(Jogo.fase)), " ", "_")
+
+
+def primeiro_inicio_mata_mata_por_fase(db: Session, fase_slug: str) -> datetime | None:
+    """Menor horário de início entre jogos de mata-mata com a mesma fase (slug)."""
+    slug = fase_slug.strip().lower()
+    return db.scalar(
+        select(func.min(Jogo.data_jogo)).where(
+            Jogo.tipo_fase == "mata_mata",
+            _fase_mata_mata_normalizada_sql() == slug,
+        )
+    )
+
+
+def momento_fim_edicao_palpite(db: Session, jogo: Jogo) -> datetime:
+    """Instante em UTC após o qual palpites e marcadores do usuário não podem mais ser alterados."""
+    if jogo.tipo_fase == "grupos" and jogo.rodada is not None:
+        primeiro = primeiro_inicio_grupo_por_rodada(db, jogo.rodada)
+        if primeiro is not None:
+            if primeiro.tzinfo is None:
+                primeiro = primeiro.replace(tzinfo=UTC)
+            return primeiro - timedelta(hours=1)
+    if jogo.tipo_fase == "mata_mata":
+        slug = fase_mata_mata_slug_ou_none(jogo.fase)
+        if slug:
+            primeiro = primeiro_inicio_mata_mata_por_fase(db, slug)
+            if primeiro is not None:
+                if primeiro.tzinfo is None:
+                    primeiro = primeiro.replace(tzinfo=UTC)
+                return primeiro - timedelta(hours=1)
+    inicio = jogo.data_jogo
+    if inicio.tzinfo is None:
+        inicio = inicio.replace(tzinfo=UTC)
+    return inicio
+
+
 def list_jogos_por_grupo(db: Session) -> list[tuple[str, list[Jogo]]]:
     q = (
         select(Jogo)
@@ -95,6 +144,7 @@ def _validar_regras_fase_grupos(
     *,
     tipo_fase: str,
     grupo: str | None,
+    rodada: int | None,
     pais_casa_id: int,
     pais_fora_id: int,
 ) -> None:
@@ -102,6 +152,8 @@ def _validar_regras_fase_grupos(
         raise ValueError("Combinação inválida: esperado tipo_fase=grupos")
     if not grupo or not str(grupo).strip():
         raise ValueError("Grupo é obrigatório para a fase de grupos")
+    if rodada is None or rodada < 1:
+        raise ValueError("Rodada (inteiro ≥ 1) é obrigatória para a fase de grupos")
     if pais_casa_id == pais_fora_id:
         raise ValueError("País da casa e país de fora devem ser diferentes")
 
@@ -110,6 +162,7 @@ def _validar_regras_mata_mata(
     *,
     tipo_fase: str,
     grupo: str | None,
+    rodada: int | None,
     pais_casa_id: int,
     pais_fora_id: int,
 ) -> None:
@@ -117,6 +170,8 @@ def _validar_regras_mata_mata(
         raise ValueError("Combinação inválida: esperado tipo_fase=mata_mata")
     if grupo is not None and str(grupo).strip():
         raise ValueError("Jogos do mata-mata não devem ter grupo (use null ou omita)")
+    if rodada is not None:
+        raise ValueError("Jogos do mata-mata não devem ter rodada (use null ou omita)")
     if pais_casa_id == pais_fora_id:
         raise ValueError("País da casa e país de fora devem ser diferentes")
 
@@ -128,25 +183,32 @@ def create_jogo(db: Session, data: JogoCreate) -> Jogo:
         _validar_regras_fase_grupos(
             tipo_fase=data.tipo_fase,
             grupo=data.grupo,
+            rodada=data.rodada,
             pais_casa_id=data.pais_casa_id,
             pais_fora_id=data.pais_fora_id,
         )
         grupo_db = str(data.grupo).strip().upper()
         tipo_db = "grupos"
+        rodada_db = data.rodada
+        fase_db = str(data.fase).strip()
     else:
         _validar_regras_mata_mata(
             tipo_fase=data.tipo_fase,
             grupo=data.grupo,
+            rodada=data.rodada,
             pais_casa_id=data.pais_casa_id,
             pais_fora_id=data.pais_fora_id,
         )
         grupo_db = None
         tipo_db = "mata_mata"
+        rodada_db = None
+        fase_db = canonical_fase_mata_mata(data.fase)
 
     j = Jogo(
-        fase=data.fase.strip(),
+        fase=fase_db,
         grupo=grupo_db,
         tipo_fase=tipo_db,
+        rodada=rodada_db,
         pais_casa_id=data.pais_casa_id,
         pais_fora_id=data.pais_fora_id,
         data_jogo=data.data_jogo,
@@ -173,23 +235,38 @@ def update_jogo(db: Session, jogo: Jogo, data: JogoUpdate) -> Jogo:
 
     tipo = jogo.tipo_fase
     grupo = data.grupo if data.grupo is not None else jogo.grupo
+    rodada = jogo.rodada
+    if "rodada" in data.model_fields_set:
+        rodada = data.rodada
     casa = data.pais_casa_id if data.pais_casa_id is not None else jogo.pais_casa_id
     fora = data.pais_fora_id if data.pais_fora_id is not None else jogo.pais_fora_id
 
     if tipo == "grupos":
-        _validar_regras_fase_grupos(tipo_fase=tipo, grupo=grupo, pais_casa_id=casa, pais_fora_id=fora)
+        _validar_regras_fase_grupos(
+            tipo_fase=tipo, grupo=grupo, rodada=rodada, pais_casa_id=casa, pais_fora_id=fora
+        )
     else:
-        _validar_regras_mata_mata(tipo_fase=tipo, grupo=grupo, pais_casa_id=casa, pais_fora_id=fora)
+        _validar_regras_mata_mata(
+            tipo_fase=tipo, grupo=grupo, rodada=rodada, pais_casa_id=casa, pais_fora_id=fora
+        )
 
     _assert_paises_existem(db, casa, fora)
 
     if data.fase is not None:
-        jogo.fase = data.fase.strip()
+        if jogo.tipo_fase == "mata_mata":
+            jogo.fase = canonical_fase_mata_mata(data.fase)
+        else:
+            jogo.fase = data.fase.strip()
     if data.grupo is not None:
         if jogo.tipo_fase == "mata_mata":
             jogo.grupo = None
         else:
             jogo.grupo = str(data.grupo).strip().upper() if data.grupo.strip() else None
+    if "rodada" in data.model_fields_set:
+        if jogo.tipo_fase == "mata_mata":
+            jogo.rodada = None
+        else:
+            jogo.rodada = data.rodada
     if data.pais_casa_id is not None:
         jogo.pais_casa_id = data.pais_casa_id
     if data.pais_fora_id is not None:

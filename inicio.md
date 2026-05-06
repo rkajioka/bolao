@@ -2097,7 +2097,7 @@ O MVP só estará pronto quando:
 
 ---
 
-## Etapa 13 — Revisão Final
+
 
 * testar permissões;
 * testar bloqueio de palpites por jogo;
