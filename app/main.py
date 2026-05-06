@@ -5,7 +5,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from app.routes import auth, health, paises, usuarios
+from app.routes import auth, grupos, health, jogos, marcadores_brasil, paises, palpites_especiais, palpites_jogos, usuarios
 
 app = FastAPI(
     title="Bolão da Copa do Mundo — MVP",
@@ -21,3 +21,8 @@ app.include_router(health.router, tags=["health"])
 app.include_router(auth.router)
 app.include_router(usuarios.router)
 app.include_router(paises.router)
+app.include_router(jogos.router)
+app.include_router(grupos.router)
+app.include_router(palpites_jogos.router)
+app.include_router(palpites_especiais.router)
+app.include_router(marcadores_brasil.router)

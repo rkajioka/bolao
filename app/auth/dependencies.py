@@ -77,8 +77,7 @@ def require_admin(user: Usuario = Depends(get_current_active_user)) -> Usuario:
 
 def require_primeiro_login_concluido(user: Usuario = Depends(get_current_active_user)) -> Usuario:
     """
-    Gancho para rotas pós-onboarding (dashboard, palpites, etc.).
-    Não utilizado nas rotas desta etapa; aplicar a partir da Etapa 3+.
+    Rotas pós-onboarding (palpites, dashboard, etc.): exige primeiro acesso concluído.
     """
     if user.primeiro_login:
         raise HTTPException(

@@ -1,14 +1,33 @@
 from app.schemas.configuracao_bolao import ConfiguracaoBolaoBase, ConfiguracaoBolaoRead
-from app.schemas.jogo import JogoBase, JogoCreate, JogoRead
+from app.schemas.jogo import (
+    GrupoJogosBlock,
+    JogoBase,
+    JogoCreate,
+    JogoRead,
+    JogoResultadoPatch,
+    JogoUpdate,
+    JogosPorGrupoResponse,
+    PaisNoJogo,
+)
 from app.schemas.marcador_brasil import (
     MarcadorBrasilPalpiteBase,
+    MarcadorBrasilPalpiteItem,
     MarcadorBrasilPalpiteRead,
     MarcadorBrasilResultadoBase,
     MarcadorBrasilResultadoRead,
+    MarcadoresBrasilPalpiteSync,
+    MarcadoresBrasilResultadoSync,
 )
 from app.schemas.pais import PaisBase, PaisCreate, PaisRead, PaisUpdate
-from app.schemas.palpite_especial import PalpiteEspecialBase, PalpiteEspecialCreate, PalpiteEspecialRead
-from app.schemas.palpite_jogo import PalpiteJogoBase, PalpiteJogoCreate, PalpiteJogoRead
+from app.schemas.palpite_especial import (
+    PalpiteEspecialAdminRead,
+    PalpiteEspecialBase,
+    PalpiteEspecialCreate,
+    PalpiteEspecialRead,
+    PalpiteEspecialUpdate,
+    UsuarioMini,
+)
+from app.schemas.palpite_jogo import PalpiteJogoBase, PalpiteJogoCreate, PalpiteJogoRead, PalpiteJogoUpdate
 from app.schemas.resultado_especial import ResultadoEspecialBase, ResultadoEspecialRead, ResultadoEspecialWrite
 from app.schemas.usuario import (
     ChangePasswordRequest,
@@ -45,19 +64,31 @@ __all__ = [
     "JogoBase",
     "JogoCreate",
     "JogoRead",
+    "JogoUpdate",
+    "JogoResultadoPatch",
+    "PaisNoJogo",
+    "GrupoJogosBlock",
+    "JogosPorGrupoResponse",
     "PalpiteJogoBase",
     "PalpiteJogoCreate",
     "PalpiteJogoRead",
+    "PalpiteJogoUpdate",
     "PalpiteEspecialBase",
     "PalpiteEspecialCreate",
     "PalpiteEspecialRead",
+    "PalpiteEspecialUpdate",
+    "PalpiteEspecialAdminRead",
+    "UsuarioMini",
     "ResultadoEspecialBase",
     "ResultadoEspecialWrite",
     "ResultadoEspecialRead",
     "MarcadorBrasilPalpiteBase",
+    "MarcadorBrasilPalpiteItem",
     "MarcadorBrasilPalpiteRead",
+    "MarcadoresBrasilPalpiteSync",
     "MarcadorBrasilResultadoBase",
     "MarcadorBrasilResultadoRead",
+    "MarcadoresBrasilResultadoSync",
     "ConfiguracaoBolaoBase",
     "ConfiguracaoBolaoRead",
 ]
