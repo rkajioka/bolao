@@ -6,7 +6,7 @@ from app.schemas.marcador_brasil import (
     MarcadorBrasilResultadoBase,
     MarcadorBrasilResultadoRead,
 )
-from app.schemas.pais import PaisBase, PaisCreate, PaisRead
+from app.schemas.pais import PaisBase, PaisCreate, PaisRead, PaisUpdate
 from app.schemas.palpite_especial import PalpiteEspecialBase, PalpiteEspecialCreate, PalpiteEspecialRead
 from app.schemas.palpite_jogo import PalpiteJogoBase, PalpiteJogoCreate, PalpiteJogoRead
 from app.schemas.resultado_especial import ResultadoEspecialBase, ResultadoEspecialRead, ResultadoEspecialWrite
@@ -41,6 +41,7 @@ __all__ = [
     "PaisBase",
     "PaisCreate",
     "PaisRead",
+    "PaisUpdate",
     "JogoBase",
     "JogoCreate",
     "JogoRead",
