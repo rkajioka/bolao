@@ -1,7 +1,7 @@
 """
 Palpites por jogo — criação, edição, bloqueio por horário do jogo e por finalização.
 
-Pontuação (gravar em pontuacao_*): Etapa 10 (`pontuacao_service`).
+Pontuação persistida por `pontuacao_service` ao finalizar/alterar resultado do jogo.
 Marcadores Brasil: Etapa 8.
 """
 

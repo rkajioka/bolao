@@ -80,8 +80,5 @@ def patch_palpites_especiais_recalcular(
     db: Session = Depends(get_db),
     _admin: Usuario = Depends(require_admin),
 ) -> None:
-    """
-    Stub até a Etapa 10: aqui será disparado o recálculo das pontuações especiais
-    após o admin salvar `resultados_especiais`.
-    """
+    """Recalcula pontuação de todos os palpites especiais (útil após ajustes manuais no banco)."""
     palpite_especial_service.recalcular_palpites_especiais_stub(db)

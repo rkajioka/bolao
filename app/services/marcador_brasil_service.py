@@ -1,7 +1,7 @@
 """
 Marcadores de gols do Brasil — palpite do usuário (ligado ao palpite do jogo) e resultado oficial (admin).
 
-Recálculo de bônus: Etapa 10 (`pontuacao_service`).
+Após salvar resultado oficial, dispara `pontuacao_service.recalcular_todos_palpites_do_jogo`.
 """
 
 from __future__ import annotations
@@ -103,9 +103,14 @@ def sincronizar_marcadores_resultado_admin(
             )
         )
     db.commit()
-    # Etapa 10: recalcular_bonus_marcadores_brasil(jogo_id)
+    from app.services import pontuacao_service
+
+    pontuacao_service.recalcular_todos_palpites_do_jogo(db, jogo_id)
     return listar_marcadores_resultado_admin(db, jogo_id)
 
 
-def recalcular_marcadores_brasil_stub(_db: Session, _jogo_id: int) -> None:
-    """Gancho para Etapa 10 — bônus de marcadores após resultado oficial."""
+def recalcular_marcadores_brasil_stub(db: Session, jogo_id: int) -> None:
+    """Admin: força recálculo do bônus de marcadores (e demais componentes) para o jogo."""
+    from app.services import pontuacao_service
+
+    pontuacao_service.recalcular_marcadores_brasil_para_jogo(db, jogo_id)

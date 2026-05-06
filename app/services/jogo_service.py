@@ -1,8 +1,7 @@
 """
 Regras de jogos — fase de grupos e mata-mata (cadastro, edição, resultado, finalizar).
 
-Recálculo de pontuação dos palpites após resultado/finalizar: Etapa 10 (`pontuacao_service`);
-aqui apenas persistimos dados e validamos regras do MD.
+Após persistir resultado ou finalizar, dispara `pontuacao_service.recalcular_todos_palpites_do_jogo`.
 """
 
 from __future__ import annotations
@@ -239,6 +238,9 @@ def patch_resultado(db: Session, jogo: Jogo, data: JogoResultadoPatch) -> Jogo:
         db.rollback()
         raise
     db.refresh(jogo)
+    from app.services import pontuacao_service
+
+    pontuacao_service.recalcular_todos_palpites_do_jogo(db, jogo.id)
     return get_by_id(db, jogo.id)  # type: ignore[return-value]
 
 
@@ -260,7 +262,9 @@ def patch_finalizar(db: Session, jogo: Jogo) -> Jogo:
     jogo.finalizado = True
     db.commit()
     db.refresh(jogo)
-    # Etapa 10: recalcular_pontuacao_palpites_jogo(jogo.id)
+    from app.services import pontuacao_service
+
+    pontuacao_service.recalcular_todos_palpites_do_jogo(db, jogo.id)
     return get_by_id(db, jogo.id)  # type: ignore[return-value]
 
 

@@ -127,9 +127,7 @@ def patch_recalcular_marcadores(
     db: Session = Depends(get_db),
     _admin: Usuario = Depends(require_admin),
 ) -> None:
-    """
-    Stub até a Etapa 10: recalcular bônus de marcadores do Brasil para o jogo.
-    """
+    """Recalcula pontuação dos palpites do jogo (inclui bônus de marcadores do Brasil)."""
     try:
         marcador_brasil_service.obter_jogo_que_envolve_brasil(db, jogo_id)
     except ValueError as e:

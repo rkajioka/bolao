@@ -2,7 +2,7 @@
 Tabela dos grupos da Copa (§8.4): calculada só a partir de jogos da fase de grupos
 finalizados, com placar. Não persiste ranking de usuários.
 
-Recálculo de pontuação / ranking ao finalizar jogo: Etapa 10 (`pontuacao_service`).
+Pontuação ao finalizar jogo: `pontuacao_service`; ranking agregado: Etapa 11.
 """
 
 from __future__ import annotations

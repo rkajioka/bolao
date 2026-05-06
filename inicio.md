@@ -2103,7 +2103,7 @@ O MVP só estará pronto quando:
 * testar bloqueio de palpites por jogo;
 * testar bloqueio de palpites especiais;
 * testar bloqueio de marcadores Brasil;
-* testar SQL Injection básico;
+* testar SQL Injection ;
 * testar usuário comum tentando acessar admin;
 * testar alteração de resultado;
 * testar recálculo de pontos;

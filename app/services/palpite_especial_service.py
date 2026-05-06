@@ -1,7 +1,7 @@
 """
 Palpites especiais do torneio — um registro por usuário, bloqueio pela primeira rodada / config.
 
-Pontuação e PATCH recalcular (admin): Etapa 10.
+Pontuação: `pontuacao_service` (recálculo manual PATCH /palpites-especiais/recalcular ou ao salvar resultado oficial).
 """
 
 from __future__ import annotations
@@ -118,5 +118,8 @@ def update_palpite_me(db: Session, usuario_id: int, data: PalpiteEspecialUpdate)
     return p
 
 
-def recalcular_palpites_especiais_stub(_db: Session) -> None:
-    """Gancho para Etapa 10 — recálculo após `resultados_especiais`."""
+def recalcular_palpites_especiais_stub(db: Session) -> None:
+    """Recalcula pontuação de todos os palpites especiais (§10.3)."""
+    from app.services import pontuacao_service
+
+    pontuacao_service.recalcular_todos_palpites_especiais(db)
