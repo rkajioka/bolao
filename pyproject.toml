@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bolao-copa"
+version = "0.1.0"
+requires-python = ">=3.11"
+description = "MVP Bolão Copa do Mundo — backend"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
