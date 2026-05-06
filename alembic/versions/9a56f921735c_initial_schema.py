@@ -33,8 +33,8 @@ def upgrade() -> None:
     sa.Column('pontos_classificado_mata_mata', sa.Integer(), nullable=False),
     sa.Column('pontos_marcador_brasil', sa.Integer(), nullable=False),
     sa.Column('pontos_marcador_brasil_com_quantidade', sa.Integer(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('paises',
@@ -43,8 +43,8 @@ def upgrade() -> None:
     sa.Column('sigla', sa.String(length=8), nullable=False),
     sa.Column('bandeira_url', sa.String(length=2048), nullable=False),
     sa.Column('grupo', sa.String(length=16), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('usuarios',
@@ -57,8 +57,8 @@ def upgrade() -> None:
     sa.Column('tipo_usuario', sa.String(length=32), nullable=False),
     sa.Column('ativo', sa.Boolean(), nullable=False),
     sa.Column('primeiro_login', sa.Boolean(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_usuarios_email'), 'usuarios', ['email'], unique=True)
@@ -78,8 +78,8 @@ def upgrade() -> None:
     sa.Column('penaltis_fora', sa.Integer(), nullable=True),
     sa.Column('classificado_id', sa.Integer(), nullable=True),
     sa.Column('finalizado', sa.Boolean(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
     sa.ForeignKeyConstraint(['classificado_id'], ['paises.id'], ),
     sa.ForeignKeyConstraint(['pais_casa_id'], ['paises.id'], ),
     sa.ForeignKeyConstraint(['pais_fora_id'], ['paises.id'], ),
@@ -98,8 +98,8 @@ def upgrade() -> None:
     sa.Column('pontuacao_melhor_goleiro', sa.Integer(), nullable=False),
     sa.Column('pontuacao_total', sa.Integer(), nullable=False),
     sa.Column('bloqueado', sa.Boolean(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
     sa.ForeignKeyConstraint(['campeao_id'], ['paises.id'], ),
     sa.ForeignKeyConstraint(['usuario_id'], ['usuarios.id'], ),
     sa.PrimaryKeyConstraint('id'),
@@ -113,8 +113,8 @@ def upgrade() -> None:
     sa.Column('artilheiro', sa.String(length=255), nullable=True),
     sa.Column('melhor_goleiro', sa.String(length=255), nullable=True),
     sa.Column('finalizado', sa.Boolean(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
     sa.ForeignKeyConstraint(['campeao_id'], ['paises.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -123,8 +123,8 @@ def upgrade() -> None:
     sa.Column('jogo_id', sa.Integer(), nullable=False),
     sa.Column('nome_jogador', sa.String(length=255), nullable=False),
     sa.Column('quantidade_gols', sa.Integer(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
     sa.ForeignKeyConstraint(['jogo_id'], ['jogos.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -141,8 +141,8 @@ def upgrade() -> None:
     sa.Column('pontuacao_classificado', sa.Integer(), nullable=False),
     sa.Column('pontuacao_marcadores_brasil', sa.Integer(), nullable=False),
     sa.Column('pontuacao_total', sa.Integer(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
     sa.ForeignKeyConstraint(['jogo_id'], ['jogos.id'], ),
     sa.ForeignKeyConstraint(['palpite_classificado_id'], ['paises.id'], ),
     sa.ForeignKeyConstraint(['usuario_id'], ['usuarios.id'], ),
@@ -157,8 +157,8 @@ def upgrade() -> None:
     sa.Column('nome_jogador', sa.String(length=255), nullable=False),
     sa.Column('quantidade_gols', sa.Integer(), nullable=False),
     sa.Column('pontuacao', sa.Integer(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
     sa.ForeignKeyConstraint(['palpite_jogo_id'], ['palpites_jogos.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )

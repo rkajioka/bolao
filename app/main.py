@@ -2,7 +2,7 @@ import app.models  # noqa: F401 — garante registro dos models no metadata
 
 from fastapi import FastAPI
 
-from app.routes import health
+from app.routes import auth, health, usuarios
 
 app = FastAPI(
     title="Bolão da Copa do Mundo — MVP",
@@ -10,3 +10,5 @@ app = FastAPI(
 )
 
 app.include_router(health.router, tags=["health"])
+app.include_router(auth.router)
+app.include_router(usuarios.router)

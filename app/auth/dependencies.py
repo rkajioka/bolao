@@ -1,14 +1,15 @@
 """
-Dependências de autenticação.
-
-A validação completa de usuário ativo, primeiro_login e tipo_usuario nas rotas
-será implementada na Etapa 2 (Usuários e Login). Aqui ficam apenas os hooks mínimos.
+Dependências de autenticação e autorização (Etapa 2).
 """
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy.orm import Session
 
 from app.auth.jwt import decode_access_token_safe
+from app.database import get_db
+from app.models.usuario import Usuario
+from app.services import usuario_service
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -43,9 +44,45 @@ def get_current_user_id(payload: dict = Depends(get_token_payload)) -> int:
         ) from exc
 
 
-def require_admin(_payload: dict = Depends(get_token_payload)) -> None:
-    """Stub: checagem real de tipo_usuario no banco na Etapa 2."""
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Autorização admin será aplicada na Etapa 2",
-    )
+def get_current_user(
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id),
+) -> Usuario:
+    user = usuario_service.get_by_id(db, user_id)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuário não encontrado",
+        )
+    return user
+
+
+def get_current_active_user(user: Usuario = Depends(get_current_user)) -> Usuario:
+    if not user.ativo:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Usuário inativo",
+        )
+    return user
+
+
+def require_admin(user: Usuario = Depends(get_current_active_user)) -> Usuario:
+    if user.tipo_usuario != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso restrito a administradores",
+        )
+    return user
+
+
+def require_primeiro_login_concluido(user: Usuario = Depends(get_current_active_user)) -> Usuario:
+    """
+    Gancho para rotas pós-onboarding (dashboard, palpites, etc.).
+    Não utilizado nas rotas desta etapa; aplicar a partir da Etapa 3+.
+    """
+    if user.primeiro_login:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Conclua o primeiro acesso para continuar",
+        )
+    return user

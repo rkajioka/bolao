@@ -10,12 +10,34 @@ from app.schemas.pais import PaisBase, PaisCreate, PaisRead
 from app.schemas.palpite_especial import PalpiteEspecialBase, PalpiteEspecialCreate, PalpiteEspecialRead
 from app.schemas.palpite_jogo import PalpiteJogoBase, PalpiteJogoCreate, PalpiteJogoRead
 from app.schemas.resultado_especial import ResultadoEspecialBase, ResultadoEspecialRead, ResultadoEspecialWrite
-from app.schemas.usuario import UsuarioBase, UsuarioCreate, UsuarioRead
+from app.schemas.usuario import (
+    ChangePasswordRequest,
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
+    LoginRequest,
+    LoginResponse,
+    PrimeiroAcessoRequest,
+    UsuarioBase,
+    UsuarioCreate,
+    UsuarioRead,
+    UsuarioResetPasswordBody,
+    UsuarioStatusUpdate,
+    UsuarioUpdate,
+)
 
 __all__ = [
     "UsuarioBase",
     "UsuarioCreate",
     "UsuarioRead",
+    "UsuarioUpdate",
+    "UsuarioStatusUpdate",
+    "UsuarioResetPasswordBody",
+    "LoginRequest",
+    "LoginResponse",
+    "PrimeiroAcessoRequest",
+    "ChangePasswordRequest",
+    "ForgotPasswordRequest",
+    "ForgotPasswordResponse",
     "PaisBase",
     "PaisCreate",
     "PaisRead",
