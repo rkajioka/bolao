@@ -3,6 +3,7 @@ import app.models  # noqa: F401 — garante registro dos models no metadata
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.routes import (
@@ -23,6 +24,13 @@ app = FastAPI(
     title="Bolão da Copa do Mundo — MVP",
     version="0.1.0",
 )
+
+
+@app.get("/", include_in_schema=False)
+def root_redirect() -> RedirectResponse:
+    """Interface web estática do MVP (Etapa 12)."""
+    return RedirectResponse(url="/static/app/index.html")
+
 
 _static_root = Path(__file__).resolve().parent.parent / "static"
 _static_root.mkdir(parents=True, exist_ok=True)

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0d3b2c" />
+  <title>Bolão da Copa — MVP</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Ir para o conteúdo</a>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <section id="view-login" class="view" hidden>
+    <header class="app-header">
+      <h1>Bolão da Copa</h1>
+      <p class="subtitle">Entre com seu e-mail e senha</p>
+    </header>
+    <form id="form-login" class="card form-card">
+      <label>E-mail<input type="email" name="email" autocomplete="username" required /></label>
+      <label>Senha<input type="password" name="senha" autocomplete="current-password" required /></label>
+      <button type="submit" class="btn btn-primary">Entrar</button>
+    </form>
+  </section>
+
+  <section id="view-primeiro" class="view" hidden>
+    <header class="app-header">
+      <h1>Primeiro acesso</h1>
+      <p class="subtitle">Defina sua senha e complete o perfil</p>
+    </header>
+    <form id="form-primeiro" class="card form-card">
+      <label>Nome<input type="text" name="nome" required minlength="1" /></label>
+      <label>Função / cargo<input type="text" name="funcao" required minlength="1" /></label>
+      <label>URL da imagem de perfil (opcional)<input type="url" name="imagem_perfil" placeholder="https://..." /></label>
+      <label>Nova senha<input type="password" name="nova_senha" autocomplete="new-password" required minlength="8" /></label>
+      <label>Confirmar senha<input type="password" name="confirmar_senha" autocomplete="new-password" required minlength="8" /></label>
+      <button type="submit" class="btn btn-primary">Concluir</button>
+    </form>
+  </section>
+
+  <section id="view-main" class="view" hidden>
+    <header class="topbar">
+      <div class="topbar-inner">
+        <strong id="main-user-label">Bolão</strong>
+        <button type="button" id="btn-logout" class="btn btn-ghost">Sair</button>
+      </div>
+    </header>
+
+    <nav class="main-nav" aria-label="Seções principais">
+      <button type="button" class="nav-pill active" data-panel="palpites">Palpites</button>
+      <button type="button" class="nav-pill" data-panel="especiais">Especiais</button>
+      <button type="button" class="nav-pill" data-panel="grupos">Grupos</button>
+      <button type="button" class="nav-pill" data-panel="ranking">Ranking</button>
+    </nav>
+
+    <main id="main" class="main-content">
+      <div id="panel-palpites" class="panel active">
+        <div class="sub-nav" role="tablist" aria-label="Modo de jogos">
+          <button type="button" class="sub-pill active" data-sub="crono">Cronológico</button>
+          <button type="button" class="sub-pill" data-sub="grupos">Por grupo</button>
+        </div>
+        <div id="palpites-crono" class="sub-panel active"></div>
+        <div id="palpites-grupos" class="sub-panel"></div>
+      </div>
+
+      <div id="panel-especiais" class="panel">
+        <div id="especiais-content" class="card"></div>
+      </div>
+
+      <div id="panel-grupos" class="panel">
+        <div class="card grupos-toolbar">
+          <label class="inline-label">Grupo
+            <select id="select-grupo-letra" aria-label="Escolher grupo"></select>
+          </label>
+          <button type="button" id="btn-atualizar-tabela" class="btn btn-secondary">Atualizar tabela</button>
+        </div>
+        <div id="grupo-tabela-wrap" class="table-scroll card"></div>
+      </div>
+
+      <div id="panel-ranking" class="panel">
+        <div id="ranking-content"></div>
+      </div>
+    </main>
+  </section>
+
+  <script src="app.js" defer></script>
+</body>
+</html>

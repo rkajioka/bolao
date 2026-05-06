@@ -1,0 +1,554 @@
+/* MVP Bolão — mobile-first (§18). Toque ≥44px, cards verticais, tabelas com scroll. */
+
+:root {
+  --bg: #0a1f18;
+  --surface: #12352a;
+  --card: #164536;
+  --border: #2a6b52;
+  --text: #e8f5ef;
+  --muted: #9bc4b0;
+  --accent: #f4d03f;
+  --accent-2: #27ae60;
+  --danger: #e74c3c;
+  --radius: 12px;
+  --touch: 44px;
+  --font: system-ui, "Segoe UI", Roboto, Ubuntu, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.45;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  padding: 0.5rem 1rem;
+  background: var(--accent);
+  color: #000;
+  z-index: 100;
+}
+.skip-link:focus {
+  left: 0;
+}
+
+.view {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0.75rem 1rem calc(1rem + env(safe-area-inset-bottom));
+}
+
+.app-header {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+.app-header h1 {
+  margin: 0 0 0.25rem;
+  font-size: clamp(1.35rem, 4vw, 1.75rem);
+}
+.subtitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+}
+
+.form-card label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.85rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+input,
+select,
+textarea,
+button {
+  font: inherit;
+}
+
+input,
+select,
+textarea {
+  min-height: var(--touch);
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  width: 100%;
+}
+
+/* Placar: inputs numéricos maiores em telas pequenas */
+.score-input {
+  font-size: 1.35rem;
+  font-weight: 700;
+  text-align: center;
+  max-width: 5rem;
+}
+
+.btn {
+  min-height: var(--touch);
+  padding: 0 1rem;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  width: 100%;
+}
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.btn-primary {
+  background: var(--accent-2);
+  color: #fff;
+}
+.btn-secondary {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  width: auto;
+  min-height: 40px;
+  padding: 0 0.75rem;
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(10, 31, 24, 0.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+}
+.topbar-inner {
+  max-width: 720px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  min-height: calc(var(--touch) + 4px);
+}
+
+.main-nav {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0.5rem 1rem;
+}
+@media (min-width: 480px) {
+  .main-nav {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.nav-pill {
+  min-height: var(--touch);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+}
+.nav-pill.active {
+  background: var(--card);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.main-content {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0.5rem 1rem 2rem;
+}
+
+.panel {
+  display: none;
+}
+.panel.active {
+  display: block;
+}
+
+.sub-nav {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.sub-pill {
+  flex: 1;
+  min-height: var(--touch);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+}
+.sub-pill.active {
+  border-color: var(--accent-2);
+  background: var(--card);
+}
+
+.sub-panel {
+  display: none;
+}
+.sub-panel.active {
+  display: block;
+}
+
+/* Cards de jogos — empilhados (§18.2) */
+.game-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+}
+.game-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.badge-live {
+  color: var(--accent);
+}
+.badge-lock {
+  color: var(--muted);
+}
+.badge-done {
+  color: var(--accent-2);
+}
+
+.match-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+@media (min-width: 520px) {
+  .match-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.team {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: var(--touch);
+}
+.team img {
+  width: 36px;
+  height: 24px;
+  object-fit: cover;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+.team span {
+  font-weight: 600;
+}
+
+.score-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+.score-row span {
+  font-size: 1.25rem;
+  opacity: 0.85;
+}
+
+.classificado-block label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 0.35rem;
+}
+.classificado-block select {
+  min-height: var(--touch);
+}
+
+/* Marcadores Brasil — recolhível (§18.4) */
+details.marcadores-details {
+  margin-top: 0.75rem;
+  border-top: 1px dashed var(--border);
+  padding-top: 0.75rem;
+}
+details.marcadores-details > summary {
+  cursor: pointer;
+  min-height: var(--touch);
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  list-style: none;
+}
+details.marcadores-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.marcador-linha {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+@media (min-width: 480px) {
+  .marcador-linha {
+    flex-direction: row;
+    align-items: flex-end;
+  }
+  .marcador-linha input[type="text"] {
+    flex: 2;
+  }
+  .marcador-linha input[type="number"] {
+    flex: 1;
+    max-width: 6rem;
+  }
+}
+
+.btn-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+@media (min-width: 480px) {
+  .btn-row {
+    flex-direction: row;
+  }
+  .btn-row .btn {
+    width: auto;
+    flex: 1;
+  }
+}
+
+.meta-line {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 0.35rem;
+}
+
+.grupos-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+@media (min-width: 480px) {
+  .grupos-toolbar {
+    flex-direction: row;
+    align-items: flex-end;
+    flex-wrap: wrap;
+  }
+  .grupos-toolbar .inline-label {
+    flex: 1;
+    min-width: 140px;
+  }
+  .grupos-toolbar .btn {
+    width: auto;
+    min-width: 140px;
+  }
+}
+
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+table.tabela-grupo {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  min-width: 360px;
+}
+table.tabela-grupo th,
+table.tabela-grupo td {
+  padding: 0.5rem 0.35rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+table.tabela-grupo th {
+  color: var(--muted);
+  font-weight: 600;
+}
+.compact-hide {
+  display: none;
+}
+@media (min-width: 520px) {
+  .compact-hide {
+    display: table-cell;
+  }
+}
+
+/* Ranking — cards no mobile, tabela em telas maiores (§18.7) */
+.ranking-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.ranking-card {
+  display: grid;
+  grid-template-columns: auto 40px 1fr auto;
+  gap: 0.65rem;
+  align-items: center;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.65rem 0.85rem;
+}
+.ranking-card .pos {
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: var(--accent);
+}
+.ranking-card .avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.ranking-card .avatar-ph {
+  display: inline-block;
+  vertical-align: middle;
+}
+.ranking-card .nome {
+  font-weight: 600;
+}
+.ranking-card .pts {
+  font-weight: 800;
+  font-size: 1.05rem;
+}
+.ranking-card .extra {
+  grid-column: 1 / -1;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.ranking-table-wrap {
+  display: none;
+}
+@media (min-width: 640px) {
+  .ranking-cards {
+    display: none;
+  }
+  .ranking-table-wrap {
+    display: block;
+  }
+  table.ranking-wide {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+  table.ranking-wide th,
+  table.ranking-wide td {
+    padding: 0.55rem 0.4rem;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+  }
+  table.ranking-wide th {
+    color: var(--muted);
+  }
+  table.ranking-wide .num {
+    text-align: right;
+  }
+}
+
+.pontos-especiais-mini {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.75rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.pontos-especiais-mini span {
+  background: var(--surface);
+  padding: 0.2rem 0.45rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.toast {
+  position: fixed;
+  bottom: calc(1rem + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(92vw, 420px);
+  padding: 0.75rem 1rem;
+  background: #1a1a2e;
+  color: #fff;
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  z-index: 200;
+  font-size: 0.9rem;
+}
+.toast.error {
+  border: 1px solid var(--danger);
+}
+
+.blocked-banner {
+  padding: 0.65rem 0.85rem;
+  background: rgba(231, 76, 60, 0.15);
+  border: 1px solid var(--danger);
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.grupo-bloco-title {
+  margin: 1rem 0 0.5rem;
+  font-size: 1rem;
+  color: var(--accent);
+}
