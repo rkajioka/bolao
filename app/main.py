@@ -3,7 +3,7 @@ import app.models  # noqa: F401 — garante registro dos models no metadata
 from pathlib import Path
 
 from fastapi import FastAPI
-from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.routes import (
@@ -26,17 +26,12 @@ app = FastAPI(
     version="0.1.0",
 )
 
-
-@app.get("/", include_in_schema=False)
-def root_redirect() -> RedirectResponse:
-    """Interface web estática do MVP (Etapa 12)."""
-    return RedirectResponse(url="/static/app/index.html")
-
-
-_static_root = Path(__file__).resolve().parent.parent / "static"
+_root = Path(__file__).resolve().parent.parent
+_static_root = _root / "static"
 _static_root.mkdir(parents=True, exist_ok=True)
 (_static_root / "bandeiras").mkdir(parents=True, exist_ok=True)
-app.mount("/static", StaticFiles(directory=str(_static_root)), name="static")
+
+_frontend_dist = _root / "frontend" / "dist"
 
 app.include_router(health.router, tags=["health"])
 app.include_router(auth.router)
@@ -50,3 +45,23 @@ app.include_router(palpites_jogos.router)
 app.include_router(palpites_especiais.router)
 app.include_router(resultados_especiais.router)
 app.include_router(marcadores_brasil.router)
+
+# Serve old static files (bandeiras, etc.)
+app.mount("/static", StaticFiles(directory=str(_static_root)), name="static")
+
+# Serve new React frontend — must be last
+if _frontend_dist.exists():
+    app.mount("/assets", StaticFiles(directory=str(_frontend_dist / "assets")), name="frontend-assets")
+
+    @app.get("/", include_in_schema=False)
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def serve_spa(full_path: str = "") -> FileResponse:
+        # Serve index.html for all unmatched routes (SPA client-side routing)
+        index = _frontend_dist / "index.html"
+        if index.exists():
+            return FileResponse(str(index))
+        return FileResponse(str(_static_root / "app" / "index.html"))
+else:
+    @app.get("/", include_in_schema=False)
+    def root_redirect() -> RedirectResponse:
+        return RedirectResponse(url="/static/app/index.html")
