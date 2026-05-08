@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { Trophy, Medal } from 'lucide-react'
+import { useState } from 'react'
 import { api } from '@/lib/api'
 import { RankingCardSkeleton } from '@/components/Skeleton'
 import { SectionHeader } from '@/components/SectionHeader'
@@ -18,6 +19,7 @@ const podiumColors = [
 
 export function RankingPage() {
   const { user } = useAuth()
+  const [aba, setAba] = useState<'classificacao' | 'insights'>('classificacao')
   const { data, isLoading } = useQuery({
     queryKey: ['ranking'],
     queryFn: () => api.get<RankingResponse>('/ranking'),
@@ -26,7 +28,7 @@ export function RankingPage() {
     queryKey: ['paises'],
     queryFn: () => api.get<Pais[]>('/paises'),
   })
-  const { data: insights } = useQuery({
+  const { data: insights, isLoading: isLoadingInsights } = useQuery({
     queryKey: ['ranking', 'insights'],
     queryFn: () => api.get<RankingInsights>('/ranking/insights'),
   })
@@ -38,13 +40,43 @@ export function RankingPage() {
   const linhaUsuario = linhas.find((l) => l.usuario_id === user?.id)
   const usuarioForaTop50 = Boolean(linhaUsuario && linhaUsuario.posicao > 50)
   const getPais = (id?: number | null) => paises.find((p) => p.id === id) ?? null
+  const insightSemConteudo =
+    !!insights &&
+    insights.jogos_periodo === 0 &&
+    insights.destaques_resultado.length === 0 &&
+    insights.destaques_placar_exato.length === 0 &&
+    insights.destaques_marcadores_br.length === 0
 
   return (
     <div className="space-y-4">
       <SectionHeader title="Ranking" subtitle="Classificação geral do bolão" />
 
-      {/* User highlight card */}
-      {linhaUsuario && !isLoading && (
+      <div className="inline-flex rounded-xl p-1" style={{ background: 'var(--glass)', border: '1px solid var(--border)' }}>
+        <button
+          type="button"
+          onClick={() => setAba('classificacao')}
+          className="px-3 py-1.5 text-sm rounded-lg font-semibold transition-colors"
+          style={{
+            background: aba === 'classificacao' ? 'rgba(53,208,127,0.12)' : 'transparent',
+            color: aba === 'classificacao' ? 'var(--accent)' : 'var(--text-muted)',
+          }}
+        >
+          Classificação
+        </button>
+        <button
+          type="button"
+          onClick={() => setAba('insights')}
+          className="px-3 py-1.5 text-sm rounded-lg font-semibold transition-colors"
+          style={{
+            background: aba === 'insights' ? 'rgba(53,208,127,0.12)' : 'transparent',
+            color: aba === 'insights' ? 'var(--accent)' : 'var(--text-muted)',
+          }}
+        >
+          Insights
+        </button>
+      </div>
+
+      {aba === 'classificacao' && linhaUsuario && !isLoading && (
         <div
           className="flex items-center gap-3 px-4 py-3 rounded-2xl"
           style={{
@@ -77,7 +109,7 @@ export function RankingPage() {
         </div>
       )}
 
-      {isLoading ? (
+      {aba === 'classificacao' && (isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3, 4, 5].map((i) => <RankingCardSkeleton key={i} />)}
         </div>
@@ -246,9 +278,26 @@ export function RankingPage() {
             </motion.div>
           )}
 
-          {insights && (
+        </div>
+      ))}
+
+      {aba === 'insights' && (
+        <div className="space-y-3">
+          {isLoadingInsights ? (
+            <div className="glass rounded-2xl p-4">
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                Carregando insights...
+              </p>
+            </div>
+          ) : !insights ? (
+            <div className="glass rounded-2xl p-4">
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                Insights indisponíveis no momento.
+              </p>
+            </div>
+          ) : (
             <>
-              <div className="glass rounded-2xl p-4 mt-4">
+              <div className="glass rounded-2xl p-4">
                 <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--accent)' }}>
                   Resumo geral
                 </p>
@@ -278,6 +327,11 @@ export function RankingPage() {
                 <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
                   Acertos de resultado: {insights.meu_acertos_resultado} · Placar exato: {insights.meu_acertos_placar_exato} · Bônus marcadores BR: {insights.meu_bonus_marcadores_br}
                 </p>
+                {insightSemConteudo && (
+                  <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
+                    Ainda não existem jogos finalizados no período atual para gerar destaques.
+                  </p>
+                )}
               </div>
             </>
           )}
