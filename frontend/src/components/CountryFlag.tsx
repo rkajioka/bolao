@@ -3,11 +3,12 @@ import type { Pais } from '@/types'
 
 interface CountryFlagProps {
   pais: Pais
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'xs' | 'sm' | 'md' | 'lg'
   className?: string
 }
 
 const sizes = {
+  xs: { width: 20, height: 14, radius: 2 },
   sm: { width: 28, height: 20, radius: 3 },
   md: { width: 40, height: 28, radius: 4 },
   lg: { width: 56, height: 40, radius: 6 },
@@ -30,7 +31,7 @@ export function CountryFlag({ pais, size = 'md', className }: CountryFlagProps) 
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: size === 'sm' ? 10 : size === 'md' ? 12 : 16,
+          fontSize: size === 'xs' ? 8 : size === 'sm' ? 10 : size === 'md' ? 12 : 16,
           fontWeight: 700,
           color: 'rgba(255,255,255,0.5)',
           flexShrink: 0,

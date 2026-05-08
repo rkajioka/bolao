@@ -40,6 +40,37 @@ function sortValue(linha: RankingLinha, sort: SortBy): number {
   return linha.pontos_totais
 }
 
+/** Bandeiras do pódio nos especiais (1º, 2º e 3º) — sem artilheiro. */
+function RankingEspeciaisFlags({
+  linha,
+  getPais,
+}: {
+  linha: Pick<RankingLinha, 'campeao_id' | 'vice_campeao_id' | 'terceiro_lugar_id'>
+  getPais: (id?: number | null) => Pais | null
+}) {
+  const slots: { ord: string; id: number | null | undefined }[] = [
+    { ord: '1º', id: linha.campeao_id },
+    { ord: '2º', id: linha.vice_campeao_id },
+    { ord: '3º', id: linha.terceiro_lugar_id },
+  ]
+  const items = slots
+    .map(({ ord, id }) => {
+      const p = getPais(id)
+      return p ? { ord, p } : null
+    })
+    .filter((x): x is { ord: string; p: Pais } => x !== null)
+  if (items.length === 0) return null
+  return (
+    <div className="flex items-center gap-0.5 shrink-0" aria-label="Palpites especiais: pódio">
+      {items.map(({ ord, p }) => (
+        <span key={`${ord}-${p.id}`} title={`${ord} lugar: ${p.nome}`} className="leading-none">
+          <CountryFlag pais={p} size="xs" />
+        </span>
+      ))}
+    </div>
+  )
+}
+
 function RankingRowAvatar({ src, alt }: { src?: string | null; alt: string }) {
   return <UserAvatar src={src} alt={alt} size="md" />
 }
@@ -126,6 +157,7 @@ export function RankingPage() {
                 : `${liderPts - sortValue(linhaUsuario, sortBy)} pts atrás do líder`}
             </p>
           </div>
+          <RankingEspeciaisFlags linha={linhaUsuario} getPais={getPais} />
           <div className="text-right shrink-0">
             <p className="text-2xl font-black tabular-nums" style={{ color: 'var(--accent)' }}>
               {sortValue(linhaUsuario, sortBy)}
@@ -176,10 +208,6 @@ export function RankingPage() {
                   const diff = idx === 0
                     ? top3[1] ? pts - sortValue(top3[1], sortBy) : null
                     : liderVal - pts
-                  const paisFlags = [linha.campeao_id, linha.vice_campeao_id, linha.terceiro_lugar_id]
-                    .map((id) => getPais(id))
-                    .filter(Boolean)
-                    .slice(0, 2)
 
                   return (
                     <motion.div
@@ -220,15 +248,7 @@ export function RankingPage() {
                           {idx === 0 ? `+${diff} do 2º` : `-${diff}`}
                         </p>
                       )}
-                      {paisFlags.length > 0 && (
-                        <div className="flex items-center gap-0.5">
-                          {paisFlags.map((pais) => (
-                            <div key={pais!.id} title={pais!.nome}>
-                              <CountryFlag pais={pais!} size="sm" />
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                      <RankingEspeciaisFlags linha={linha} getPais={getPais} />
                     </motion.div>
                   )
                 })}
@@ -274,6 +294,7 @@ export function RankingPage() {
                       {diffDoPrev > 0 ? `-${diffDoPrev} · ` : ''}{diffDoLider > 0 ? `${diffDoLider} do líder` : 'Líder'}
                     </p>
                   </div>
+                  <RankingEspeciaisFlags linha={linha} getPais={getPais} />
                   <div className="text-right shrink-0">
                     <p className="font-black text-base tabular-nums">{pts}</p>
                     <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
@@ -317,6 +338,7 @@ export function RankingPage() {
                         : 'Fora do top 50'}
                     </p>
                   </div>
+                  <RankingEspeciaisFlags linha={linhaUsuarioSorted} getPais={getPais} />
                   <div className="text-right shrink-0">
                     <p className="font-black text-base tabular-nums">{sortValue(linhaUsuarioSorted, sortBy)}</p>
                     <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{sortLabel}</p>
