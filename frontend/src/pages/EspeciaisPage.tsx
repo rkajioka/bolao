@@ -52,9 +52,6 @@ export function EspeciaisPage() {
         vice_campeao_id: form.vice_campeao_id ? parseInt(form.vice_campeao_id) : null,
         terceiro_lugar_id: form.terceiro_lugar_id ? parseInt(form.terceiro_lugar_id) : null,
         artilheiro_pais_id: form.artilheiro_pais_id ? parseInt(form.artilheiro_pais_id) : null,
-        melhor_jogador: null,
-        artilheiro: null,
-        melhor_goleiro: null,
       }
       if (palpite) {
         await api.put('/palpites-especiais/me', body)

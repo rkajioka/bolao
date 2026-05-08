@@ -31,9 +31,9 @@ def main() -> None:
             ConfiguracaoBolao(
                 data_bloqueio_palpites_especiais=None,
                 pontos_campeao=25,
-                pontos_melhor_jogador=10,
-                pontos_artilheiro=10,
-                pontos_melhor_goleiro=10,
+                pontos_vice_campeao=20,
+                pontos_terceiro_lugar=15,
+                pontos_artilheiro_pais=10,
                 pontos_placar_exato=18,
                 pontos_resultado_correto=10,
                 pontos_classificado_mata_mata=12,

@@ -18,9 +18,6 @@ class PalpiteEspecialBase(BaseModel):
     vice_campeao_id: int | None = Field(default=None, ge=1)
     terceiro_lugar_id: int | None = Field(default=None, ge=1)
     artilheiro_pais_id: int | None = Field(default=None, ge=1)
-    melhor_jogador: str | None = Field(default=None, max_length=255)
-    artilheiro: str | None = Field(default=None, max_length=255)
-    melhor_goleiro: str | None = Field(default=None, max_length=255)
 
 
 class PalpiteEspecialCreate(PalpiteEspecialBase):
@@ -32,9 +29,6 @@ class PalpiteEspecialUpdate(BaseModel):
     vice_campeao_id: int | None = Field(default=None, ge=1)
     terceiro_lugar_id: int | None = Field(default=None, ge=1)
     artilheiro_pais_id: int | None = Field(default=None, ge=1)
-    melhor_jogador: str | None = Field(default=None, max_length=255)
-    artilheiro: str | None = Field(default=None, max_length=255)
-    melhor_goleiro: str | None = Field(default=None, max_length=255)
 
     @model_validator(mode="after")
     def at_least_one(self) -> "PalpiteEspecialUpdate":
@@ -52,9 +46,6 @@ class PalpiteEspecialRead(PalpiteEspecialBase):
     pontuacao_vice_campeao: int
     pontuacao_terceiro_lugar: int
     pontuacao_artilheiro_pais: int
-    pontuacao_melhor_jogador: int
-    pontuacao_artilheiro: int
-    pontuacao_melhor_goleiro: int
     pontuacao_total: int
     bloqueado: bool
     created_at: datetime

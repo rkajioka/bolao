@@ -35,7 +35,7 @@ Estado atual (análise objetiva):
 - `alembic/`: migrations.
 - `tests/`: testes de permissão, bloqueios, SQL injection e ranking.
 - `scripts/`: seeds utilitários.
-- `static/app/`: frontend legado estático (não principal no dev com Vite).
+- `static/`: assets estáticos servidos pelo backend (ex.: bandeiras).
 
 ### Rotas frontend
 
@@ -65,6 +65,7 @@ Principais prefixes:
 Observações de runtime:
 - Em dev, backend retorna 404 em `/` quando `frontend/dist` não existe, incentivando uso do Vite.
 - Em build de produção com `frontend/dist`, FastAPI serve SPA.
+- O frontend oficial da aplicação é React/Vite.
 
 ### Docker, seed e config
 
@@ -223,11 +224,9 @@ Coletar palpites especiais do torneio.
 - Carregando, editável, bloqueado, salvo/atualizado.
 
 #### Problemas encontrados
-- Modelo ainda carrega campos legados (`melhor_jogador`, `artilheiro`, `melhor_goleiro`) no backend, embora UI atual foque em pódio + país do artilheiro.
-- Consistência de regras com material antigo: **PENDENTE DE DEFINIÇÃO** final.
+- Necessidade de manter documentação e material de apoio alinhados ao modelo atual (pódio + país do artilheiro).
 
 #### Melhorias recomendadas
-- Limpeza de legado no domínio se não for mais usado.
 - Mensagem de prazo com data/hora explícita.
 
 ### 5.3 Classificação/Grupos
@@ -345,7 +344,7 @@ Mostrar classificação geral de usuários por pontos.
 - Pontuam por categorias de especiais.
 - Resultado só vale quando resultado especial está `finalizado`.
 - Bloqueio temporal para criação/edição.
-- Campos legados convivem com novos -> **PENDENTE DE DEFINIÇÃO** de fechamento de escopo.
+- Modelo consolidado em pódio + país do artilheiro.
 
 ### Bônus (Marcadores BR)
 
@@ -547,7 +546,7 @@ Mostrar classificação geral de usuários por pontos.
 | B02 | Segurança | Risco de segurança | Token em `localStorage` aumenta risco em cenário XSS | Média | Sequestro de sessão | Considerar estratégia com cookie `HttpOnly` + proteção adicional |
 | B03 | Segurança | Falha de proteção operacional | Ausência de rate limit em login e endpoints sensíveis | Alta | Brute force/abuso | Adicionar throttling por IP/usuário |
 | B04 | Backend | Dívida técnica | Sem trilha de auditoria de ações admin | Média | Baixa rastreabilidade de incidentes | Registrar eventos críticos (quem, quando, antes/depois) |
-| B05 | Regras | Regra de negócio indefinida | Convivência de campos especiais legados e novos | Média | Ambiguidade funcional e pontuação | Consolidar domínio final e migrar UI/API para modelo único |
+| B05 | Regras | Melhoria de produto | Mensagens e documentação de especiais ainda podem evoluir | Baixa | Ruído de entendimento | Manter documentação e regras de especiais alinhadas ao modelo atual |
 | B06 | UX | Problema de UX | Diferença fechado vs finalizado pode confundir usuário | Média | Erro de percepção | Refinar copy, badges e ajuda contextual |
 | B07 | Infra/API | Risco de segurança | CORS/headers de segurança não explícitos | Média | Exposição em deploy aberto | Definir CORS por ambiente e hardening de headers |
 | B08 | Dados | Falha de validação | Sem teto superior para placares/quantidades | Baixa | Dados absurdos possíveis | Definir limites máximos razoáveis em schema |
@@ -565,7 +564,7 @@ Mostrar classificação geral de usuários por pontos.
   - política forte de JWT secret;
   - CORS/headers definidos por ambiente.
 - Auditoria administrativa de alterações críticas.
-- Fechamento definitivo de regras de especiais (legado vs novo modelo).
+- Refinos de comunicação de regras de especiais.
 
 ### Importantes, mas não bloqueantes
 
@@ -593,7 +592,7 @@ Mostrar classificação geral de usuários por pontos.
 
 ### Prioridade 2 — Fluxo principal do bolão
 
-- Consolidar modelo final de especiais e remover legado residual.
+- Refinar comunicação de regras e estados em especiais.
 - Melhorar comunicação de status de bloqueio por jogo.
 - Garantir consistência final entre regras documentadas e comportamento de UI.
 
@@ -629,7 +628,7 @@ Mostrar classificação geral de usuários por pontos.
 2. JWT secret default inseguro se ambiente for mal configurado.
 3. Token em `localStorage` (impacto em cenário XSS).
 4. Ausência de trilha de auditoria admin.
-5. Ambiguidade residual de domínio em palpites especiais (legado vs novo).
+5. Comunicação de regras de especiais ainda pode ser refinada.
 
 ### 5 primeiras ações recomendadas
 
@@ -637,7 +636,7 @@ Mostrar classificação geral de usuários por pontos.
 2. Implementar rate limit e proteção anti brute force.
 3. Configurar CORS/headers de segurança por ambiente.
 4. Implementar auditoria de operações administrativas.
-5. Consolidar regra final de especiais e remover campos legados não usados.
+5. Refinar comunicação final de regras de especiais.
 
 ### O que precisa estar resolvido antes de liberar para todos os usuários?
 

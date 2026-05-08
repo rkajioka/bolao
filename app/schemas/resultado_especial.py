@@ -8,9 +8,6 @@ class ResultadoEspecialBase(BaseModel):
     vice_campeao_id: int | None = Field(default=None, ge=1)
     terceiro_lugar_id: int | None = Field(default=None, ge=1)
     artilheiro_pais_id: int | None = Field(default=None, ge=1)
-    melhor_jogador: str | None = Field(default=None, max_length=255)
-    artilheiro: str | None = Field(default=None, max_length=255)
-    melhor_goleiro: str | None = Field(default=None, max_length=255)
     finalizado: bool = False
 
 

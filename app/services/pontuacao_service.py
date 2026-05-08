@@ -37,9 +37,6 @@ def _config(db: Session) -> ConfiguracaoBolao | Any:
         pontos_marcador_brasil = 0
         pontos_marcador_brasil_com_quantidade = 0
         pontos_campeao = 0
-        pontos_melhor_jogador = 0
-        pontos_artilheiro = 0
-        pontos_melhor_goleiro = 0
 
     return _Zeros()
 
@@ -290,9 +287,6 @@ def recalcular_todos_palpites_especiais(db: Session) -> None:
             p.pontuacao_vice_campeao = 0
             p.pontuacao_terceiro_lugar = 0
             p.pontuacao_artilheiro_pais = 0
-            p.pontuacao_melhor_jogador = 0
-            p.pontuacao_artilheiro = 0
-            p.pontuacao_melhor_goleiro = 0
             p.pontuacao_total = 0
         db.commit()
         return
@@ -303,8 +297,5 @@ def recalcular_todos_palpites_especiais(db: Session) -> None:
         p.pontuacao_vice_campeao = vice
         p.pontuacao_terceiro_lugar = terceiro
         p.pontuacao_artilheiro_pais = art_pais
-        p.pontuacao_melhor_jogador = 0
-        p.pontuacao_artilheiro = 0
-        p.pontuacao_melhor_goleiro = 0
         p.pontuacao_total = c + vice + terceiro + art_pais
     db.commit()

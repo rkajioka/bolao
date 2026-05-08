@@ -86,7 +86,7 @@ def create_palpite(db: Session, usuario_id: int, data: PalpiteEspecialCreate) ->
     _validar_campeao(db, data.campeao_id)
     _validar_pais_generico(db, data.vice_campeao_id, "vice-campeão")
     _validar_pais_generico(db, data.terceiro_lugar_id, "terceiro lugar")
-    _validar_pais_generico(db, data.artilheiro_pais_id, "artilheiro")
+    _validar_pais_generico(db, data.artilheiro_pais_id, "país do artilheiro")
 
     p = PalpiteEspecial(
         usuario_id=usuario_id,
@@ -94,9 +94,6 @@ def create_palpite(db: Session, usuario_id: int, data: PalpiteEspecialCreate) ->
         vice_campeao_id=data.vice_campeao_id,
         terceiro_lugar_id=data.terceiro_lugar_id,
         artilheiro_pais_id=data.artilheiro_pais_id,
-        melhor_jogador=data.melhor_jogador.strip() if data.melhor_jogador and data.melhor_jogador.strip() else None,
-        artilheiro=data.artilheiro.strip() if data.artilheiro and data.artilheiro.strip() else None,
-        melhor_goleiro=data.melhor_goleiro.strip() if data.melhor_goleiro and data.melhor_goleiro.strip() else None,
         bloqueado=False,
     )
     db.add(p)
@@ -129,17 +126,8 @@ def update_palpite_me(db: Session, usuario_id: int, data: PalpiteEspecialUpdate)
         _validar_pais_generico(db, raw["terceiro_lugar_id"], "terceiro lugar")
         p.terceiro_lugar_id = raw["terceiro_lugar_id"]
     if "artilheiro_pais_id" in raw:
-        _validar_pais_generico(db, raw["artilheiro_pais_id"], "artilheiro")
+        _validar_pais_generico(db, raw["artilheiro_pais_id"], "país do artilheiro")
         p.artilheiro_pais_id = raw["artilheiro_pais_id"]
-    if "melhor_jogador" in raw:
-        v = raw["melhor_jogador"]
-        p.melhor_jogador = v.strip() if v and str(v).strip() else None
-    if "artilheiro" in raw:
-        v = raw["artilheiro"]
-        p.artilheiro = v.strip() if v and str(v).strip() else None
-    if "melhor_goleiro" in raw:
-        v = raw["melhor_goleiro"]
-        p.melhor_goleiro = v.strip() if v and str(v).strip() else None
 
     db.commit()
     db.refresh(p)

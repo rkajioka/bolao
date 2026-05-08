@@ -19,12 +19,6 @@ def obter_singleton(db: Session) -> ResultadoEspecial | None:
     return db.scalar(select(ResultadoEspecial).order_by(ResultadoEspecial.id.asc()).limit(1))
 
 
-def _strip_opt(s: str | None) -> str | None:
-    if s is None or not str(s).strip():
-        return None
-    return str(s).strip()
-
-
 def _validar_campeao(db: Session, campeao_id: int | None) -> None:
     if campeao_id is None:
         return
@@ -45,15 +39,12 @@ def criar(db: Session, data: ResultadoEspecialWrite) -> ResultadoEspecial:
     _validar_campeao(db, data.campeao_id)
     _validar_pais_generico(db, data.vice_campeao_id, "vice-campeão")
     _validar_pais_generico(db, data.terceiro_lugar_id, "terceiro lugar")
-    _validar_pais_generico(db, data.artilheiro_pais_id, "artilheiro")
+    _validar_pais_generico(db, data.artilheiro_pais_id, "país do artilheiro")
     row = ResultadoEspecial(
         campeao_id=data.campeao_id,
         vice_campeao_id=data.vice_campeao_id,
         terceiro_lugar_id=data.terceiro_lugar_id,
         artilheiro_pais_id=data.artilheiro_pais_id,
-        melhor_jogador=_strip_opt(data.melhor_jogador),
-        artilheiro=_strip_opt(data.artilheiro),
-        melhor_goleiro=_strip_opt(data.melhor_goleiro),
         finalizado=data.finalizado,
     )
     db.add(row)
@@ -76,14 +67,11 @@ def atualizar(db: Session, data: ResultadoEspecialWrite) -> ResultadoEspecial:
     _validar_campeao(db, data.campeao_id)
     _validar_pais_generico(db, data.vice_campeao_id, "vice-campeão")
     _validar_pais_generico(db, data.terceiro_lugar_id, "terceiro lugar")
-    _validar_pais_generico(db, data.artilheiro_pais_id, "artilheiro")
+    _validar_pais_generico(db, data.artilheiro_pais_id, "país do artilheiro")
     row.campeao_id = data.campeao_id
     row.vice_campeao_id = data.vice_campeao_id
     row.terceiro_lugar_id = data.terceiro_lugar_id
     row.artilheiro_pais_id = data.artilheiro_pais_id
-    row.melhor_jogador = _strip_opt(data.melhor_jogador)
-    row.artilheiro = _strip_opt(data.artilheiro)
-    row.melhor_goleiro = _strip_opt(data.melhor_goleiro)
     row.finalizado = data.finalizado
     try:
         db.commit()

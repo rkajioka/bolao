@@ -48,7 +48,7 @@ app.include_router(resultados_especiais.router)
 app.include_router(marcadores_brasil.router)
 app.include_router(pontuacao_fase.router)
 
-# Serve old static files (bandeiras, etc.)
+# Serve static assets (ex.: bandeiras)
 app.mount("/static", StaticFiles(directory=str(_static_root)), name="static")
 
 # Serve new React frontend — must be last

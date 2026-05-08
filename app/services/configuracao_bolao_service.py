@@ -31,9 +31,6 @@ def ensure_primeira_configuracao(db: Session) -> ConfiguracaoBolao:
         pontos_vice_campeao=25,
         pontos_terceiro_lugar=20,
         pontos_artilheiro_pais=20,
-        pontos_melhor_jogador=10,
-        pontos_artilheiro=10,
-        pontos_melhor_goleiro=10,
         pontos_placar_exato=18,
         pontos_resultado_correto=10,
         pontos_classificado_mata_mata=12,
@@ -53,9 +50,6 @@ def atualizar_configuracao(db: Session, data: ConfiguracaoBolaoWrite) -> Configu
     c.pontos_vice_campeao = data.pontos_vice_campeao
     c.pontos_terceiro_lugar = data.pontos_terceiro_lugar
     c.pontos_artilheiro_pais = data.pontos_artilheiro_pais
-    c.pontos_melhor_jogador = data.pontos_melhor_jogador
-    c.pontos_artilheiro = data.pontos_artilheiro
-    c.pontos_melhor_goleiro = data.pontos_melhor_goleiro
     c.pontos_placar_exato = data.pontos_placar_exato
     c.pontos_resultado_correto = data.pontos_resultado_correto
     c.pontos_classificado_mata_mata = data.pontos_classificado_mata_mata

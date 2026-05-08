@@ -60,16 +60,10 @@ export interface PalpiteEspecial {
   vice_campeao_id: number | null
   terceiro_lugar_id: number | null
   artilheiro_pais_id: number | null
-  melhor_jogador: string | null
-  artilheiro: string | null
-  melhor_goleiro: string | null
   pontuacao_campeao: number
   pontuacao_vice_campeao: number
   pontuacao_terceiro_lugar: number
   pontuacao_artilheiro_pais: number
-  pontuacao_melhor_jogador: number
-  pontuacao_artilheiro: number
-  pontuacao_melhor_goleiro: number
   pontuacao_total: number
   bloqueado: boolean
   campeao?: Pais
@@ -161,9 +155,6 @@ export interface ConfiguracaoBolao {
   pontos_vice_campeao: number
   pontos_terceiro_lugar: number
   pontos_artilheiro_pais: number
-  pontos_melhor_jogador: number
-  pontos_artilheiro: number
-  pontos_melhor_goleiro: number
   pontos_placar_exato: number
   pontos_resultado_correto: number
   pontos_classificado_mata_mata: number

@@ -50,9 +50,9 @@ O objetivo é entregar um MVP funcional, seguro, responsivo e fiel ao conceito d
 - Palpites por jogo.
 - Palpites especiais:
   - campeão;
-  - melhor jogador;
-  - artilheiro;
-  - melhor goleiro.
+  - vice-campeão;
+  - terceiro lugar;
+  - país do artilheiro.
 - Bloqueio dos palpites especiais junto com o início da primeira rodada.
 - Bloqueio dos palpites por jogo após início de cada jogo.
 - Palpite de placar.
@@ -344,13 +344,13 @@ Campos mínimos:
 - id;
 - usuario_id;
 - campeao_id;
-- melhor_jogador;
-- artilheiro;
-- melhor_goleiro;
+- vice_campeao_id;
+- terceiro_lugar_id;
+- artilheiro_pais_id;
 - pontuacao_campeao;
-- pontuacao_melhor_jogador;
-- pontuacao_artilheiro;
-- pontuacao_melhor_goleiro;
+- pontuacao_vice_campeao;
+- pontuacao_terceiro_lugar;
+- pontuacao_artilheiro_pais;
 - pontuacao_total;
 - bloqueado;
 - created_at;
@@ -359,7 +359,7 @@ Campos mínimos:
 ### Regras
 
 - `campeao_id` deve referenciar a tabela `paises`;
-- `melhor_jogador`, `artilheiro` e `melhor_goleiro` podem ser texto livre no MVP;
+- `vice_campeao_id`, `terceiro_lugar_id` e `artilheiro_pais_id` devem referenciar a tabela `paises`;
 - cada usuário só pode ter um registro de palpites especiais;
 - criar restrição única para `usuario_id`;
 - palpites especiais travam junto com o início da primeira rodada;
@@ -373,9 +373,9 @@ Campos mínimos:
 
 - id;
 - campeao_id;
-- melhor_jogador;
-- artilheiro;
-- melhor_goleiro;
+- vice_campeao_id;
+- terceiro_lugar_id;
+- artilheiro_pais_id;
 - finalizado;
 - created_at;
 - updated_at.
@@ -451,9 +451,9 @@ Campos mínimos:
 - id;
 - data_bloqueio_palpites_especiais;
 - pontos_campeao;
-- pontos_melhor_jogador;
-- pontos_artilheiro;
-- pontos_melhor_goleiro;
+- pontos_vice_campeao;
+- pontos_terceiro_lugar;
+- pontos_artilheiro_pais;
 - pontos_placar_exato;
 - pontos_resultado_correto;
 - pontos_classificado_mata_mata;
@@ -680,9 +680,9 @@ Não hardcodar a regra diretamente nas rotas.
 Além dos palpites por jogo, o usuário deve preencher palpites especiais:
 
 - campeão;
-- melhor jogador;
-- artilheiro;
-- melhor goleiro.
+- vice-campeão;
+- terceiro lugar;
+- país do artilheiro.
 
 Esses palpites devem aparecer em uma seção própria.
 
@@ -749,9 +749,9 @@ Os palpites especiais possuem pontuação própria.
 A pontuação deve ser configurável no banco:
 
 - pontos_campeao;
-- pontos_melhor_jogador;
-- pontos_artilheiro;
-- pontos_melhor_goleiro.
+- pontos_vice_campeao;
+- pontos_terceiro_lugar;
+- pontos_artilheiro_pais.
 
 Quando o admin cadastrar os resultados especiais:
 
@@ -760,32 +760,21 @@ Quando o admin cadastrar os resultados especiais:
 3. calcular a pontuação individual de cada categoria;
 4. preencher:
    - pontuacao_campeao;
-   - pontuacao_melhor_jogador;
-   - pontuacao_artilheiro;
-   - pontuacao_melhor_goleiro;
+   - pontuacao_vice_campeao;
+   - pontuacao_terceiro_lugar;
+   - pontuacao_artilheiro_pais;
    - pontuacao_total;
 5. atualizar o ranking geral.
 
 ---
 
-## 10.4 Comparação de textos
+## 10.4 Validação dos especiais
 
-Para melhor jogador, artilheiro e melhor goleiro:
+Para especiais por seleção (vice-campeão, terceiro lugar e país do artilheiro):
 
-- normalizar texto antes de comparar;
-- remover espaços extras;
-- ignorar diferença entre maiúsculas e minúsculas;
-- remover acentos.
-
-Exemplo:
-
-"Vinicius Junior" deve poder bater com "Vinícius Júnior".
-
-No MVP, implementar pelo menos:
-
-- trim;
-- lowercase;
-- remoção básica de acentos.
+- validar IDs existentes na tabela `paises`;
+- impedir IDs inválidos;
+- manter regras de bloqueio temporal no backend.
 
 ---
 
@@ -1144,9 +1133,9 @@ Não criar dashboard analítico complexo.
 Tela para preencher:
 
 * campeão;
-* melhor jogador;
-* artilheiro;
-* melhor goleiro.
+* vice-campeão;
+* terceiro lugar;
+* país do artilheiro.
 
 Estados:
 
@@ -1314,9 +1303,9 @@ Campos:
 Funcionalidades:
 
 * informar campeão;
-* informar melhor jogador;
-* informar artilheiro;
-* informar melhor goleiro;
+* informar vice-campeão;
+* informar terceiro lugar;
+* informar país do artilheiro;
 * salvar resultados especiais;
 * recalcular pontuação especial dos usuários.
 
@@ -1328,9 +1317,9 @@ Funcionalidades mínimas:
 
 * definir data de bloqueio dos palpites especiais;
 * definir pontuação de campeão;
-* definir pontuação de melhor jogador;
-* definir pontuação de artilheiro;
-* definir pontuação de melhor goleiro;
+* definir pontuação de vice-campeão;
+* definir pontuação de terceiro lugar;
+* definir pontuação de país do artilheiro;
 * definir pontuação de placar exato;
 * definir pontuação de resultado correto;
 * definir pontuação de classificado no mata-mata;
@@ -1543,9 +1532,9 @@ O backend deve validar:
 O backend deve impedir:
 
 * editar campeão após bloqueio;
-* editar melhor jogador após bloqueio;
-* editar artilheiro após bloqueio;
-* editar melhor goleiro após bloqueio;
+* editar vice-campeão após bloqueio;
+* editar terceiro lugar após bloqueio;
+* editar país do artilheiro após bloqueio;
 * usuário criar mais de um registro de palpite especial;
 * usuário alterar resultado especial;
 * usuário alterar sua própria pontuação especial.
@@ -2033,9 +2022,9 @@ O MVP só estará pronto quando:
 
 * criar tela de palpites especiais;
 * salvar campeão;
-* salvar melhor jogador;
-* salvar artilheiro;
-* salvar melhor goleiro;
+* salvar vice-campeão;
+* salvar terceiro lugar;
+* salvar país do artilheiro;
 * bloquear junto com primeira rodada;
 * validar bloqueio no backend.
 

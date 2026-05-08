@@ -50,7 +50,7 @@ def test_palpites_especiais_bloqueados(client) -> None:
     r = client.post(
         "/palpites-especiais",
         headers=h,
-        json={"campeao_id": None, "melhor_jogador": "x"},
+        json={"campeao_id": None},
     )
     assert r.status_code == 400
 

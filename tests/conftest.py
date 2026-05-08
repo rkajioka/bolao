@@ -4,7 +4,7 @@ Etapa 13 — base de testes: SQLite em memória (sem PostgreSQL obrigatório).
 Defina DATABASE_URL antes de qualquer import de `app` (pytest carrega conftest primeiro).
 
 Checklist manual complementar (§18 / Etapa 13 — responsividade):
-  abrir `http://localhost:8000/static/app/index.html` em viewport estreita (~375px),
+  abrir o frontend Vite em viewport estreita (~375px),
   percorrer login, palpites, especiais, tabela de grupo e ranking; confirmar toques e scrolls.
 """
 
