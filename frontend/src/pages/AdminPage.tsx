@@ -6,6 +6,7 @@ import { api } from '@/lib/api'
 import { useToast } from '@/components/Toast'
 import { SectionHeader } from '@/components/SectionHeader'
 import { CountryFlag } from '@/components/CountryFlag'
+import { AutocompleteInput } from '@/components/AutocompleteInput'
 import type { Jogo, User, Pais, ConfiguracaoBolao, PontuacaoFase } from '@/types'
 import { formatDate, faseLabel } from '@/lib/utils'
 
@@ -262,19 +263,16 @@ function AdminJogos({ success, error, queryClient }: AdminSectionProps) {
                 <div className="pt-3 mt-3 space-y-2" style={{ borderTop: '1px dashed rgba(255,255,255,0.08)' }}>
                   {(marcadoresForm[jogo.id] || []).map((m, idx) => (
                     <div key={idx} className="flex gap-2 items-center">
-                      <input
-                        type="text"
-                        list={`dl-candidatos-admin-${jogo.id}`}
+                      <AutocompleteInput
                         value={m.nome_jogador}
-                        onChange={(e) =>
+                        onChange={(val) =>
                           setMarcadoresForm((old) => ({
                             ...old,
-                            [jogo.id]: (old[jogo.id] || []).map((x, i) => i === idx ? { ...x, nome_jogador: e.target.value } : x),
+                            [jogo.id]: (old[jogo.id] || []).map((x, i) => i === idx ? { ...x, nome_jogador: val } : x),
                           }))
                         }
+                        options={candidatosAdmin.filter((c) => c.ativo).map((c) => c.nome)}
                         placeholder="Nome do jogador"
-                        className="flex-1 px-3 py-2 rounded-xl text-sm outline-none"
-                        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
                       />
                       <input
                         type="number"
@@ -291,11 +289,6 @@ function AdminJogos({ success, error, queryClient }: AdminSectionProps) {
                       />
                     </div>
                   ))}
-                  <datalist id={`dl-candidatos-admin-${jogo.id}`}>
-                    {candidatosAdmin.filter((c) => c.ativo).map((c) => (
-                      <option key={c.id} value={c.nome} />
-                    ))}
-                  </datalist>
                   <div className="flex gap-2">
                     <button
                       onClick={() =>

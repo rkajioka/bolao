@@ -4,6 +4,7 @@ import { ChevronDown, Trophy, Save } from 'lucide-react'
 import { CountryFlag } from './CountryFlag'
 import { ScoreStepper } from './ScoreStepper'
 import { MatchStatusBadge } from './MatchStatusBadge'
+import { AutocompleteInput } from './AutocompleteInput'
 import type { Jogo, PalpiteJogo, Pais } from '@/types'
 import { faseLabel, formatDate, jogoBloqueado, isBrasil } from '@/lib/utils'
 
@@ -273,23 +274,16 @@ export function GameCard({
                   <div className="pt-3 space-y-2">
                     {marcadoresLocal.map((m, i) => (
                       <div key={i} className="flex gap-2 items-center">
-                        <input
-                          type="text"
+                        <AutocompleteInput
                           value={m.nome_jogador}
-                          onChange={(e) => {
+                          onChange={(val) => {
                             const next = [...marcadoresLocal]
-                            next[i] = { ...next[i], nome_jogador: e.target.value }
+                            next[i] = { ...next[i], nome_jogador: val }
                             setMarcadoresLocal(next)
                           }}
+                          options={candidatos}
                           disabled={bloqueado}
                           placeholder="Nome do jogador"
-                          list={`dl-candidatos-${jogo.id}`}
-                          className="flex-1 px-3 py-2 rounded-xl text-sm disabled:opacity-40"
-                          style={{
-                            background: 'rgba(255,255,255,0.06)',
-                            border: '1px solid rgba(255,255,255,0.10)',
-                            color: 'var(--text)',
-                          }}
                         />
                         <input
                           type="number"
@@ -310,10 +304,6 @@ export function GameCard({
                         />
                       </div>
                     ))}
-
-                    <datalist id={`dl-candidatos-${jogo.id}`}>
-                      {candidatos.map((c) => <option key={c} value={c} />)}
-                    </datalist>
 
                     <div className="flex gap-2 pt-1">
                       {!bloqueado && (

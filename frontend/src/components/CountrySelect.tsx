@@ -19,6 +19,7 @@ export function CountrySelect({
   disabled = false,
 }: CountrySelectProps) {
   const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
   const containerRef = useRef<HTMLDivElement | null>(null)
   const selected = countries.find((c) => String(c.id) === value) ?? null
 
@@ -26,6 +27,11 @@ export function CountrySelect({
     () => [...countries].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
     [countries],
   )
+  const filteredCountries = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return sortedCountries
+    return sortedCountries.filter((c) => c.nome.toLowerCase().includes(q))
+  }, [sortedCountries, query])
 
   useEffect(() => {
     if (!open) return
@@ -91,10 +97,26 @@ export function CountrySelect({
             boxShadow: '0 12px 30px rgba(0,0,0,0.25)',
           }}
         >
+          <div className="p-1">
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Digite para filtrar..."
+              className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+              style={{
+                background: 'var(--glass)',
+                border: '1px solid var(--border)',
+                color: 'var(--text)',
+              }}
+            />
+          </div>
+
           <button
             type="button"
             onClick={() => {
               onChange('')
+              setQuery('')
               setOpen(false)
             }}
             className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left text-sm"
@@ -103,7 +125,7 @@ export function CountrySelect({
             <span>{placeholder}</span>
           </button>
 
-          {sortedCountries.map((country) => {
+          {filteredCountries.map((country) => {
             const isSelected = String(country.id) === value
             return (
               <button
@@ -111,6 +133,7 @@ export function CountrySelect({
                 type="button"
                 onClick={() => {
                   onChange(String(country.id))
+                  setQuery('')
                   setOpen(false)
                 }}
                 className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left text-sm transition-colors"
@@ -125,6 +148,11 @@ export function CountrySelect({
               </button>
             )
           })}
+          {filteredCountries.length === 0 && (
+            <p className="px-3 py-2 text-sm" style={{ color: 'var(--text-muted)' }}>
+              Nenhum país encontrado.
+            </p>
+          )}
         </div>
       )}
     </div>
