@@ -4,9 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Settings, Users, Globe, Trophy, Star, Shield } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useToast } from '@/components/Toast'
-import { SectionHeader } from '@/components/SectionHeader'
 import { CountryFlag } from '@/components/CountryFlag'
 import { AutocompleteInput } from '@/components/AutocompleteInput'
+import { SelectInput } from '@/components/SelectInput'
 import type { Jogo, User, Pais, ConfiguracaoBolao, PontuacaoFase } from '@/types'
 import { formatDate, faseLabel } from '@/lib/utils'
 
@@ -131,6 +131,33 @@ function AdminJogos({ success, error, queryClient }: AdminSectionProps) {
     }
     return paises
   }, [novoJogo.tipo_fase, novoJogo.grupo, paises])
+  const tipoFaseOptions = useMemo(
+    () => [
+      { value: 'grupos', label: 'Fase de grupos' },
+      { value: 'mata_mata', label: 'Mata-mata' },
+    ],
+    [],
+  )
+  const grupoOptions = useMemo(
+    () => GRUPOS_DISPONIVEIS.map((g) => ({ value: g, label: `Grupo ${g}` })),
+    [],
+  )
+  const faseMataOptions = useMemo(
+    () => FASES_MATA_MATA.map((f) => ({ value: f.value, label: f.label })),
+    [],
+  )
+  const rodadaOptions = useMemo(
+    () => [
+      { value: '1', label: 'Rodada 1' },
+      { value: '2', label: 'Rodada 2' },
+      { value: '3', label: 'Rodada 3' },
+    ],
+    [],
+  )
+  const paisOptions = useMemo(
+    () => paisesDisponiveis.map((p) => ({ value: String(p.id), label: p.nome })),
+    [paisesDisponiveis],
+  )
 
   const criarJogo = async () => {
     try {
@@ -226,45 +253,34 @@ function AdminJogos({ success, error, queryClient }: AdminSectionProps) {
       <div className="glass rounded-2xl p-4 space-y-3">
         <p className="text-sm font-semibold">Cadastro guiado de jogo</p>
         <div className="grid grid-cols-2 gap-2">
-          <select
+          <SelectInput
             value={novoJogo.tipo_fase}
-            onChange={(e) => setNovoJogo((old) => ({ ...old, tipo_fase: e.target.value as 'grupos' | 'mata_mata', pais_casa_id: '', pais_fora_id: '' }))}
-            className="px-3 py-2 rounded-xl text-sm outline-none"
-            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
-          >
-            <option value="grupos">Fase de grupos</option>
-            <option value="mata_mata">Mata-mata</option>
-          </select>
+            onChange={(value) => setNovoJogo((old) => ({ ...old, tipo_fase: value as 'grupos' | 'mata_mata', pais_casa_id: '', pais_fora_id: '' }))}
+            options={tipoFaseOptions}
+            placeholder="Tipo de fase"
+          />
           {novoJogo.tipo_fase === 'grupos' ? (
-            <select
+            <SelectInput
               value={novoJogo.grupo}
-              onChange={(e) => setNovoJogo((old) => ({ ...old, grupo: e.target.value, pais_casa_id: '', pais_fora_id: '' }))}
-              className="px-3 py-2 rounded-xl text-sm outline-none"
-              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
-            >
-              {GRUPOS_DISPONIVEIS.map((g) => <option key={g} value={g}>Grupo {g}</option>)}
-            </select>
+              onChange={(value) => setNovoJogo((old) => ({ ...old, grupo: value, pais_casa_id: '', pais_fora_id: '' }))}
+              options={grupoOptions}
+              placeholder="Grupo"
+            />
           ) : (
-            <select
+            <SelectInput
               value={novoJogo.fase_mata}
-              onChange={(e) => setNovoJogo((old) => ({ ...old, fase_mata: e.target.value }))}
-              className="px-3 py-2 rounded-xl text-sm outline-none"
-              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
-            >
-              {FASES_MATA_MATA.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
-            </select>
+              onChange={(value) => setNovoJogo((old) => ({ ...old, fase_mata: value }))}
+              options={faseMataOptions}
+              placeholder="Fase mata-mata"
+            />
           )}
           {novoJogo.tipo_fase === 'grupos' ? (
-            <select
-              value={novoJogo.rodada}
-              onChange={(e) => setNovoJogo((old) => ({ ...old, rodada: Number(e.target.value) || 1 }))}
-              className="px-3 py-2 rounded-xl text-sm outline-none"
-              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
-            >
-              <option value={1}>Rodada 1</option>
-              <option value={2}>Rodada 2</option>
-              <option value={3}>Rodada 3</option>
-            </select>
+            <SelectInput
+              value={String(novoJogo.rodada)}
+              onChange={(value) => setNovoJogo((old) => ({ ...old, rodada: Number(value) || 1 }))}
+              options={rodadaOptions}
+              placeholder="Rodada"
+            />
           ) : (
             <div />
           )}
@@ -282,24 +298,18 @@ function AdminJogos({ success, error, queryClient }: AdminSectionProps) {
             className="px-3 py-2 rounded-xl text-sm outline-none"
             style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
           />
-          <select
+          <SelectInput
             value={novoJogo.pais_casa_id}
-            onChange={(e) => setNovoJogo((old) => ({ ...old, pais_casa_id: e.target.value }))}
-            className="px-3 py-2 rounded-xl text-sm outline-none"
-            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
-          >
-            <option value="">Time A</option>
-            {paisesDisponiveis.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
-          </select>
-          <select
+            onChange={(value) => setNovoJogo((old) => ({ ...old, pais_casa_id: value }))}
+            options={paisOptions}
+            placeholder="Time A"
+          />
+          <SelectInput
             value={novoJogo.pais_fora_id}
-            onChange={(e) => setNovoJogo((old) => ({ ...old, pais_fora_id: e.target.value }))}
-            className="px-3 py-2 rounded-xl text-sm outline-none"
-            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
-          >
-            <option value="">Time B</option>
-            {paisesDisponiveis.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
-          </select>
+            onChange={(value) => setNovoJogo((old) => ({ ...old, pais_fora_id: value }))}
+            options={paisOptions}
+            placeholder="Time B"
+          />
         </div>
         <button
           onClick={criarJogo}

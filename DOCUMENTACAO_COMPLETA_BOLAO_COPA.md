@@ -59,7 +59,7 @@ Principais prefixes:
 
 ### Execução local
 
-- Backend: `python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`
+- Backend: `py -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`
 - Frontend: `cd frontend && npm run dev`
 
 Observações de runtime:
@@ -287,6 +287,7 @@ Mostrar classificação geral de usuários por pontos.
 
 - **Objetivo**: cadastrar e operar jogos de grupos e mata-mata.
 - **Tela**: `frontend/src/pages/AdminPage.tsx` seção `AdminJogos`.
+- **UI de seleção**: cadastro guiado migrado de `select` nativo para dropdown customizado (`SelectInput`) para consistência visual em dark/light mode.
 - **Endpoints**: `POST /jogos`, `PUT /jogos/{id}`, `PATCH /jogos/{id}/resultado`, `PATCH /jogos/{id}/finalizar`.
 - **Tabelas**: `jogos`, impacto indireto em `palpites_jogos`.
 - **Validações**:
