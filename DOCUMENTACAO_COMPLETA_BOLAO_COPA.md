@@ -103,8 +103,10 @@ Observações de runtime:
   - gerenciar países (`/paises` POST/PUT);
   - criar/editar jogo e lançar resultados (`/jogos*`);
   - gerenciar marcadores BR candidatos e resultado (`/marcadores-brasil*`);
-  - configurar pontuação (`/configuracao-bolao`, `/configuracao-pontuacao-fase`);
-  - definir resultados especiais (`/resultados-especiais`).
+  - operar a aba `Especiais` como painel único para:
+    - configurar pontuação (`/configuracao-bolao`, `/configuracao-pontuacao-fase`);
+    - definir resultados especiais (`/resultados-especiais`);
+    - finalizar especiais (`PATCH /resultados-especiais/finalizar`).
 - Impacto em cálculo/ranking:
   - alterações de resultado disparam recálculo de palpites relacionados.
 
@@ -287,6 +289,7 @@ Mostrar classificação geral de usuários por pontos.
 
 - **Objetivo**: cadastrar e operar jogos de grupos e mata-mata.
 - **Tela**: `frontend/src/pages/AdminPage.tsx` seção `AdminJogos`.
+- **Navegação Admin**: aba `Config` foi consolidada em `Especiais`; configurações e resultados especiais ficam no mesmo painel.
 - **UI de seleção**: cadastro guiado migrado de `select` nativo para dropdown customizado (`SelectInput`) para consistência visual em dark/light mode.
 - **Endpoints**: `POST /jogos`, `PUT /jogos/{id}`, `PATCH /jogos/{id}/resultado`, `PATCH /jogos/{id}/finalizar`.
 - **Tabelas**: `jogos`, impacto indireto em `palpites_jogos`.
@@ -525,8 +528,8 @@ Mostrar classificação geral de usuários por pontos.
 4. Lança resultados e finaliza jogos.
 5. Em jogo BR finalizado, informa marcadores reais.
 6. Mantém candidatos de marcadores BR.
-7. Configura pontuação geral e por fase.
-8. Define resultados especiais.
+7. Na aba `Especiais`, configura pontuação geral e por fase.
+8. Na aba `Especiais`, define e finaliza resultados especiais.
 9. Recalcula quando necessário (endpoints de recálculo).
 10. Valida efeito no ranking.
 

@@ -172,6 +172,17 @@ export interface PontuacaoFase {
   pontos_classificado_mata_mata: number
 }
 
+export interface ResultadoEspecial {
+  id: number
+  campeao_id: number | null
+  vice_campeao_id: number | null
+  terceiro_lugar_id: number | null
+  artilheiro_pais_id: number | null
+  finalizado: boolean
+  created_at: string
+  updated_at: string
+}
+
 export interface LoginResponse {
   access_token: string
   token_type: string

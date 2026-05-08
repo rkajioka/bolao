@@ -1,23 +1,22 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Settings, Users, Globe, Trophy, Star, Shield } from 'lucide-react'
+import { Users, Globe, Trophy, Star, Shield } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useToast } from '@/components/Toast'
 import { CountryFlag } from '@/components/CountryFlag'
 import { AutocompleteInput } from '@/components/AutocompleteInput'
 import { SelectInput } from '@/components/SelectInput'
-import type { Jogo, User, Pais, ConfiguracaoBolao, PontuacaoFase } from '@/types'
+import type { Jogo, User, Pais, ConfiguracaoBolao, PontuacaoFase, ResultadoEspecial } from '@/types'
 import { formatDate, faseLabel } from '@/lib/utils'
 
-type AdminTab = 'jogos' | 'usuarios' | 'paises' | 'especiais' | 'config'
+type AdminTab = 'jogos' | 'usuarios' | 'paises' | 'especiais'
 
 const tabs: { key: AdminTab; label: string; icon: React.ReactNode }[] = [
   { key: 'jogos', label: 'Jogos', icon: <Trophy size={16} /> },
   { key: 'usuarios', label: 'Usuários', icon: <Users size={16} /> },
   { key: 'paises', label: 'Países', icon: <Globe size={16} /> },
   { key: 'especiais', label: 'Especiais', icon: <Star size={16} /> },
-  { key: 'config', label: 'Config', icon: <Settings size={16} /> },
 ]
 
 const GRUPOS_DISPONIVEIS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'] as const
@@ -29,6 +28,15 @@ const FASES_MATA_MATA = [
   { value: 'terceiro_lugar', label: '3º lugar' },
   { value: 'final', label: 'Final' },
 ] as const
+const PONTUACAO_CONFIG_FIELDS: { key: keyof Pick<
+  ConfiguracaoBolao,
+  'pontos_campeao' | 'pontos_vice_campeao' | 'pontos_terceiro_lugar' | 'pontos_artilheiro_pais'
+>; label: string }[] = [
+  { key: 'pontos_campeao', label: 'Campeão' },
+  { key: 'pontos_vice_campeao', label: 'Vice' },
+  { key: 'pontos_terceiro_lugar', label: '3º lugar' },
+  { key: 'pontos_artilheiro_pais', label: 'País do artilheiro' },
+]
 
 export function AdminPage() {
   const [activeTab, setActiveTab] = useState<AdminTab>('jogos')
@@ -81,7 +89,6 @@ export function AdminPage() {
           {activeTab === 'usuarios' && <AdminUsuarios success={success} error={error} queryClient={queryClient} />}
           {activeTab === 'paises' && <AdminPaises success={success} error={error} queryClient={queryClient} />}
           {activeTab === 'especiais' && <AdminEspeciais success={success} error={error} queryClient={queryClient} />}
-          {activeTab === 'config' && <AdminConfig success={success} error={error} queryClient={queryClient} />}
         </motion.div>
       </AnimatePresence>
     </div>
@@ -679,48 +686,64 @@ function AdminPaises({ success, error, queryClient }: AdminSectionProps) {
 }
 
 function AdminEspeciais({ success, error, queryClient }: AdminSectionProps) {
+  const [form, setForm] = useState<ConfiguracaoBolao | null>(null)
+  const [fases, setFases] = useState<PontuacaoFase[]>([])
+  const [savingConfig, setSavingConfig] = useState(false)
+  const [savingResultado, setSavingResultado] = useState(false)
+  const [resultadoForm, setResultadoForm] = useState({
+    campeao_id: '',
+    vice_campeao_id: '',
+    terceiro_lugar_id: '',
+    artilheiro_pais_id: '',
+  })
+
   const { data: config } = useQuery({
     queryKey: ['configuracao-bolao'],
     queryFn: () => api.get<ConfiguracaoBolao>('/configuracao-bolao'),
   })
-
-  return (
-    <div className="space-y-4">
-      <div className="glass rounded-2xl p-4">
-        <div>
-          <p className="font-semibold text-sm">Palpites especiais</p>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-            O bloqueio efetivo é calculado pela data de bloqueio da configuração do bolão.
-          </p>
-        </div>
-        <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
-          Data de bloqueio atual: {config?.data_bloqueio_palpites_especiais ? formatDate(config.data_bloqueio_palpites_especiais) : 'Automática (1h antes do primeiro jogo, horário de Brasília)'}
-        </p>
-      </div>
-    </div>
-  )
-}
-
-function AdminConfig({ success, error, queryClient }: AdminSectionProps) {
-  const [form, setForm] = useState<ConfiguracaoBolao | null>(null)
-  const [fases, setFases] = useState<PontuacaoFase[]>([])
-  const [saving, setSaving] = useState(false)
-
-  const { data: config } = useQuery({
-    queryKey: ['configuracao-bolao'],
-    queryFn: () => api.get<ConfiguracaoBolao>('/configuracao-bolao'),
-    onSuccess: (data: ConfiguracaoBolao) => setForm(data),
-  } as any)
-
-  useQuery({
+  const { data: fasesData = [] } = useQuery({
     queryKey: ['configuracao-pontuacao-fase'],
     queryFn: () => api.get<PontuacaoFase[]>('/configuracao-pontuacao-fase'),
-    onSuccess: (data: PontuacaoFase[]) => setFases(data),
-  } as any)
+  })
+  const { data: paises = [] } = useQuery({
+    queryKey: ['paises'],
+    queryFn: () => api.get<Pais[]>('/paises'),
+  })
+  const { data: resultadoEspecial } = useQuery({
+    queryKey: ['resultados-especiais', 'admin'],
+    queryFn: () => api.get<ResultadoEspecial | null>('/resultados-especiais'),
+  })
 
-  const handleSave = async () => {
+  useEffect(() => {
+    if (!config) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setForm(config)
+  }, [config])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setFases(fasesData)
+  }, [fasesData])
+
+  useEffect(() => {
+    if (!resultadoEspecial) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setResultadoForm({
+      campeao_id: resultadoEspecial.campeao_id ? String(resultadoEspecial.campeao_id) : '',
+      vice_campeao_id: resultadoEspecial.vice_campeao_id ? String(resultadoEspecial.vice_campeao_id) : '',
+      terceiro_lugar_id: resultadoEspecial.terceiro_lugar_id ? String(resultadoEspecial.terceiro_lugar_id) : '',
+      artilheiro_pais_id: resultadoEspecial.artilheiro_pais_id ? String(resultadoEspecial.artilheiro_pais_id) : '',
+    })
+  }, [resultadoEspecial])
+
+  const paisOptions = useMemo(
+    () => paises.map((p) => ({ value: String(p.id), label: p.nome })),
+    [paises],
+  )
+
+  const handleSaveConfiguracao = async () => {
     if (!form) return
-    setSaving(true)
+    setSavingConfig(true)
     try {
       await api.put('/configuracao-bolao', {
         data_bloqueio_palpites_especiais: form.data_bloqueio_palpites_especiais,
@@ -748,14 +771,110 @@ function AdminConfig({ success, error, queryClient }: AdminSectionProps) {
       await queryClient.invalidateQueries({ queryKey: ['configuracao-pontuacao-fase'] })
       success('Configuração salva')
     } catch (err) {
-      error(err instanceof Error ? err.message : 'Erro')
+      error(err instanceof Error ? err.message : 'Erro ao salvar configuração')
     } finally {
-      setSaving(false)
+      setSavingConfig(false)
+    }
+  }
+
+  const handleSaveResultadoEspecial = async () => {
+    setSavingResultado(true)
+    try {
+      const payload = {
+        campeao_id: resultadoForm.campeao_id ? Number(resultadoForm.campeao_id) : null,
+        vice_campeao_id: resultadoForm.vice_campeao_id ? Number(resultadoForm.vice_campeao_id) : null,
+        terceiro_lugar_id: resultadoForm.terceiro_lugar_id ? Number(resultadoForm.terceiro_lugar_id) : null,
+        artilheiro_pais_id: resultadoForm.artilheiro_pais_id ? Number(resultadoForm.artilheiro_pais_id) : null,
+        finalizado: resultadoEspecial?.finalizado ?? false,
+      }
+
+      if (resultadoEspecial) {
+        await api.put('/resultados-especiais', payload)
+      } else {
+        await api.post('/resultados-especiais', payload)
+      }
+      await queryClient.invalidateQueries({ queryKey: ['resultados-especiais', 'admin'] })
+      success('Resultado de especiais salvo')
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Erro ao salvar resultado de especiais')
+    } finally {
+      setSavingResultado(false)
+    }
+  }
+
+  const handleFinalizarResultadoEspecial = async () => {
+    try {
+      await api.patch('/resultados-especiais/finalizar', {})
+      await queryClient.invalidateQueries({ queryKey: ['resultados-especiais', 'admin'] })
+      success('Resultado de especiais finalizado')
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Erro ao finalizar especiais')
     }
   }
 
   return (
-    <div className="glass rounded-2xl p-5 space-y-4">
+    <div className="space-y-4">
+      <div className="glass rounded-2xl p-4">
+        <div>
+          <p className="font-semibold text-sm">Palpites especiais</p>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+            O bloqueio efetivo é calculado pela data de bloqueio da configuração do bolão.
+          </p>
+        </div>
+        <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
+          Data de bloqueio atual: {config?.data_bloqueio_palpites_especiais ? formatDate(config.data_bloqueio_palpites_especiais) : 'Automática (1h antes do primeiro jogo, horário de Brasília)'}
+        </p>
+      </div>
+      <div className="glass rounded-2xl p-5 space-y-4">
+        <p className="font-semibold text-sm">Resultado oficial de especiais</p>
+        <div className="grid grid-cols-2 gap-2">
+          <SelectInput
+            value={resultadoForm.campeao_id}
+            onChange={(value) => setResultadoForm((old) => ({ ...old, campeao_id: value }))}
+            options={paisOptions}
+            placeholder="Campeão"
+          />
+          <SelectInput
+            value={resultadoForm.vice_campeao_id}
+            onChange={(value) => setResultadoForm((old) => ({ ...old, vice_campeao_id: value }))}
+            options={paisOptions}
+            placeholder="Vice-campeão"
+          />
+          <SelectInput
+            value={resultadoForm.terceiro_lugar_id}
+            onChange={(value) => setResultadoForm((old) => ({ ...old, terceiro_lugar_id: value }))}
+            options={paisOptions}
+            placeholder="3º lugar"
+          />
+          <SelectInput
+            value={resultadoForm.artilheiro_pais_id}
+            onChange={(value) => setResultadoForm((old) => ({ ...old, artilheiro_pais_id: value }))}
+            options={paisOptions}
+            placeholder="País do artilheiro"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={handleSaveResultadoEspecial}
+            disabled={savingResultado}
+            className="w-full py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40"
+            style={{ background: 'var(--highlight-dim)', border: '1px solid rgba(246,198,91,0.3)', color: 'var(--highlight)' }}
+          >
+            {savingResultado ? 'Salvando…' : 'Salvar resultado especiais'}
+          </button>
+          <button
+            onClick={handleFinalizarResultadoEspecial}
+            disabled={resultadoEspecial?.finalizado}
+            className="w-full py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40"
+            style={{ background: 'rgba(53,208,127,0.16)', border: '1px solid rgba(53,208,127,0.35)', color: 'var(--accent)' }}
+          >
+            {resultadoEspecial?.finalizado ? 'Especiais finalizado' : 'Finalizar especiais'}
+          </button>
+        </div>
+      </div>
+
+      <div className="glass rounded-2xl p-5 space-y-4">
+        <p className="font-semibold text-sm">Configuração de especiais e pontuação</p>
       <div>
         <label className="block text-xs font-bold mb-2 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
           Bloqueio de especiais (ISO)
@@ -770,18 +889,13 @@ function AdminConfig({ success, error, queryClient }: AdminSectionProps) {
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        {[
-          ['pontos_campeao', 'Campeão'],
-          ['pontos_vice_campeao', 'Vice'],
-          ['pontos_terceiro_lugar', '3º lugar'],
-          ['pontos_artilheiro_pais', 'País do artilheiro'],
-        ].map(([key, label]) => (
+        {PONTUACAO_CONFIG_FIELDS.map(({ key, label }) => (
           <div key={key}>
             <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{label}</label>
             <input
               type="number"
               min={0}
-              value={form ? (form as any)[key] : 0}
+              value={form ? form[key] : 0}
               onChange={(e) => setForm((old) => (old ? { ...old, [key]: parseInt(e.target.value) || 0 } : old))}
               className="w-full px-3 py-2 rounded-xl text-sm outline-none"
               style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
@@ -826,13 +940,14 @@ function AdminConfig({ success, error, queryClient }: AdminSectionProps) {
       </div>
 
       <button
-        onClick={handleSave}
-        disabled={saving}
+        onClick={handleSaveConfiguracao}
+        disabled={savingConfig}
         className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-40"
         style={{ background: 'var(--accent)', color: '#070A12' }}
       >
-        {saving ? 'Salvando…' : 'Salvar configuração'}
+        {savingConfig ? 'Salvando…' : 'Salvar configuração'}
       </button>
+      </div>
     </div>
   )
 }
