@@ -14,6 +14,9 @@ class PalpiteEspecial(Base):
     usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), nullable=False, index=True)
 
     campeao_id: Mapped[int | None] = mapped_column(ForeignKey("paises.id"), nullable=True)
+    vice_campeao_id: Mapped[int | None] = mapped_column(ForeignKey("paises.id"), nullable=True)
+    terceiro_lugar_id: Mapped[int | None] = mapped_column(ForeignKey("paises.id"), nullable=True)
+    artilheiro_pais_id: Mapped[int | None] = mapped_column(ForeignKey("paises.id"), nullable=True)
     melhor_jogador: Mapped[str | None] = mapped_column(String(255), nullable=True)
     artilheiro: Mapped[str | None] = mapped_column(String(255), nullable=True)
     melhor_goleiro: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -38,3 +41,6 @@ class PalpiteEspecial(Base):
 
     usuario = relationship("Usuario", back_populates="palpites_especiais")
     campeao = relationship("Pais", foreign_keys=[campeao_id])
+    vice_campeao = relationship("Pais", foreign_keys=[vice_campeao_id])
+    terceiro_lugar = relationship("Pais", foreign_keys=[terceiro_lugar_id])
+    artilheiro_pais = relationship("Pais", foreign_keys=[artilheiro_pais_id])

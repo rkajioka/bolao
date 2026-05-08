@@ -15,6 +15,9 @@ class UsuarioMini(BaseModel):
 
 class PalpiteEspecialBase(BaseModel):
     campeao_id: int | None = Field(default=None, ge=1)
+    vice_campeao_id: int | None = Field(default=None, ge=1)
+    terceiro_lugar_id: int | None = Field(default=None, ge=1)
+    artilheiro_pais_id: int | None = Field(default=None, ge=1)
     melhor_jogador: str | None = Field(default=None, max_length=255)
     artilheiro: str | None = Field(default=None, max_length=255)
     melhor_goleiro: str | None = Field(default=None, max_length=255)
@@ -26,6 +29,9 @@ class PalpiteEspecialCreate(PalpiteEspecialBase):
 
 class PalpiteEspecialUpdate(BaseModel):
     campeao_id: int | None = Field(default=None, ge=1)
+    vice_campeao_id: int | None = Field(default=None, ge=1)
+    terceiro_lugar_id: int | None = Field(default=None, ge=1)
+    artilheiro_pais_id: int | None = Field(default=None, ge=1)
     melhor_jogador: str | None = Field(default=None, max_length=255)
     artilheiro: str | None = Field(default=None, max_length=255)
     melhor_goleiro: str | None = Field(default=None, max_length=255)
@@ -51,6 +57,9 @@ class PalpiteEspecialRead(PalpiteEspecialBase):
     created_at: datetime
     updated_at: datetime
     campeao: PaisRead | None = None
+    vice_campeao: PaisRead | None = None
+    terceiro_lugar: PaisRead | None = None
+    artilheiro_pais: PaisRead | None = None
 
 
 class PalpiteEspecialAdminRead(PalpiteEspecialRead):

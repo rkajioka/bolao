@@ -21,7 +21,13 @@ from app.services import configuracao_bolao_service, pais_service
 
 
 def _loaders():
-    return joinedload(PalpiteEspecial.campeao), joinedload(PalpiteEspecial.usuario)
+    return (
+        joinedload(PalpiteEspecial.campeao),
+        joinedload(PalpiteEspecial.vice_campeao),
+        joinedload(PalpiteEspecial.terceiro_lugar),
+        joinedload(PalpiteEspecial.artilheiro_pais),
+        joinedload(PalpiteEspecial.usuario),
+    )
 
 
 def _assert_nao_bloqueado(db: Session) -> None:
@@ -34,6 +40,13 @@ def _validar_campeao(db: Session, campeao_id: int | None) -> None:
         return
     if pais_service.get_by_id(db, campeao_id) is None:
         raise ValueError("País campeão não encontrado")
+
+
+def _validar_pais_generico(db: Session, pais_id: int | None, label: str) -> None:
+    if pais_id is None:
+        return
+    if pais_service.get_by_id(db, pais_id) is None:
+        raise ValueError(f"País de {label} não encontrado")
 
 
 def to_read(db: Session, p: PalpiteEspecial) -> PalpiteEspecialRead:
@@ -71,10 +84,16 @@ def create_palpite(db: Session, usuario_id: int, data: PalpiteEspecialCreate) ->
 
     _assert_nao_bloqueado(db)
     _validar_campeao(db, data.campeao_id)
+    _validar_pais_generico(db, data.vice_campeao_id, "vice-campeão")
+    _validar_pais_generico(db, data.terceiro_lugar_id, "terceiro lugar")
+    _validar_pais_generico(db, data.artilheiro_pais_id, "artilheiro")
 
     p = PalpiteEspecial(
         usuario_id=usuario_id,
         campeao_id=data.campeao_id,
+        vice_campeao_id=data.vice_campeao_id,
+        terceiro_lugar_id=data.terceiro_lugar_id,
+        artilheiro_pais_id=data.artilheiro_pais_id,
         melhor_jogador=data.melhor_jogador.strip() if data.melhor_jogador and data.melhor_jogador.strip() else None,
         artilheiro=data.artilheiro.strip() if data.artilheiro and data.artilheiro.strip() else None,
         melhor_goleiro=data.melhor_goleiro.strip() if data.melhor_goleiro and data.melhor_goleiro.strip() else None,
@@ -103,6 +122,15 @@ def update_palpite_me(db: Session, usuario_id: int, data: PalpiteEspecialUpdate)
     if "campeao_id" in raw:
         _validar_campeao(db, raw["campeao_id"])
         p.campeao_id = raw["campeao_id"]
+    if "vice_campeao_id" in raw:
+        _validar_pais_generico(db, raw["vice_campeao_id"], "vice-campeão")
+        p.vice_campeao_id = raw["vice_campeao_id"]
+    if "terceiro_lugar_id" in raw:
+        _validar_pais_generico(db, raw["terceiro_lugar_id"], "terceiro lugar")
+        p.terceiro_lugar_id = raw["terceiro_lugar_id"]
+    if "artilheiro_pais_id" in raw:
+        _validar_pais_generico(db, raw["artilheiro_pais_id"], "artilheiro")
+        p.artilheiro_pais_id = raw["artilheiro_pais_id"]
     if "melhor_jogador" in raw:
         v = raw["melhor_jogador"]
         p.melhor_jogador = v.strip() if v and str(v).strip() else None

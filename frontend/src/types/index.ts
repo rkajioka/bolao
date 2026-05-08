@@ -57,6 +57,9 @@ export interface PalpiteEspecial {
   id: number
   usuario_id: number
   campeao_id: number | null
+  vice_campeao_id: number | null
+  terceiro_lugar_id: number | null
+  artilheiro_pais_id: number | null
   melhor_jogador: string | null
   artilheiro: string | null
   melhor_goleiro: string | null
@@ -67,6 +70,9 @@ export interface PalpiteEspecial {
   pontuacao_total: number
   bloqueado: boolean
   campeao?: Pais
+  vice_campeao?: Pais
+  terceiro_lugar?: Pais
+  artilheiro_pais?: Pais
 }
 
 export interface RankingLinha {

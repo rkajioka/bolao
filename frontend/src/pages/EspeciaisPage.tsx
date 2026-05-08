@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { Star, Lock, AlertCircle } from 'lucide-react'
+import { Star, Lock } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useToast } from '@/components/Toast'
 import { SectionHeader } from '@/components/SectionHeader'
 import { CountryFlag } from '@/components/CountryFlag'
-import type { PalpiteEspecial, Pais, MarcadorCandidato } from '@/types'
+import type { PalpiteEspecial, Pais } from '@/types'
 
 export function EspeciaisPage() {
   const { success, error } = useToast()
@@ -22,16 +22,11 @@ export function EspeciaisPage() {
     queryFn: () => api.get<Pais[]>('/paises'),
   })
 
-  const { data: candidatos = [] } = useQuery({
-    queryKey: ['marcadores', 'candidatos'],
-    queryFn: () => api.get<MarcadorCandidato[]>('/marcadores-brasil/candidatos'),
-  })
-
   const [form, setForm] = useState({
     campeao_id: '',
-    melhor_jogador: '',
-    artilheiro: '',
-    melhor_goleiro: '',
+    vice_campeao_id: '',
+    terceiro_lugar_id: '',
+    artilheiro_pais_id: '',
   })
   const [saving, setSaving] = useState(false)
 
@@ -39,9 +34,9 @@ export function EspeciaisPage() {
     if (palpite) {
       setForm({
         campeao_id: palpite.campeao_id ? String(palpite.campeao_id) : '',
-        melhor_jogador: palpite.melhor_jogador || '',
-        artilheiro: palpite.artilheiro || '',
-        melhor_goleiro: palpite.melhor_goleiro || '',
+        vice_campeao_id: palpite.vice_campeao_id ? String(palpite.vice_campeao_id) : '',
+        terceiro_lugar_id: palpite.terceiro_lugar_id ? String(palpite.terceiro_lugar_id) : '',
+        artilheiro_pais_id: palpite.artilheiro_pais_id ? String(palpite.artilheiro_pais_id) : '',
       })
     }
   }, [palpite])
@@ -53,9 +48,12 @@ export function EspeciaisPage() {
     try {
       const body = {
         campeao_id: form.campeao_id ? parseInt(form.campeao_id) : null,
-        melhor_jogador: form.melhor_jogador || null,
-        artilheiro: form.artilheiro || null,
-        melhor_goleiro: form.melhor_goleiro || null,
+        vice_campeao_id: form.vice_campeao_id ? parseInt(form.vice_campeao_id) : null,
+        terceiro_lugar_id: form.terceiro_lugar_id ? parseInt(form.terceiro_lugar_id) : null,
+        artilheiro_pais_id: form.artilheiro_pais_id ? parseInt(form.artilheiro_pais_id) : null,
+        melhor_jogador: null,
+        artilheiro: null,
+        melhor_goleiro: null,
       }
       if (palpite) {
         await api.put('/palpites-especiais/me', body)
@@ -71,8 +69,11 @@ export function EspeciaisPage() {
     }
   }
 
-  const candidatoNames = candidatos.map((c) => c.nome)
+  const paisesOrdenados = [...paises].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
   const selectedPais = paises.find((p) => String(p.id) === form.campeao_id)
+  const selectedVice = paises.find((p) => String(p.id) === form.vice_campeao_id)
+  const selectedTerceiro = paises.find((p) => String(p.id) === form.terceiro_lugar_id)
+  const selectedArtilheiroPais = paises.find((p) => String(p.id) === form.artilheiro_pais_id)
 
   const inputClass = "w-full px-3 py-3 rounded-xl text-sm transition-all duration-150 outline-none disabled:opacity-40"
   const inputStyle = {
@@ -112,60 +113,64 @@ export function EspeciaisPage() {
           animate={{ opacity: 1, y: 0 }}
           className="glass rounded-2xl p-5 space-y-5"
         >
-          {/* Campeão */}
-          <div>
-            <label className="block text-xs font-bold mb-2 uppercase tracking-wider flex items-center gap-1.5" style={{ color: 'var(--highlight)' }}>
-              <Star size={12} />
-              Campeão do torneio
-            </label>
-            <div className="relative">
-              {selectedPais && (
-                <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                  <CountryFlag pais={selectedPais} size="sm" />
-                </div>
-              )}
-              <select
-                value={form.campeao_id}
-                onChange={(e) => setForm((f) => ({ ...f, campeao_id: e.target.value }))}
-                disabled={bloqueado}
-                className={inputClass}
-                style={{ ...inputStyle, paddingLeft: selectedPais ? '3.5rem' : '0.75rem' }}
-              >
-                <option value="">Selecione o campeão</option>
-                {paises.map((p) => (
-                  <option key={p.id} value={p.id}>{p.nome}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Text fields */}
           {[
-            { key: 'melhor_jogador', label: 'Melhor jogador', placeholder: 'Nome do jogador' },
-            { key: 'artilheiro', label: 'Artilheiro', placeholder: 'Nome do artilheiro' },
-            { key: 'melhor_goleiro', label: 'Melhor goleiro', placeholder: 'Nome do goleiro' },
-          ].map(({ key, label, placeholder }) => (
+            { key: 'campeao_id', label: 'Campeão', selected: selectedPais, placeholder: 'Selecione o campeão' },
+            { key: 'vice_campeao_id', label: 'Vice-campeão', selected: selectedVice, placeholder: 'Selecione o vice-campeão' },
+            { key: 'terceiro_lugar_id', label: '3º lugar', selected: selectedTerceiro, placeholder: 'Selecione o 3º lugar' },
+            { key: 'artilheiro_pais_id', label: 'País do artilheiro', selected: selectedArtilheiroPais, placeholder: 'Selecione o país do artilheiro' },
+          ].map(({ key, label, selected, placeholder }, idx) => (
             <div key={key}>
-              <label className="block text-xs font-bold mb-2 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+              <label
+                className="block text-xs font-bold mb-2 uppercase tracking-wider flex items-center gap-1.5"
+                style={{ color: idx === 0 ? 'var(--highlight)' : 'var(--text-muted)' }}
+              >
+                {idx === 0 ? <Star size={12} /> : null}
                 {label}
               </label>
-              <input
-                type="text"
-                value={form[key as keyof typeof form]}
-                onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-                disabled={bloqueado}
-                placeholder={placeholder}
-                list={`dl-${key}`}
-                className={inputClass}
-                style={inputStyle}
-                onFocus={(e) => (e.currentTarget.style.borderColor = 'rgba(246,198,91,0.5)')}
-                onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)')}
-              />
-              <datalist id={`dl-${key}`}>
-                {candidatoNames.map((c) => <option key={c} value={c} />)}
-              </datalist>
+              <div className="relative">
+                {selected && (
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2">
+                    <CountryFlag pais={selected} size="sm" />
+                  </div>
+                )}
+                <select
+                  value={form[key as keyof typeof form]}
+                  onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+                  disabled={bloqueado}
+                  className={inputClass}
+                  style={{ ...inputStyle, paddingLeft: selected ? '3.5rem' : '0.75rem' }}
+                >
+                  <option value="">{placeholder}</option>
+                  {paisesOrdenados.map((p) => (
+                    <option key={p.id} value={p.id}>{p.nome}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           ))}
+
+          {/* Resumo da seleção com bandeiras */}
+          <div className="pt-2 space-y-2" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+            <p className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>Resumo</p>
+            {[
+              { label: 'Campeão', pais: selectedPais },
+              { label: 'Vice-campeão', pais: selectedVice },
+              { label: '3º lugar', pais: selectedTerceiro },
+              { label: 'País do artilheiro', pais: selectedArtilheiroPais },
+            ].map(({ label, pais }) => (
+              <div key={label} className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{label}</span>
+                {pais ? (
+                  <div className="flex items-center gap-2 min-w-0">
+                    <CountryFlag pais={pais} size="sm" />
+                    <span className="text-sm font-semibold truncate" style={{ color: 'var(--text)' }}>{pais.nome}</span>
+                  </div>
+                ) : (
+                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Não definido</span>
+                )}
+              </div>
+            ))}
+          </div>
 
           {/* Points breakdown */}
           {palpite && (
@@ -178,9 +183,7 @@ export function EspeciaisPage() {
               </p>
               {[
                 { label: 'Campeão', pts: palpite.pontuacao_campeao },
-                { label: 'Melhor jogador', pts: palpite.pontuacao_melhor_jogador },
                 { label: 'Artilheiro', pts: palpite.pontuacao_artilheiro },
-                { label: 'Goleiro', pts: palpite.pontuacao_melhor_goleiro },
               ].map(({ label, pts }) => (
                 <span
                   key={label}
