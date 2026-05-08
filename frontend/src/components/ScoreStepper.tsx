@@ -5,9 +5,10 @@ interface ScoreStepperProps {
   onChange: (v: number) => void
   disabled?: boolean
   label?: string
+  readOnly?: boolean
 }
 
-export function ScoreStepper({ value, onChange, disabled, label }: ScoreStepperProps) {
+export function ScoreStepper({ value, onChange, disabled, label, readOnly = false }: ScoreStepperProps) {
   const current = value ?? 0
 
   const decrement = () => {
@@ -16,6 +17,23 @@ export function ScoreStepper({ value, onChange, disabled, label }: ScoreStepperP
 
   const increment = () => {
     if (!disabled) onChange(current + 1)
+  }
+
+  if (readOnly) {
+    return (
+      <div className="w-12 h-10 flex items-center justify-center text-xl font-bold tabular-nums" aria-label={label}>
+        <div
+          className="w-12 h-10 flex items-center justify-center rounded-xl"
+          style={{
+            background: value !== null ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.10)',
+            color: value !== null ? 'var(--text)' : 'var(--text-muted)',
+          }}
+        >
+          {value !== null ? value : '–'}
+        </div>
+      </div>
+    )
   }
 
   return (

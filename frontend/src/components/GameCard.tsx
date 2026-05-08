@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, Trophy, Save } from 'lucide-react'
 import { CountryFlag } from './CountryFlag'
@@ -46,6 +46,21 @@ export function GameCard({
   const status = jogo.finalizado ? 'done' : bloqueado ? 'locked' : 'open'
   const temPalpite = palpite !== null
   const hasResult = jogo.placar_casa !== null && jogo.placar_fora !== null
+  const palpiteBaseCasa = palpite?.palpite_casa ?? null
+  const palpiteBaseFora = palpite?.palpite_fora ?? null
+  const palpiteBaseClassificado = palpite?.palpite_classificado_id ?? null
+  const palpiteAlterado =
+    casa !== palpiteBaseCasa ||
+    fora !== palpiteBaseFora ||
+    classificado !== palpiteBaseClassificado
+  const podeSalvar =
+    casa !== null && fora !== null && (jogo.tipo_fase !== 'mata_mata' || classificado !== null)
+
+  useEffect(() => {
+    setCasa(palpite?.palpite_casa ?? null)
+    setFora(palpite?.palpite_fora ?? null)
+    setClassificado(palpite?.palpite_classificado_id ?? null)
+  }, [jogo.id, palpite?.id, palpite?.palpite_casa, palpite?.palpite_fora, palpite?.palpite_classificado_id])
 
   const handleSave = async () => {
     if (casa === null || fora === null) return
@@ -113,6 +128,7 @@ export function GameCard({
               value={casa}
               onChange={setCasa}
               disabled={bloqueado}
+              readOnly={bloqueado}
               label={`Palpite ${jogo.pais_casa.nome}`}
             />
             <span className="mx-1 text-base font-bold" style={{ color: 'var(--text-muted)' }}>×</span>
@@ -120,6 +136,7 @@ export function GameCard({
               value={fora}
               onChange={setFora}
               disabled={bloqueado}
+              readOnly={bloqueado}
               label={`Palpite ${jogo.pais_fora.nome}`}
             />
           </div>
@@ -205,11 +222,11 @@ export function GameCard({
           <button
             type="button"
             onClick={handleSave}
-            disabled={saving || casa === null || fora === null || (jogo.tipo_fase === 'mata_mata' && !classificado)}
+            disabled={saving || !podeSalvar || (temPalpite && !palpiteAlterado)}
             className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 disabled:opacity-40"
             style={{
-              background: 'var(--accent)',
-              color: '#070A12',
+              background: temPalpite && !palpiteAlterado ? 'rgba(255,255,255,0.08)' : 'var(--accent)',
+              color: temPalpite && !palpiteAlterado ? 'var(--text-muted)' : '#070A12',
             }}
           >
             {saving ? (
@@ -217,7 +234,13 @@ export function GameCard({
             ) : (
               <Save size={14} />
             )}
-            {saving ? 'Salvando…' : temPalpite ? 'Atualizar palpite' : 'Salvar palpite'}
+            {saving
+              ? 'Salvando…'
+              : !temPalpite
+                ? 'Salvar palpite'
+                : palpiteAlterado
+                  ? 'Atualizar palpite'
+                  : 'Palpite salvo'}
           </button>
         )}
 

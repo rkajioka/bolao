@@ -189,29 +189,37 @@ export function JogosPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
-              className="space-y-6"
+              className="space-y-7 pt-2"
             >
-              <div className="flex gap-2 flex-wrap">
-                {gruposDisponiveis.map((grupo) => (
-                  <button
-                    key={grupo}
-                    onClick={() => setGrupoSelecionado(grupo)}
-                    className="px-3 py-1.5 rounded-xl text-sm font-bold transition-all duration-150"
-                    style={{
-                      background: grupoSelecionado === grupo ? 'var(--accent)' : 'rgba(255,255,255,0.06)',
-                      border: `1px solid ${grupoSelecionado === grupo ? 'var(--accent)' : 'rgba(255,255,255,0.10)'}`,
-                      color: grupoSelecionado === grupo ? '#070A12' : 'var(--text-muted)',
-                    }}
-                  >
-                    {grupo}
-                  </button>
-                ))}
+              <div className="space-y-2">
+                <p className="text-xs font-medium px-1" style={{ color: 'var(--text-muted)' }}>
+                  Selecionar grupo
+                </p>
+                <div className="flex gap-2 flex-wrap">
+                  {gruposDisponiveis.map((grupo) => (
+                    <button
+                      key={grupo}
+                      onClick={() => setGrupoSelecionado(grupo)}
+                      className="px-3 py-1.5 rounded-xl text-sm font-bold transition-all duration-150"
+                      style={{
+                        background: grupoSelecionado === grupo ? 'var(--accent)' : 'rgba(255,255,255,0.06)',
+                        border: `1px solid ${grupoSelecionado === grupo ? 'var(--accent)' : 'rgba(255,255,255,0.10)'}`,
+                        color: grupoSelecionado === grupo ? '#070A12' : 'var(--text-muted)',
+                      }}
+                    >
+                      {grupo}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-wider mb-3 px-1" style={{ color: 'var(--accent)' }}>
-                  Grupo {grupoSelecionado}
+                  Classificação do Grupo {grupoSelecionado}
                 </h3>
+                <p className="text-xs mb-3 px-1" style={{ color: 'var(--text-muted)' }}>
+                  Classificação calculada com base nos resultados oficiais cadastrados.
+                </p>
                 <GroupStandingsTable
                   grupoSelecionado={grupoSelecionado}
                   tabela={tabelaGrupo}
@@ -221,7 +229,7 @@ export function JogosPage() {
 
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-wider mb-3 px-1" style={{ color: 'var(--accent)' }}>
-                  Jogos do Grupo {grupoSelecionado}
+                  Palpites do Grupo {grupoSelecionado}
                 </h3>
 
                 {jogosDoGrupoSelecionado.length === 0 ? (
