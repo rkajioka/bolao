@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 class MarcadorBrasilPalpiteItem(BaseModel):
     nome_jogador: str = Field(min_length=1, max_length=255)
-    quantidade_gols: int = Field(ge=0)
+    quantidade_gols: int = Field(ge=0, le=15)
 
 
 class MarcadoresBrasilPalpiteSync(BaseModel):
@@ -16,7 +16,7 @@ class MarcadoresBrasilPalpiteSync(BaseModel):
 
 class MarcadorBrasilPalpiteBase(BaseModel):
     nome_jogador: str = Field(min_length=1, max_length=255)
-    quantidade_gols: int = Field(ge=0)
+    quantidade_gols: int = Field(ge=0, le=15)
 
 
 class MarcadorBrasilPalpiteRead(MarcadorBrasilPalpiteBase):
@@ -31,7 +31,7 @@ class MarcadorBrasilPalpiteRead(MarcadorBrasilPalpiteBase):
 
 class MarcadorBrasilResultadoBase(BaseModel):
     nome_jogador: str = Field(min_length=1, max_length=255)
-    quantidade_gols: int = Field(ge=0)
+    quantidade_gols: int = Field(ge=0, le=15)
 
 
 class MarcadoresBrasilResultadoSync(BaseModel):

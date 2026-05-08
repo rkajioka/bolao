@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     jwt_refresh_cookie_secure: bool = False
     jwt_refresh_cookie_samesite: str = "lax"
     jwt_refresh_cookie_path: str = "/auth"
+    rate_limit_login_requests: int = 5
+    rate_limit_refresh_requests: int = 20
+    rate_limit_window_seconds: int = 60
 
 
 @lru_cache

@@ -7,7 +7,7 @@ from app.database import get_db
 from app.models.pais import Pais
 from app.models.usuario import Usuario
 from app.schemas.pais import PaisCreate, PaisRead, PaisUpdate
-from app.services import pais_service
+from app.services import auditoria_admin_service, pais_service
 
 router = APIRouter(prefix="/paises", tags=["paises"])
 
@@ -31,13 +31,23 @@ def get_paises(
 def post_pais(
     data: PaisCreate,
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_admin),
 ) -> Pais:
     try:
-        return pais_service.create_pais(db, data)
+        row = pais_service.create_pais(db, data)
+        auditoria_admin_service.registrar_evento(
+            db, admin, acao="paises.post", entidade="pais", entidade_id=row.id, status="success"
+        )
+        return row
     except ValueError as e:
+        auditoria_admin_service.registrar_evento(
+            db, admin, acao="paises.post", entidade="pais", status="error", detalhes={"erro": str(e)}
+        )
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
     except IntegrityError as e:
+        auditoria_admin_service.registrar_evento(
+            db, admin, acao="paises.post", entidade="pais", status="error", detalhes={"erro": "integrity_error"}
+        )
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Não foi possível salvar (possível duplicidade)",
@@ -49,16 +59,32 @@ def put_pais(
     pais_id: int,
     data: PaisUpdate,
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_admin),
 ) -> Pais:
     p = pais_service.get_by_id(db, pais_id)
     if p is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="País não encontrado")
     try:
-        return pais_service.update_pais(db, p, data)
+        row = pais_service.update_pais(db, p, data)
+        auditoria_admin_service.registrar_evento(
+            db, admin, acao="paises.put", entidade="pais", entidade_id=pais_id, status="success"
+        )
+        return row
     except ValueError as e:
+        auditoria_admin_service.registrar_evento(
+            db, admin, acao="paises.put", entidade="pais", entidade_id=pais_id, status="error", detalhes={"erro": str(e)}
+        )
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
     except IntegrityError as e:
+        auditoria_admin_service.registrar_evento(
+            db,
+            admin,
+            acao="paises.put",
+            entidade="pais",
+            entidade_id=pais_id,
+            status="error",
+            detalhes={"erro": "integrity_error"},
+        )
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Não foi possível salvar (possível duplicidade)",

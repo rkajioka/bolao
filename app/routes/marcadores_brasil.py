@@ -18,7 +18,7 @@ from app.schemas.marcador_brasil import (
     MarcadoresBrasilPalpiteSync,
     MarcadoresBrasilResultadoSync,
 )
-from app.services import candidato_marcador_brasil_service, marcador_brasil_service
+from app.services import auditoria_admin_service, candidato_marcador_brasil_service, marcador_brasil_service
 
 router = APIRouter(prefix="/marcadores-brasil", tags=["marcadores-brasil"])
 
@@ -52,9 +52,13 @@ def get_candidatos_marcador_brasil(
 def post_candidato_marcador_brasil(
     data: CandidatoMarcadorBrasilCreate,
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_admin),
 ) -> CandidatoMarcadorBrasil:
-    return candidato_marcador_brasil_service.criar(db, data)
+    row = candidato_marcador_brasil_service.criar(db, data)
+    auditoria_admin_service.registrar_evento(
+        db, admin, acao="marcadores_brasil.post_candidato", entidade="candidato_marcador_brasil", entidade_id=row.id
+    )
+    return row
 
 
 @router.put("/candidatos/{candidato_id}", response_model=CandidatoMarcadorBrasilRead)
@@ -62,12 +66,16 @@ def put_candidato_marcador_brasil(
     candidato_id: int,
     data: CandidatoMarcadorBrasilUpdate,
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_admin),
 ) -> CandidatoMarcadorBrasil:
     row = candidato_marcador_brasil_service.get_by_id(db, candidato_id)
     if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Candidato não encontrado")
-    return candidato_marcador_brasil_service.atualizar(db, row, data)
+    row = candidato_marcador_brasil_service.atualizar(db, row, data)
+    auditoria_admin_service.registrar_evento(
+        db, admin, acao="marcadores_brasil.put_candidato", entidade="candidato_marcador_brasil", entidade_id=candidato_id
+    )
+    return row
 
 
 @router.get("/me/{jogo_id}", response_model=list[MarcadorBrasilPalpiteRead])
@@ -136,11 +144,29 @@ def post_marcadores_resultado(
     jogo_id: int,
     body: MarcadoresBrasilResultadoSync,
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_admin),
 ) -> list[MarcadorBrasilResultado]:
     try:
-        return marcador_brasil_service.sincronizar_marcadores_resultado_admin(db, jogo_id, body)
+        rows = marcador_brasil_service.sincronizar_marcadores_resultado_admin(db, jogo_id, body)
+        auditoria_admin_service.registrar_evento(
+            db,
+            admin,
+            acao="marcadores_brasil.post_resultado",
+            entidade="marcador_brasil_resultado",
+            entidade_id=jogo_id,
+            detalhes={"linhas": len(rows)},
+        )
+        return rows
     except ValueError as e:
+        auditoria_admin_service.registrar_evento(
+            db,
+            admin,
+            acao="marcadores_brasil.post_resultado",
+            entidade="marcador_brasil_resultado",
+            entidade_id=jogo_id,
+            status="error",
+            detalhes={"erro": str(e)},
+        )
         raise _http_value_error(e) from e
     except IntegrityError as e:
         raise HTTPException(
@@ -154,11 +180,29 @@ def put_marcadores_resultado(
     jogo_id: int,
     body: MarcadoresBrasilResultadoSync,
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_admin),
 ) -> list[MarcadorBrasilResultado]:
     try:
-        return marcador_brasil_service.sincronizar_marcadores_resultado_admin(db, jogo_id, body)
+        rows = marcador_brasil_service.sincronizar_marcadores_resultado_admin(db, jogo_id, body)
+        auditoria_admin_service.registrar_evento(
+            db,
+            admin,
+            acao="marcadores_brasil.put_resultado",
+            entidade="marcador_brasil_resultado",
+            entidade_id=jogo_id,
+            detalhes={"linhas": len(rows)},
+        )
+        return rows
     except ValueError as e:
+        auditoria_admin_service.registrar_evento(
+            db,
+            admin,
+            acao="marcadores_brasil.put_resultado",
+            entidade="marcador_brasil_resultado",
+            entidade_id=jogo_id,
+            status="error",
+            detalhes={"erro": str(e)},
+        )
         raise _http_value_error(e) from e
     except IntegrityError as e:
         raise HTTPException(
@@ -171,11 +215,27 @@ def put_marcadores_resultado(
 def patch_recalcular_marcadores(
     jogo_id: int,
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_admin),
 ) -> None:
     """Recalcula pontuação dos palpites do jogo (inclui bônus de marcadores do Brasil)."""
     try:
         marcador_brasil_service.obter_jogo_que_envolve_brasil(db, jogo_id)
     except ValueError as e:
+        auditoria_admin_service.registrar_evento(
+            db,
+            admin,
+            acao="marcadores_brasil.patch_recalcular",
+            entidade="marcador_brasil_resultado",
+            entidade_id=jogo_id,
+            status="error",
+            detalhes={"erro": str(e)},
+        )
         raise _http_value_error(e) from e
     marcador_brasil_service.recalcular_marcadores_brasil_stub(db, jogo_id)
+    auditoria_admin_service.registrar_evento(
+        db,
+        admin,
+        acao="marcadores_brasil.patch_recalcular",
+        entidade="marcador_brasil_resultado",
+        entidade_id=jogo_id,
+    )

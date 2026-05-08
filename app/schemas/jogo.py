@@ -67,12 +67,12 @@ class JogoUpdate(BaseModel):
 class JogoResultadoPatch(BaseModel):
     """Atualização parcial do resultado (admin). Campos omitidos permanecem como estão."""
 
-    placar_casa: int | None = Field(default=None, ge=0)
-    placar_fora: int | None = Field(default=None, ge=0)
+    placar_casa: int | None = Field(default=None, ge=0, le=30)
+    placar_fora: int | None = Field(default=None, ge=0, le=30)
     teve_prorrogacao: bool | None = None
     foi_para_penaltis: bool | None = None
-    penaltis_casa: int | None = Field(default=None, ge=0)
-    penaltis_fora: int | None = Field(default=None, ge=0)
+    penaltis_casa: int | None = Field(default=None, ge=0, le=30)
+    penaltis_fora: int | None = Field(default=None, ge=0, le=30)
     classificado_id: int | None = Field(default=None, ge=1)
 
     @model_validator(mode="after")

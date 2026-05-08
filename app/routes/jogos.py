@@ -14,7 +14,7 @@ from app.schemas.jogo import (
     JogoUpdate,
     JogosPorGrupoResponse,
 )
-from app.services import jogo_service
+from app.services import auditoria_admin_service, jogo_service
 
 router = APIRouter(prefix="/jogos", tags=["jogos"])
 
@@ -69,13 +69,28 @@ def get_jogos_brasil(
 def post_jogo(
     data: JogoCreate,
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_admin),
 ) -> Jogo:
     try:
-        return jogo_service.create_jogo(db, data)
+        row = jogo_service.create_jogo(db, data)
+        auditoria_admin_service.registrar_evento(
+            db,
+            admin,
+            acao="jogos.post",
+            entidade="jogo",
+            entidade_id=row.id,
+            status="success",
+        )
+        return row
     except ValueError as e:
+        auditoria_admin_service.registrar_evento(
+            db, admin, acao="jogos.post", entidade="jogo", status="error", detalhes={"erro": str(e)}
+        )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
     except IntegrityError as e:
+        auditoria_admin_service.registrar_evento(
+            db, admin, acao="jogos.post", entidade="jogo", status="error", detalhes={"erro": "integrity_error"}
+        )
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Não foi possível salvar o jogo (dados inválidos ou referência inexistente)",
@@ -87,16 +102,32 @@ def put_jogo(
     jogo_id: int,
     data: JogoUpdate,
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_admin),
 ) -> Jogo:
     jogo = jogo_service.get_by_id(db, jogo_id)
     if jogo is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Jogo não encontrado")
     try:
-        return jogo_service.update_jogo(db, jogo, data)
+        row = jogo_service.update_jogo(db, jogo, data)
+        auditoria_admin_service.registrar_evento(
+            db, admin, acao="jogos.put", entidade="jogo", entidade_id=jogo_id, status="success"
+        )
+        return row
     except ValueError as e:
+        auditoria_admin_service.registrar_evento(
+            db, admin, acao="jogos.put", entidade="jogo", entidade_id=jogo_id, status="error", detalhes={"erro": str(e)}
+        )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
     except IntegrityError as e:
+        auditoria_admin_service.registrar_evento(
+            db,
+            admin,
+            acao="jogos.put",
+            entidade="jogo",
+            entidade_id=jogo_id,
+            status="error",
+            detalhes={"erro": "integrity_error"},
+        )
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Não foi possível salvar o jogo (dados inválidos ou referência inexistente)",
@@ -108,16 +139,38 @@ def patch_jogo_resultado(
     jogo_id: int,
     data: JogoResultadoPatch,
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_admin),
 ) -> Jogo:
     jogo = jogo_service.get_by_id(db, jogo_id)
     if jogo is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Jogo não encontrado")
     try:
-        return jogo_service.patch_resultado(db, jogo, data)
+        row = jogo_service.patch_resultado(db, jogo, data)
+        auditoria_admin_service.registrar_evento(
+            db, admin, acao="jogos.patch_resultado", entidade="jogo", entidade_id=jogo_id, status="success"
+        )
+        return row
     except ValueError as e:
+        auditoria_admin_service.registrar_evento(
+            db,
+            admin,
+            acao="jogos.patch_resultado",
+            entidade="jogo",
+            entidade_id=jogo_id,
+            status="error",
+            detalhes={"erro": str(e)},
+        )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
     except IntegrityError as e:
+        auditoria_admin_service.registrar_evento(
+            db,
+            admin,
+            acao="jogos.patch_resultado",
+            entidade="jogo",
+            entidade_id=jogo_id,
+            status="error",
+            detalhes={"erro": "integrity_error"},
+        )
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Não foi possível salvar o resultado",
@@ -128,12 +181,25 @@ def patch_jogo_resultado(
 def patch_jogo_finalizar(
     jogo_id: int,
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_admin),
 ) -> Jogo:
     jogo = jogo_service.get_by_id(db, jogo_id)
     if jogo is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Jogo não encontrado")
     try:
-        return jogo_service.patch_finalizar(db, jogo)
+        row = jogo_service.patch_finalizar(db, jogo)
+        auditoria_admin_service.registrar_evento(
+            db, admin, acao="jogos.patch_finalizar", entidade="jogo", entidade_id=jogo_id, status="success"
+        )
+        return row
     except ValueError as e:
+        auditoria_admin_service.registrar_evento(
+            db,
+            admin,
+            acao="jogos.patch_finalizar",
+            entidade="jogo",
+            entidade_id=jogo_id,
+            status="error",
+            detalhes={"erro": str(e)},
+        )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e

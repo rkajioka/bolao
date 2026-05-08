@@ -1,4 +1,5 @@
 from app.models.candidato_marcador_brasil import CandidatoMarcadorBrasil
+from app.models.auditoria_admin import AuditoriaAdmin
 from app.models.configuracao_bolao import ConfiguracaoBolao
 from app.models.jogo import Jogo
 from app.models.marcador_brasil import MarcadorBrasilPalpite, MarcadorBrasilResultado
@@ -23,4 +24,5 @@ __all__ = [
     "MarcadorBrasilResultado",
     "ConfiguracaoBolao",
     "CandidatoMarcadorBrasil",
+    "AuditoriaAdmin",
 ]

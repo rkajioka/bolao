@@ -9,7 +9,7 @@ export function RegrasPage() {
         <div>
           <h3 className="text-sm font-bold mb-1.5">Palpites especiais</h3>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            São preenchidos apenas uma vez e fecham 1 hora antes do primeiro jogo da Copa (horário de Brasília).
+            Podem ser atualizados enquanto estiverem abertos e fecham 1 hora antes do primeiro jogo da Copa (horário de Brasília).
           </p>
         </div>
 

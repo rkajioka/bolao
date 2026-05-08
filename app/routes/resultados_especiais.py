@@ -7,7 +7,7 @@ from app.database import get_db
 from app.models.resultado_especial import ResultadoEspecial
 from app.models.usuario import Usuario
 from app.schemas.resultado_especial import ResultadoEspecialRead, ResultadoEspecialWrite
-from app.services import resultado_especial_service
+from app.services import auditoria_admin_service, resultado_especial_service
 
 router = APIRouter(prefix="/resultados-especiais", tags=["resultados-especiais"])
 
@@ -33,13 +33,33 @@ def get_resultado_especial(
 def post_resultado_especial(
     data: ResultadoEspecialWrite,
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_admin),
 ) -> ResultadoEspecial:
     try:
-        return resultado_especial_service.criar(db, data)
+        row = resultado_especial_service.criar(db, data)
+        auditoria_admin_service.registrar_evento(
+            db, admin, acao="resultados_especiais.post", entidade="resultado_especial", entidade_id=row.id, status="success"
+        )
+        return row
     except ValueError as e:
+        auditoria_admin_service.registrar_evento(
+            db,
+            admin,
+            acao="resultados_especiais.post",
+            entidade="resultado_especial",
+            status="error",
+            detalhes={"erro": str(e)},
+        )
         raise _http(e) from e
     except IntegrityError as e:
+        auditoria_admin_service.registrar_evento(
+            db,
+            admin,
+            acao="resultados_especiais.post",
+            entidade="resultado_especial",
+            status="error",
+            detalhes={"erro": "integrity_error"},
+        )
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Não foi possível salvar o resultado especial",
@@ -50,13 +70,33 @@ def post_resultado_especial(
 def put_resultado_especial(
     data: ResultadoEspecialWrite,
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_admin),
 ) -> ResultadoEspecial:
     try:
-        return resultado_especial_service.atualizar(db, data)
+        row = resultado_especial_service.atualizar(db, data)
+        auditoria_admin_service.registrar_evento(
+            db, admin, acao="resultados_especiais.put", entidade="resultado_especial", entidade_id=row.id, status="success"
+        )
+        return row
     except ValueError as e:
+        auditoria_admin_service.registrar_evento(
+            db,
+            admin,
+            acao="resultados_especiais.put",
+            entidade="resultado_especial",
+            status="error",
+            detalhes={"erro": str(e)},
+        )
         raise _http(e) from e
     except IntegrityError as e:
+        auditoria_admin_service.registrar_evento(
+            db,
+            admin,
+            acao="resultados_especiais.put",
+            entidade="resultado_especial",
+            status="error",
+            detalhes={"erro": "integrity_error"},
+        )
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Não foi possível salvar o resultado especial",
@@ -66,9 +106,26 @@ def put_resultado_especial(
 @router.patch("/finalizar", response_model=ResultadoEspecialRead)
 def patch_resultado_especial_finalizar(
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_admin),
 ) -> ResultadoEspecial:
     try:
-        return resultado_especial_service.finalizar(db)
+        row = resultado_especial_service.finalizar(db)
+        auditoria_admin_service.registrar_evento(
+            db,
+            admin,
+            acao="resultados_especiais.patch_finalizar",
+            entidade="resultado_especial",
+            entidade_id=row.id,
+            status="success",
+        )
+        return row
     except ValueError as e:
+        auditoria_admin_service.registrar_evento(
+            db,
+            admin,
+            acao="resultados_especiais.patch_finalizar",
+            entidade="resultado_especial",
+            status="error",
+            detalhes={"erro": str(e)},
+        )
         raise _http(e) from e

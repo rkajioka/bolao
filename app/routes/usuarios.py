@@ -12,7 +12,7 @@ from app.schemas.usuario import (
     UsuarioStatusUpdate,
     UsuarioUpdate,
 )
-from app.services import usuario_service
+from app.services import auditoria_admin_service, usuario_service
 
 router = APIRouter(prefix="/usuarios", tags=["usuarios"])
 
@@ -36,11 +36,18 @@ def list_usuarios(
 def create_usuario(
     data: UsuarioCreate,
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_admin),
 ) -> Usuario:
     try:
-        return usuario_service.create_usuario(db, data)
+        row = usuario_service.create_usuario(db, data)
+        auditoria_admin_service.registrar_evento(
+            db, admin, acao="usuarios.post", entidade="usuario", entidade_id=row.id, status="success"
+        )
+        return row
     except IntegrityError as exc:
+        auditoria_admin_service.registrar_evento(
+            db, admin, acao="usuarios.post", entidade="usuario", status="error", detalhes={"erro": "integrity_error"}
+        )
         raise _integrity_error() from exc
 
 
@@ -61,14 +68,27 @@ def put_usuario(
     usuario_id: int,
     data: UsuarioUpdate,
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_admin),
 ) -> Usuario:
     u = usuario_service.get_by_id(db, usuario_id)
     if u is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado")
     try:
-        return usuario_service.update_usuario(db, u, data)
+        row = usuario_service.update_usuario(db, u, data)
+        auditoria_admin_service.registrar_evento(
+            db, admin, acao="usuarios.put", entidade="usuario", entidade_id=usuario_id, status="success"
+        )
+        return row
     except IntegrityError as exc:
+        auditoria_admin_service.registrar_evento(
+            db,
+            admin,
+            acao="usuarios.put",
+            entidade="usuario",
+            entidade_id=usuario_id,
+            status="error",
+            detalhes={"erro": "integrity_error"},
+        )
         raise _integrity_error() from exc
 
 
@@ -77,12 +97,22 @@ def patch_usuario_status(
     usuario_id: int,
     data: UsuarioStatusUpdate,
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_admin),
 ) -> Usuario:
     u = usuario_service.get_by_id(db, usuario_id)
     if u is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado")
-    return usuario_service.set_ativo(db, u, data.ativo)
+    row = usuario_service.set_ativo(db, u, data.ativo)
+    auditoria_admin_service.registrar_evento(
+        db,
+        admin,
+        acao="usuarios.patch_status",
+        entidade="usuario",
+        entidade_id=usuario_id,
+        status="success",
+        detalhes={"ativo": data.ativo},
+    )
+    return row
 
 
 @router.patch("/{usuario_id}/reset-password", status_code=status.HTTP_204_NO_CONTENT)
@@ -90,9 +120,12 @@ def patch_reset_password(
     usuario_id: int,
     data: UsuarioResetPasswordBody,
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_admin),
 ) -> None:
     u = usuario_service.get_by_id(db, usuario_id)
     if u is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado")
     usuario_service.reset_password(db, u, data)
+    auditoria_admin_service.registrar_evento(
+        db, admin, acao="usuarios.patch_reset_password", entidade="usuario", entidade_id=usuario_id, status="success"
+    )

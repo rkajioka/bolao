@@ -6,8 +6,8 @@ from app.schemas.jogo import JogoRead
 
 
 class PalpiteJogoBase(BaseModel):
-    palpite_casa: int | None = Field(default=None, ge=0)
-    palpite_fora: int | None = Field(default=None, ge=0)
+    palpite_casa: int | None = Field(default=None, ge=0, le=30)
+    palpite_fora: int | None = Field(default=None, ge=0, le=30)
     palpite_classificado_id: int | None = Field(default=None, ge=1)
 
 
@@ -22,8 +22,8 @@ class PalpiteJogoCreate(PalpiteJogoBase):
 
 
 class PalpiteJogoUpdate(BaseModel):
-    palpite_casa: int | None = Field(default=None, ge=0)
-    palpite_fora: int | None = Field(default=None, ge=0)
+    palpite_casa: int | None = Field(default=None, ge=0, le=30)
+    palpite_fora: int | None = Field(default=None, ge=0, le=30)
     palpite_classificado_id: int | None = Field(default=None, ge=1)
 
     @model_validator(mode="after")

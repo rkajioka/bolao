@@ -15,7 +15,7 @@ Fluxo principal:
 Estado atual (análise objetiva):
 - **Partes maduras**: autenticação JWT básica, proteção backend por papel, fluxo de palpites com bloqueio temporal, cálculo de pontuação por jogo/especiais, ranking e UI principal responsiva.
 - **Partes parciais**: insights de ranking recém-introduzidos, alguns textos/regras ainda em transição, administração concentrada em uma tela extensa.
-- **Partes frágeis**: ausência de rate limiting, sem refresh token, token em `localStorage`, sem middleware de CORS explícito em `main`, ausência de trilha de auditoria administrativa.
+- **Partes frágeis**: token em `localStorage` (risco residual de XSS) e ausência de middleware de CORS explícito em `main`.
 
 ---
 
@@ -41,7 +41,7 @@ Estado atual (análise objetiva):
 
 Em `frontend/src/App.tsx`:
 - Públicas: `/login`, `/primeiro-acesso`.
-- Protegidas: `/jogos`, `/especiais`, `/regras`, `/grupos`, `/ranking`.
+- Protegidas: `/jogos`, `/especiais`, `/regras`, `/ranking`.
 - Admin: `/admin` (guard visual + checagem backend nas APIs).
 
 ### Rotas backend/API
@@ -245,10 +245,10 @@ Exibir classificação oficial por grupo e permitir palpites no contexto de grup
 - Desempate implementado no serviço de grupo (pontos/saldo/gols etc.; fallback conforme implementação).
 
 #### Problemas encontrados
-- Existe rota `/grupos` antiga no frontend (`GruposPage`) e integração dentro de `JogosPage`; possível dívida de UX/IA.
+- Fluxo consolidado em `JogosPage` para visão por grupo e cronológica.
 
 #### Melhorias recomendadas
-- Consolidar definitivamente em um único fluxo para reduzir confusão de manutenção.
+- Manter documentação e navegação alinhadas ao fluxo único de palpites.
 
 ### 5.4 Ranking
 
@@ -303,7 +303,7 @@ Mostrar classificação geral de usuários por pontos.
   - salvar resultado chama recálculo de palpites do jogo.
   - finalizar jogo também recalculta.
 - **Risco**:
-  - sem trilha de auditoria (“quem alterou o quê e quando”).
+  - trilha de auditoria depende de manutenção contínua da cobertura em novas rotas administrativas.
 - **Melhoria**:
   - log de auditoria por alteração administrativa.
 
@@ -453,8 +453,8 @@ Mostrar classificação geral de usuários por pontos.
 - `app/core/config.py`: segredo JWT default fraco em código (mitigável por `.env`, mas arriscado por padrão).
 - `frontend/src/lib/api.ts`: token em `localStorage`.
 - `app/main.py`: ausência de CORS explícito.
-- Ausência de rate limiting em `/auth/login`.
-- Sem trilha de auditoria administrativa.
+- Rate limiting aplicado em `/auth/login` e `/auth/refresh`.
+- Trilha de auditoria administrativa implementada para rotas de mutação admin.
 
 ---
 
@@ -544,13 +544,13 @@ Mostrar classificação geral de usuários por pontos.
 | -- | ---- | ---- | --------- | ---------- | ------- | ------------ |
 | B01 | Segurança | Risco de segurança | JWT secret default fraco em config pode vazar para ambiente mal configurado | Alta | Compromete autenticação | Exigir secret forte por ambiente e falhar startup sem override |
 | B02 | Segurança | Risco de segurança | Token em `localStorage` aumenta risco em cenário XSS | Média | Sequestro de sessão | Considerar estratégia com cookie `HttpOnly` + proteção adicional |
-| B03 | Segurança | Falha de proteção operacional | Ausência de rate limit em login e endpoints sensíveis | Alta | Brute force/abuso | Adicionar throttling por IP/usuário |
-| B04 | Backend | Dívida técnica | Sem trilha de auditoria de ações admin | Média | Baixa rastreabilidade de incidentes | Registrar eventos críticos (quem, quando, antes/depois) |
-| B05 | Regras | Melhoria de produto | Mensagens e documentação de especiais ainda podem evoluir | Baixa | Ruído de entendimento | Manter documentação e regras de especiais alinhadas ao modelo atual |
+| B03 | Segurança | Mitigado | Rate limit aplicado em login e refresh por janela | Baixa | Reduz brute force/abuso | Manter ajuste de limites por ambiente |
+| B04 | Backend | Mitigado | Trilha de auditoria admin em rotas de mutação | Baixa | Melhora rastreabilidade operacional | Expandir cobertura quando novas rotas admin forem criadas |
+| B05 | Regras | Mitigado | Mensagem de especiais alinhada à regra real (edição até bloqueio) | Baixa | Reduz ruído de entendimento | Revisar copy sempre que regra de produto mudar |
 | B06 | UX | Problema de UX | Diferença fechado vs finalizado pode confundir usuário | Média | Erro de percepção | Refinar copy, badges e ajuda contextual |
 | B07 | Infra/API | Risco de segurança | CORS/headers de segurança não explícitos | Média | Exposição em deploy aberto | Definir CORS por ambiente e hardening de headers |
-| B08 | Dados | Falha de validação | Sem teto superior para placares/quantidades | Baixa | Dados absurdos possíveis | Definir limites máximos razoáveis em schema |
-| B09 | Frontend | Dívida técnica | Rota/página `/grupos` ainda existe apesar da integração em `Palpites` | Baixa | Complexidade de manutenção | Remover ou descontinuar fluxo duplicado |
+| B08 | Dados | Mitigado | Limites máximos definidos para placar/pênaltis e quantidade de gols | Baixa | Evita payloads absurdos | Ajustar limites se houver necessidade de produto |
+| B09 | Frontend | Mitigado | Rota duplicada `/grupos` descontinuada com redirecionamento para `/jogos` | Baixa | Remove duplicidade de navegação | Manter fluxo único em `JogosPage` |
 | B10 | Produto | Regra de negócio indefinida | Critério formal de desempate no ranking além nome não explicitado | Baixa | Contestação de ranking | Definir regra oficial e exibir na UI |
 
 ---
@@ -560,11 +560,9 @@ Mostrar classificação geral de usuários por pontos.
 ### Essenciais para produção
 
 - Hardening de segurança operacional:
-  - rate limiting de login/API;
   - política forte de JWT secret;
   - CORS/headers definidos por ambiente.
-- Auditoria administrativa de alterações críticas.
-- Refinos de comunicação de regras de especiais.
+- Auditoria administrativa contínua para novas operações críticas.
 
 ### Importantes, mas não bloqueantes
 
@@ -585,9 +583,7 @@ Mostrar classificação geral de usuários por pontos.
 ### Prioridade 1 — Segurança e integridade
 
 - Tornar obrigatório `JWT_SECRET` forte por ambiente.
-- Implementar rate limiting (especialmente `/auth/login`).
 - Definir CORS explícito e headers de segurança.
-- Introduzir trilha de auditoria para ações admin.
 - Revisar estratégia de armazenamento de sessão/token.
 
 ### Prioridade 2 — Fluxo principal do bolão
@@ -624,19 +620,19 @@ Mostrar classificação geral de usuários por pontos.
 
 ### 5 maiores riscos hoje
 
-1. Ausência de rate limiting em autenticação.
+1. Ajuste contínuo dos limites de rate limiting em autenticação conforme carga real.
 2. JWT secret default inseguro se ambiente for mal configurado.
 3. Token em `localStorage` (impacto em cenário XSS).
-4. Ausência de trilha de auditoria admin.
-5. Comunicação de regras de especiais ainda pode ser refinada.
+4. CORS/headers de segurança ainda não explícitos no `main`.
+5. Manutenção da cobertura de auditoria em novas rotas administrativas.
 
 ### 5 primeiras ações recomendadas
 
 1. Forçar secret JWT forte e fail-fast sem configuração segura.
-2. Implementar rate limit e proteção anti brute force.
-3. Configurar CORS/headers de segurança por ambiente.
-4. Implementar auditoria de operações administrativas.
-5. Refinar comunicação final de regras de especiais.
+2. Configurar CORS/headers de segurança por ambiente.
+3. Revisar estratégia de armazenamento de token de acesso no frontend.
+4. Garantir cobertura de auditoria em qualquer nova mutação admin.
+5. Manter documentação e regras de especiais alinhadas a mudanças de produto.
 
 ### O que precisa estar resolvido antes de liberar para todos os usuários?
 

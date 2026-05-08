@@ -16,6 +16,7 @@ from app.schemas.usuario import (
     UsuarioRead,
 )
 from app.services import auth_service
+from app.services.rate_limit_service import enforce_limit, reset_key
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 settings = get_settings()
@@ -43,10 +44,23 @@ def _clear_refresh_cookie(response: Response) -> None:
 @router.post("/login", response_model=LoginResponse)
 def post_login(
     data: LoginRequest,
+    request: Request,
     response: Response,
     db: Session = Depends(get_db),
 ) -> LoginResponse:
-    access_token, refresh_token, primeiro = auth_service.login(db, data)
+    ip = request.client.host if request.client else "unknown"
+    login_key = f"auth:login_failed:{ip}:{str(data.email).lower()}"
+    try:
+        access_token, refresh_token, primeiro = auth_service.login(db, data)
+    except HTTPException as exc:
+        if exc.status_code == status.HTTP_401_UNAUTHORIZED:
+            enforce_limit(
+                key=login_key,
+                limit=settings.rate_limit_login_requests,
+                window_seconds=settings.rate_limit_window_seconds,
+            )
+        raise
+    reset_key(login_key)
     _set_refresh_cookie(response, refresh_token)
     return LoginResponse(access_token=access_token, primeiro_login=primeiro)
 
@@ -57,6 +71,12 @@ def post_refresh(
     response: Response,
     db: Session = Depends(get_db),
 ) -> AccessTokenResponse:
+    ip = request.client.host if request.client else "unknown"
+    enforce_limit(
+        key=f"auth:refresh:{ip}",
+        limit=settings.rate_limit_refresh_requests,
+        window_seconds=settings.rate_limit_window_seconds,
+    )
     cookie = request.cookies.get(settings.jwt_refresh_cookie_name)
     if not cookie:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token não informado")
