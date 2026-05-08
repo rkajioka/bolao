@@ -6,7 +6,8 @@ import { RankingCardSkeleton } from '@/components/Skeleton'
 import { SectionHeader } from '@/components/SectionHeader'
 import { EmptyState } from '@/components/EmptyState'
 import { imgUrl, getInitials } from '@/lib/utils'
-import type { RankingResponse } from '@/types'
+import { CountryFlag } from '@/components/CountryFlag'
+import type { RankingResponse, Pais } from '@/types'
 import { useAuth } from '@/features/auth/AuthContext'
 
 const podiumColors = [
@@ -21,6 +22,10 @@ export function RankingPage() {
     queryKey: ['ranking'],
     queryFn: () => api.get<RankingResponse>('/ranking'),
   })
+  const { data: paises = [] } = useQuery({
+    queryKey: ['paises'],
+    queryFn: () => api.get<Pais[]>('/paises'),
+  })
 
   const linhas = data?.linhas ?? []
   const top3 = linhas.slice(0, 3)
@@ -28,6 +33,7 @@ export function RankingPage() {
   const listaTop50 = top50.slice(3)
   const linhaUsuario = linhas.find((l) => l.usuario_id === user?.id)
   const usuarioForaTop50 = Boolean(linhaUsuario && linhaUsuario.posicao > 50)
+  const getPais = (id?: number | null) => paises.find((p) => p.id === id) ?? null
 
   return (
     <div className="space-y-4">
@@ -120,6 +126,17 @@ export function RankingPage() {
                         {linha.pontos_totais}
                       </p>
                       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>pts</p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {[linha.campeao_id, linha.vice_campeao_id, linha.terceiro_lugar_id, linha.artilheiro_pais_id]
+                        .map((id) => getPais(id))
+                        .filter(Boolean)
+                        .slice(0, 4)
+                        .map((pais) => (
+                          <div key={pais!.id} title={pais!.nome}>
+                            <CountryFlag pais={pais!} size="sm" />
+                          </div>
+                        ))}
                     </div>
                     {idx === 0 && <Medal size={14} style={{ color: p.color }} />}
                   </motion.div>

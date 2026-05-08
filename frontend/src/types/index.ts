@@ -84,6 +84,10 @@ export interface RankingLinha {
   nome: string
   funcao: string
   imagem_perfil: string | null
+  campeao_id?: number | null
+  vice_campeao_id?: number | null
+  terceiro_lugar_id?: number | null
+  artilheiro_pais_id?: number | null
   pontos_jogos: number
   pontos_especiais: number
   bonus_brasil: number

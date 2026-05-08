@@ -9,6 +9,10 @@ class RankingLinhaRead(BaseModel):
     nome: str
     funcao: str | None = None
     imagem_perfil: str | None = None
+    campeao_id: int | None = None
+    vice_campeao_id: int | None = None
+    terceiro_lugar_id: int | None = None
+    artilheiro_pais_id: int | None = None
     pontos_jogos: int = Field(ge=0, description="Placar + resultado + classificado (sem bônus Brasil)")
     pontos_especiais: int = Field(ge=0)
     bonus_brasil: int = Field(ge=0, description="Soma de pontuacao_marcadores_brasil nos palpites de jogos")

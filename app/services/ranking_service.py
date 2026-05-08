@@ -23,6 +23,10 @@ class LinhaRankingInterna:
     nome: str
     funcao: str | None
     imagem_perfil: str | None
+    campeao_id: int | None
+    vice_campeao_id: int | None
+    terceiro_lugar_id: int | None
+    artilheiro_pais_id: int | None
     pontos_jogos: int
     pontos_especiais: int
     bonus_brasil: int
@@ -62,6 +66,10 @@ def listar_ranking(db: Session) -> list[LinhaRankingInterna]:
             Usuario.nome,
             Usuario.funcao,
             Usuario.imagem_perfil,
+            PalpiteEspecial.campeao_id,
+            PalpiteEspecial.vice_campeao_id,
+            PalpiteEspecial.terceiro_lugar_id,
+            PalpiteEspecial.artilheiro_pais_id,
             pj.label("pontos_jogos"),
             pe.label("pontos_especiais"),
             pb.label("bonus_brasil"),
@@ -81,6 +89,10 @@ def listar_ranking(db: Session) -> list[LinhaRankingInterna]:
             nome=str(r.nome),
             funcao=r.funcao,
             imagem_perfil=r.imagem_perfil,
+            campeao_id=r.campeao_id,
+            vice_campeao_id=r.vice_campeao_id,
+            terceiro_lugar_id=r.terceiro_lugar_id,
+            artilheiro_pais_id=r.artilheiro_pais_id,
             pontos_jogos=int(r.pontos_jogos),
             pontos_especiais=int(r.pontos_especiais),
             bonus_brasil=int(r.bonus_brasil),
