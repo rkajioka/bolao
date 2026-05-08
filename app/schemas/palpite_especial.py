@@ -49,6 +49,9 @@ class PalpiteEspecialRead(PalpiteEspecialBase):
     id: int
     usuario_id: int
     pontuacao_campeao: int
+    pontuacao_vice_campeao: int
+    pontuacao_terceiro_lugar: int
+    pontuacao_artilheiro_pais: int
     pontuacao_melhor_jogador: int
     pontuacao_artilheiro: int
     pontuacao_melhor_goleiro: int

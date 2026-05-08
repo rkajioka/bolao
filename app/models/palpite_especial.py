@@ -22,6 +22,9 @@ class PalpiteEspecial(Base):
     melhor_goleiro: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     pontuacao_campeao: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    pontuacao_vice_campeao: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    pontuacao_terceiro_lugar: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    pontuacao_artilheiro_pais: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     pontuacao_melhor_jogador: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     pontuacao_artilheiro: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     pontuacao_melhor_goleiro: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

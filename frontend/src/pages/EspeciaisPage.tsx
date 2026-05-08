@@ -164,7 +164,9 @@ export function EspeciaisPage() {
               </p>
               {[
                 { label: 'Campeão', pts: palpite.pontuacao_campeao },
-                { label: 'Artilheiro', pts: palpite.pontuacao_artilheiro },
+                { label: 'Vice-campeão', pts: palpite.pontuacao_vice_campeao ?? 0 },
+                { label: '3º lugar', pts: palpite.pontuacao_terceiro_lugar ?? 0 },
+                { label: 'País do artilheiro', pts: palpite.pontuacao_artilheiro_pais ?? 0 },
               ].map(({ label, pts }) => (
                 <span
                   key={label}

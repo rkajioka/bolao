@@ -27,7 +27,10 @@ def ensure_primeira_configuracao(db: Session) -> ConfiguracaoBolao:
         return c
     c = ConfiguracaoBolao(
         data_bloqueio_palpites_especiais=None,
-        pontos_campeao=25,
+        pontos_campeao=35,
+        pontos_vice_campeao=25,
+        pontos_terceiro_lugar=20,
+        pontos_artilheiro_pais=20,
         pontos_melhor_jogador=10,
         pontos_artilheiro=10,
         pontos_melhor_goleiro=10,
@@ -47,6 +50,9 @@ def atualizar_configuracao(db: Session, data: ConfiguracaoBolaoWrite) -> Configu
     c = ensure_primeira_configuracao(db)
     c.data_bloqueio_palpites_especiais = data.data_bloqueio_palpites_especiais
     c.pontos_campeao = data.pontos_campeao
+    c.pontos_vice_campeao = data.pontos_vice_campeao
+    c.pontos_terceiro_lugar = data.pontos_terceiro_lugar
+    c.pontos_artilheiro_pais = data.pontos_artilheiro_pais
     c.pontos_melhor_jogador = data.pontos_melhor_jogador
     c.pontos_artilheiro = data.pontos_artilheiro
     c.pontos_melhor_goleiro = data.pontos_melhor_goleiro

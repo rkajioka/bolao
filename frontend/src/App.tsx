@@ -8,6 +8,7 @@ import { RankingPage } from '@/pages/RankingPage'
 import { EspeciaisPage } from '@/pages/EspeciaisPage'
 import { GruposPage } from '@/pages/GruposPage'
 import { AdminPage } from '@/pages/AdminPage'
+import { RegrasPage } from '@/pages/RegrasPage'
 
 function LoadingScreen() {
   return (
@@ -52,6 +53,7 @@ export default function App() {
       <Route path="/" element={<Navigate to="/jogos" replace />} />
       <Route path="/jogos" element={<AppPage><JogosPage /></AppPage>} />
       <Route path="/especiais" element={<AppPage><EspeciaisPage /></AppPage>} />
+      <Route path="/regras" element={<AppPage><RegrasPage /></AppPage>} />
       <Route path="/grupos" element={<AppPage><GruposPage /></AppPage>} />
       <Route path="/ranking" element={<AppPage><RankingPage /></AppPage>} />
       <Route

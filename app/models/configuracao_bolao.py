@@ -17,6 +17,9 @@ class ConfiguracaoBolao(Base):
     )
 
     pontos_campeao: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    pontos_vice_campeao: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    pontos_terceiro_lugar: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    pontos_artilheiro_pais: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     pontos_melhor_jogador: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     pontos_artilheiro: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     pontos_melhor_goleiro: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

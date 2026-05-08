@@ -33,6 +33,7 @@ from app.schemas.palpite_especial import (
     UsuarioMini,
 )
 from app.schemas.palpite_jogo import PalpiteJogoBase, PalpiteJogoCreate, PalpiteJogoRead, PalpiteJogoUpdate
+from app.schemas.pontuacao_fase import PontuacaoFaseBulkWrite, PontuacaoFaseItem, PontuacaoFaseRead
 from app.schemas.resultado_especial import ResultadoEspecialBase, ResultadoEspecialRead, ResultadoEspecialWrite
 from app.schemas.usuario import (
     ChangePasswordRequest,
@@ -78,6 +79,9 @@ __all__ = [
     "PalpiteJogoCreate",
     "PalpiteJogoRead",
     "PalpiteJogoUpdate",
+    "PontuacaoFaseItem",
+    "PontuacaoFaseRead",
+    "PontuacaoFaseBulkWrite",
     "PalpiteEspecialBase",
     "PalpiteEspecialCreate",
     "PalpiteEspecialRead",

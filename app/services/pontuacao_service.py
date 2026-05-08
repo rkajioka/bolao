@@ -19,7 +19,9 @@ from app.models.marcador_brasil import MarcadorBrasilPalpite, MarcadorBrasilResu
 from app.models.palpite_especial import PalpiteEspecial
 from app.models.palpite_jogo import PalpiteJogo
 from app.models.resultado_especial import ResultadoEspecial
+from app.jogo_fases import fase_mata_mata_slug_ou_none
 from app.services import configuracao_bolao_service, jogo_service
+from app.services import pontuacao_fase_service
 from app.utils.texto import normalizar_texto_palpite
 
 
@@ -152,7 +154,7 @@ def calcular_pontuacao_especial(
     resultado: ResultadoEspecial,
     config: ConfiguracaoBolao | Any,
 ) -> tuple[int, int, int, int]:
-    """Retorna (campeão, melhor jogador, artilheiro, melhor goleiro)."""
+    """Retorna (campeão, vice-campeão, terceiro lugar, país do artilheiro)."""
     if not resultado.finalizado:
         return (0, 0, 0, 0)
 
@@ -160,22 +162,37 @@ def calcular_pontuacao_especial(
     if palpite.campeao_id is not None and palpite.campeao_id == resultado.campeao_id:
         p_cam = int(config.pontos_campeao)
 
-    p_mj = 0
-    mj_p = normalizar_texto_palpite(palpite.melhor_jogador)
-    if mj_p and mj_p == normalizar_texto_palpite(resultado.melhor_jogador):
-        p_mj = int(config.pontos_melhor_jogador)
+    p_vice = 0
+    if palpite.vice_campeao_id is not None and palpite.vice_campeao_id == resultado.vice_campeao_id:
+        p_vice = int(getattr(config, "pontos_vice_campeao", 0))
 
-    p_art = 0
-    art_p = normalizar_texto_palpite(palpite.artilheiro)
-    if art_p and art_p == normalizar_texto_palpite(resultado.artilheiro):
-        p_art = int(config.pontos_artilheiro)
+    p_terceiro = 0
+    if palpite.terceiro_lugar_id is not None and palpite.terceiro_lugar_id == resultado.terceiro_lugar_id:
+        p_terceiro = int(getattr(config, "pontos_terceiro_lugar", 0))
 
-    p_gol = 0
-    gol_p = normalizar_texto_palpite(palpite.melhor_goleiro)
-    if gol_p and gol_p == normalizar_texto_palpite(resultado.melhor_goleiro):
-        p_gol = int(config.pontos_melhor_goleiro)
+    p_art_pais = 0
+    if palpite.artilheiro_pais_id is not None and palpite.artilheiro_pais_id == resultado.artilheiro_pais_id:
+        p_art_pais = int(getattr(config, "pontos_artilheiro_pais", 0))
 
-    return (p_cam, p_mj, p_art, p_gol)
+    return (p_cam, p_vice, p_terceiro, p_art_pais)
+
+
+def _fase_key_para_jogo(jogo: Jogo) -> str | None:
+    if jogo.tipo_fase == "grupos":
+        if jogo.rodada in (1, 2, 3):
+            return f"grupo_rodada_{jogo.rodada}"
+        return None
+    return fase_mata_mata_slug_ou_none(jogo.fase)
+
+
+def _config_para_jogo(db: Session, jogo: Jogo, cfg_global: ConfiguracaoBolao | Any) -> ConfiguracaoBolao | Any:
+    key = _fase_key_para_jogo(jogo)
+    if not key:
+        return cfg_global
+    fase_cfg = pontuacao_fase_service.get_por_fase_key(db, key)
+    if fase_cfg is None:
+        return cfg_global
+    return fase_cfg
 
 
 def _palpites_jogo_com_marcadores(db: Session, jogo_id: int) -> list[PalpiteJogo]:
@@ -203,12 +220,13 @@ def _resultado_marcadores_tuples(db: Session, jogo_id: int) -> list[tuple[str, i
 
 def _atualizar_um_palpite_jogo(db: Session, palpite: PalpiteJogo, jogo: Jogo, cfg: ConfiguracaoBolao | Any) -> None:
     p_placar = p_res = p_class = p_marc = 0
+    cfg_jogo = _config_para_jogo(db, jogo, cfg)
 
     if jogo.finalizado and jogo.placar_casa is not None and jogo.placar_fora is not None:
         rc, rf = jogo.placar_casa, jogo.placar_fora
         if jogo.tipo_fase == "grupos":
             p_placar, p_res = calcular_pontuacao_jogo(
-                palpite.palpite_casa, palpite.palpite_fora, rc, rf, cfg
+                palpite.palpite_casa, palpite.palpite_fora, rc, rf, cfg_jogo
             )
         else:
             p_placar, p_res, p_class = calcular_pontuacao_mata_mata(
@@ -218,7 +236,7 @@ def _atualizar_um_palpite_jogo(db: Session, palpite: PalpiteJogo, jogo: Jogo, cf
                 rc,
                 rf,
                 jogo.classificado_id,
-                cfg,
+                cfg_jogo,
             )
 
     if (
@@ -269,6 +287,9 @@ def recalcular_todos_palpites_especiais(db: Session) -> None:
     if res is None:
         for p in palpites:
             p.pontuacao_campeao = 0
+            p.pontuacao_vice_campeao = 0
+            p.pontuacao_terceiro_lugar = 0
+            p.pontuacao_artilheiro_pais = 0
             p.pontuacao_melhor_jogador = 0
             p.pontuacao_artilheiro = 0
             p.pontuacao_melhor_goleiro = 0
@@ -277,10 +298,13 @@ def recalcular_todos_palpites_especiais(db: Session) -> None:
         return
 
     for p in palpites:
-        c, mj, art, gol = calcular_pontuacao_especial(p, res, cfg)
+        c, vice, terceiro, art_pais = calcular_pontuacao_especial(p, res, cfg)
         p.pontuacao_campeao = c
-        p.pontuacao_melhor_jogador = mj
-        p.pontuacao_artilheiro = art
-        p.pontuacao_melhor_goleiro = gol
-        p.pontuacao_total = c + mj + art + gol
+        p.pontuacao_vice_campeao = vice
+        p.pontuacao_terceiro_lugar = terceiro
+        p.pontuacao_artilheiro_pais = art_pais
+        p.pontuacao_melhor_jogador = 0
+        p.pontuacao_artilheiro = 0
+        p.pontuacao_melhor_goleiro = 0
+        p.pontuacao_total = c + vice + terceiro + art_pais
     db.commit()

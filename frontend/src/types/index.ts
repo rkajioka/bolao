@@ -64,6 +64,9 @@ export interface PalpiteEspecial {
   artilheiro: string | null
   melhor_goleiro: string | null
   pontuacao_campeao: number
+  pontuacao_vice_campeao: number
+  pontuacao_terceiro_lugar: number
+  pontuacao_artilheiro_pais: number
   pontuacao_melhor_jogador: number
   pontuacao_artilheiro: number
   pontuacao_melhor_goleiro: number
@@ -129,8 +132,29 @@ export interface TabelaGrupoResponse {
 
 export interface ConfiguracaoBolao {
   id: number
-  nome_bolao: string
-  palpites_especiais_bloqueados: boolean
+  data_bloqueio_palpites_especiais: string | null
+  pontos_campeao: number
+  pontos_vice_campeao: number
+  pontos_terceiro_lugar: number
+  pontos_artilheiro_pais: number
+  pontos_melhor_jogador: number
+  pontos_artilheiro: number
+  pontos_melhor_goleiro: number
+  pontos_placar_exato: number
+  pontos_resultado_correto: number
+  pontos_classificado_mata_mata: number
+  pontos_marcador_brasil: number
+  pontos_marcador_brasil_com_quantidade: number
+}
+
+export interface PontuacaoFase {
+  id: number
+  fase_key: string
+  label: string
+  ordem: number
+  pontos_placar_exato: number
+  pontos_resultado_correto: number
+  pontos_classificado_mata_mata: number
 }
 
 export interface LoginResponse {

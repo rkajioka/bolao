@@ -16,6 +16,7 @@ from app.routes import (
     paises,
     palpites_especiais,
     palpites_jogos,
+    pontuacao_fase,
     ranking,
     resultados_especiais,
     usuarios,
@@ -45,6 +46,7 @@ app.include_router(palpites_jogos.router)
 app.include_router(palpites_especiais.router)
 app.include_router(resultados_especiais.router)
 app.include_router(marcadores_brasil.router)
+app.include_router(pontuacao_fase.router)
 
 # Serve old static files (bandeiras, etc.)
 app.mount("/static", StaticFiles(directory=str(_static_root)), name="static")

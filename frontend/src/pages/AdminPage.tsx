@@ -6,7 +6,7 @@ import { api } from '@/lib/api'
 import { useToast } from '@/components/Toast'
 import { SectionHeader } from '@/components/SectionHeader'
 import { CountryFlag } from '@/components/CountryFlag'
-import type { Jogo, User, Pais, ConfiguracaoBolao, PalpiteEspecial } from '@/types'
+import type { Jogo, User, Pais, ConfiguracaoBolao, PontuacaoFase } from '@/types'
 import { formatDate, faseLabel } from '@/lib/utils'
 
 type AdminTab = 'jogos' | 'usuarios' | 'paises' | 'especiais' | 'config'
@@ -91,6 +91,13 @@ function AdminJogos({ success, error, queryClient }: AdminSectionProps) {
 
   const [editingId, setEditingId] = useState<number | null>(null)
   const [result, setResult] = useState({ placar_casa: 0, placar_fora: 0, finalizar: false })
+  const [editingMarcadoresId, setEditingMarcadoresId] = useState<number | null>(null)
+  const [marcadoresForm, setMarcadoresForm] = useState<Record<number, { nome_jogador: string; quantidade_gols: number }[]>>({})
+
+  const { data: candidatosAdmin = [] } = useQuery({
+    queryKey: ['marcadores', 'candidatos', 'admin'],
+    queryFn: () => api.get<{ id: number; nome: string; ativo: boolean }[]>('/marcadores-brasil/candidatos/admin'),
+  })
 
   const handleFinalize = async (jogo: Jogo) => {
     try {
@@ -108,6 +115,29 @@ function AdminJogos({ success, error, queryClient }: AdminSectionProps) {
       }
     } catch (err) {
       error(err instanceof Error ? err.message : 'Erro ao salvar resultado')
+    }
+  }
+
+  const openMarcadores = async (jogoId: number) => {
+    try {
+      const existentes = await api.get<{ nome_jogador: string; quantidade_gols: number }[]>(`/marcadores-brasil/admin/${jogoId}`)
+      setMarcadoresForm((old) => ({ ...old, [jogoId]: existentes.length ? existentes : [{ nome_jogador: '', quantidade_gols: 1 }] }))
+      setEditingMarcadoresId((v) => (v === jogoId ? null : jogoId))
+    } catch {
+      setMarcadoresForm((old) => ({ ...old, [jogoId]: [{ nome_jogador: '', quantidade_gols: 1 }] }))
+      setEditingMarcadoresId((v) => (v === jogoId ? null : jogoId))
+    }
+  }
+
+  const salvarMarcadores = async (jogoId: number) => {
+    try {
+      const linhas = (marcadoresForm[jogoId] || []).filter((x) => x.nome_jogador.trim())
+      await api.put(`/marcadores-brasil/resultado/${jogoId}`, { marcadores: linhas })
+      await api.patch(`/marcadores-brasil/recalcular/${jogoId}`)
+      success('Marcadores do Brasil salvos')
+      setEditingMarcadoresId(null)
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Erro ao salvar marcadores do Brasil')
     }
   }
 
@@ -132,17 +162,32 @@ function AdminJogos({ success, error, queryClient }: AdminSectionProps) {
                   Finalizado
                 </span>
               ) : (
-                <button
-                  onClick={() => setEditingId(editingId === jogo.id ? null : jogo.id)}
-                  className="text-xs px-3 py-1.5 rounded-xl font-semibold transition-all"
-                  style={{
-                    background: 'rgba(255,255,255,0.08)',
-                    border: '1px solid rgba(255,255,255,0.12)',
-                    color: 'var(--text)',
-                  }}
-                >
-                  {editingId === jogo.id ? 'Fechar' : 'Registrar'}
-                </button>
+                <div className="flex gap-1.5">
+                  <button
+                    onClick={() => setEditingId(editingId === jogo.id ? null : jogo.id)}
+                    className="text-xs px-3 py-1.5 rounded-xl font-semibold transition-all"
+                    style={{
+                      background: 'rgba(255,255,255,0.08)',
+                      border: '1px solid rgba(255,255,255,0.12)',
+                      color: 'var(--text)',
+                    }}
+                  >
+                    {editingId === jogo.id ? 'Fechar' : 'Resultado'}
+                  </button>
+                  {(jogo.pais_casa.sigla === 'BR' || jogo.pais_fora.sigla === 'BR') && (
+                    <button
+                      onClick={() => openMarcadores(jogo.id)}
+                      className="text-xs px-3 py-1.5 rounded-xl font-semibold transition-all"
+                      style={{
+                        background: 'rgba(246,198,91,0.10)',
+                        border: '1px solid rgba(246,198,91,0.3)',
+                        color: 'var(--highlight)',
+                      }}
+                    >
+                      Marcadores BR
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -201,6 +246,77 @@ function AdminJogos({ success, error, queryClient }: AdminSectionProps) {
                   >
                     Salvar resultado
                   </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {editingMarcadoresId === jogo.id && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="pt-3 mt-3 space-y-2" style={{ borderTop: '1px dashed rgba(255,255,255,0.08)' }}>
+                  {(marcadoresForm[jogo.id] || []).map((m, idx) => (
+                    <div key={idx} className="flex gap-2 items-center">
+                      <input
+                        type="text"
+                        list={`dl-candidatos-admin-${jogo.id}`}
+                        value={m.nome_jogador}
+                        onChange={(e) =>
+                          setMarcadoresForm((old) => ({
+                            ...old,
+                            [jogo.id]: (old[jogo.id] || []).map((x, i) => i === idx ? { ...x, nome_jogador: e.target.value } : x),
+                          }))
+                        }
+                        placeholder="Nome do jogador"
+                        className="flex-1 px-3 py-2 rounded-xl text-sm outline-none"
+                        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
+                      />
+                      <input
+                        type="number"
+                        min={0}
+                        value={m.quantidade_gols}
+                        onChange={(e) =>
+                          setMarcadoresForm((old) => ({
+                            ...old,
+                            [jogo.id]: (old[jogo.id] || []).map((x, i) => i === idx ? { ...x, quantidade_gols: parseInt(e.target.value) || 0 } : x),
+                          }))
+                        }
+                        className="w-16 px-2 py-2 rounded-xl text-sm text-center outline-none"
+                        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
+                      />
+                    </div>
+                  ))}
+                  <datalist id={`dl-candidatos-admin-${jogo.id}`}>
+                    {candidatosAdmin.filter((c) => c.ativo).map((c) => (
+                      <option key={c.id} value={c.nome} />
+                    ))}
+                  </datalist>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() =>
+                        setMarcadoresForm((old) => ({
+                          ...old,
+                          [jogo.id]: [...(old[jogo.id] || []), { nome_jogador: '', quantidade_gols: 1 }],
+                        }))
+                      }
+                      className="flex-1 py-2 rounded-xl text-xs font-semibold"
+                      style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text-muted)' }}
+                    >
+                      + Adicionar
+                    </button>
+                    <button
+                      onClick={() => salvarMarcadores(jogo.id)}
+                      className="flex-1 py-2 rounded-xl text-xs font-semibold"
+                      style={{ background: 'var(--highlight-dim)', border: '1px solid rgba(246,198,91,0.3)', color: 'var(--highlight)' }}
+                    >
+                      Salvar marcadores
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -363,65 +479,76 @@ function AdminPaises({ success, error, queryClient }: AdminSectionProps) {
 }
 
 function AdminEspeciais({ success, error, queryClient }: AdminSectionProps) {
-  const [blocked, setBlocked] = useState(false)
-
   const { data: config } = useQuery({
     queryKey: ['configuracao-bolao'],
     queryFn: () => api.get<ConfiguracaoBolao>('/configuracao-bolao'),
-    onSuccess: (data: ConfiguracaoBolao) => setBlocked(data.palpites_especiais_bloqueados),
-  } as any)
-
-  const toggleBlock = async () => {
-    try {
-      await api.put('/configuracao-bolao', { palpites_especiais_bloqueados: !blocked })
-      await queryClient.invalidateQueries({ queryKey: ['configuracao-bolao'] })
-      setBlocked((v) => !v)
-      success(blocked ? 'Palpites especiais desbloqueados' : 'Palpites especiais bloqueados')
-    } catch (err) {
-      error(err instanceof Error ? err.message : 'Erro')
-    }
-  }
+  })
 
   return (
     <div className="space-y-4">
-      <div className="glass rounded-2xl p-4 flex items-center justify-between">
+      <div className="glass rounded-2xl p-4">
         <div>
           <p className="font-semibold text-sm">Palpites especiais</p>
           <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-            {blocked ? 'Bloqueados para edição' : 'Abertos para edição'}
+            O bloqueio efetivo é calculado pela data de bloqueio da configuração do bolão.
           </p>
         </div>
-        <button
-          onClick={toggleBlock}
-          className="px-4 py-2 rounded-xl text-sm font-semibold transition-all"
-          style={{
-            background: blocked ? 'var(--accent-dim)' : 'var(--danger-dim)',
-            border: `1px solid ${blocked ? 'rgba(53,208,127,0.3)' : 'rgba(255,92,122,0.3)'}`,
-            color: blocked ? 'var(--accent)' : 'var(--danger)',
-          }}
-        >
-          {blocked ? 'Desbloquear' : 'Bloquear'}
-        </button>
+        <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
+          Data de bloqueio atual: {config?.data_bloqueio_palpites_especiais ? formatDate(config.data_bloqueio_palpites_especiais) : 'Automática (2h antes do primeiro jogo)'}
+        </p>
       </div>
     </div>
   )
 }
 
 function AdminConfig({ success, error, queryClient }: AdminSectionProps) {
-  const [nome, setNome] = useState('')
+  const [form, setForm] = useState<ConfiguracaoBolao | null>(null)
+  const [fases, setFases] = useState<PontuacaoFase[]>([])
   const [saving, setSaving] = useState(false)
 
   const { data: config } = useQuery({
     queryKey: ['configuracao-bolao'],
     queryFn: () => api.get<ConfiguracaoBolao>('/configuracao-bolao'),
-    onSuccess: (data: ConfiguracaoBolao) => setNome(data.nome_bolao),
+    onSuccess: (data: ConfiguracaoBolao) => setForm(data),
+  } as any)
+
+  useQuery({
+    queryKey: ['configuracao-pontuacao-fase'],
+    queryFn: () => api.get<PontuacaoFase[]>('/configuracao-pontuacao-fase'),
+    onSuccess: (data: PontuacaoFase[]) => setFases(data),
   } as any)
 
   const handleSave = async () => {
+    if (!form) return
     setSaving(true)
     try {
-      await api.put('/configuracao-bolao', { nome_bolao: nome })
+      await api.put('/configuracao-bolao', {
+        data_bloqueio_palpites_especiais: form.data_bloqueio_palpites_especiais,
+        pontos_campeao: form.pontos_campeao,
+        pontos_vice_campeao: form.pontos_vice_campeao,
+        pontos_terceiro_lugar: form.pontos_terceiro_lugar,
+        pontos_artilheiro_pais: form.pontos_artilheiro_pais,
+        pontos_melhor_jogador: form.pontos_melhor_jogador,
+        pontos_artilheiro: form.pontos_artilheiro,
+        pontos_melhor_goleiro: form.pontos_melhor_goleiro,
+        pontos_placar_exato: form.pontos_placar_exato,
+        pontos_resultado_correto: form.pontos_resultado_correto,
+        pontos_classificado_mata_mata: form.pontos_classificado_mata_mata,
+        pontos_marcador_brasil: form.pontos_marcador_brasil,
+        pontos_marcador_brasil_com_quantidade: form.pontos_marcador_brasil_com_quantidade,
+      })
+      await api.put('/configuracao-pontuacao-fase', {
+        itens: fases.map((f) => ({
+          fase_key: f.fase_key,
+          label: f.label,
+          ordem: f.ordem,
+          pontos_placar_exato: f.pontos_placar_exato,
+          pontos_resultado_correto: f.pontos_resultado_correto,
+          pontos_classificado_mata_mata: f.pontos_classificado_mata_mata,
+        })),
+      })
       await queryClient.invalidateQueries({ queryKey: ['configuracao-bolao'] })
+      await queryClient.invalidateQueries({ queryKey: ['configuracao-pontuacao-fase'] })
       success('Configuração salva')
     } catch (err) {
       error(err instanceof Error ? err.message : 'Erro')
@@ -434,16 +561,73 @@ function AdminConfig({ success, error, queryClient }: AdminSectionProps) {
     <div className="glass rounded-2xl p-5 space-y-4">
       <div>
         <label className="block text-xs font-bold mb-2 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-          Nome do bolão
+          Bloqueio de especiais (ISO)
         </label>
         <input
-          type="text"
-          value={nome}
-          onChange={(e) => setNome(e.target.value)}
+          type="datetime-local"
+          value={(form?.data_bloqueio_palpites_especiais || '').slice(0, 16)}
+          onChange={(e) => setForm((old) => (old ? { ...old, data_bloqueio_palpites_especiais: e.target.value ? new Date(e.target.value).toISOString() : null } : old))}
           className="w-full px-3 py-3 rounded-xl text-sm outline-none"
           style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
         />
       </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        {[
+          ['pontos_campeao', 'Campeão'],
+          ['pontos_vice_campeao', 'Vice'],
+          ['pontos_terceiro_lugar', '3º lugar'],
+          ['pontos_artilheiro_pais', 'País do artilheiro'],
+        ].map(([key, label]) => (
+          <div key={key}>
+            <label className="block text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{label}</label>
+            <input
+              type="number"
+              min={0}
+              value={form ? (form as any)[key] : 0}
+              onChange={(e) => setForm((old) => (old ? { ...old, [key]: parseInt(e.target.value) || 0 } : old))}
+              className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
+            />
+          </div>
+        ))}
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+          Pontuação por fase
+        </p>
+        {fases.map((f) => (
+          <div key={f.fase_key} className="grid grid-cols-12 gap-2 items-center">
+            <p className="col-span-5 text-xs" style={{ color: 'var(--text-muted)' }}>{f.label}</p>
+            <input
+              type="number"
+              min={0}
+              value={f.pontos_placar_exato}
+              onChange={(e) => setFases((old) => old.map((x) => x.fase_key === f.fase_key ? { ...x, pontos_placar_exato: parseInt(e.target.value) || 0 } : x))}
+              className="col-span-2 px-2 py-1.5 rounded-lg text-xs outline-none"
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
+            />
+            <input
+              type="number"
+              min={0}
+              value={f.pontos_resultado_correto}
+              onChange={(e) => setFases((old) => old.map((x) => x.fase_key === f.fase_key ? { ...x, pontos_resultado_correto: parseInt(e.target.value) || 0 } : x))}
+              className="col-span-2 px-2 py-1.5 rounded-lg text-xs outline-none"
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
+            />
+            <input
+              type="number"
+              min={0}
+              value={f.pontos_classificado_mata_mata}
+              onChange={(e) => setFases((old) => old.map((x) => x.fase_key === f.fase_key ? { ...x, pontos_classificado_mata_mata: parseInt(e.target.value) || 0 } : x))}
+              className="col-span-3 px-2 py-1.5 rounded-lg text-xs outline-none"
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
+            />
+          </div>
+        ))}
+      </div>
+
       <button
         onClick={handleSave}
         disabled={saving}

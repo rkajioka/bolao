@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import {
   CalendarDays,
   Star,
+  ScrollText,
   Trophy,
   Settings,
   LogOut,
@@ -25,6 +26,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { to: '/jogos', icon: <CalendarDays size={22} />, label: 'Palpites' },
   { to: '/especiais', icon: <Star size={22} />, label: 'Especiais' },
+  { to: '/regras', icon: <ScrollText size={22} />, label: 'Regras' },
   { to: '/ranking', icon: <Trophy size={22} />, label: 'Ranking' },
   { to: '/admin', icon: <Settings size={22} />, label: 'Admin', adminOnly: true },
 ]

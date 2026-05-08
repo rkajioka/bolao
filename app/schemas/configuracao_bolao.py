@@ -6,6 +6,9 @@ from pydantic import BaseModel, Field
 class ConfiguracaoBolaoBase(BaseModel):
     data_bloqueio_palpites_especiais: datetime | None = None
     pontos_campeao: int = Field(ge=0)
+    pontos_vice_campeao: int = Field(ge=0)
+    pontos_terceiro_lugar: int = Field(ge=0)
+    pontos_artilheiro_pais: int = Field(ge=0)
     pontos_melhor_jogador: int = Field(ge=0)
     pontos_artilheiro: int = Field(ge=0)
     pontos_melhor_goleiro: int = Field(ge=0)
