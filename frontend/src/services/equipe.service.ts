@@ -1,4 +1,4 @@
-import { api } from '@/lib/api'
+import { api, apiPostMultipart } from '@/lib/api'
 import type { ConviteResultado, MembroEquipe } from '@/types'
 
 export const equipeService = {
@@ -30,5 +30,12 @@ export const equipeService = {
       confirmar_senha,
       avatar_url: avatar_url ?? null,
     })
+  },
+
+  async uploadAvatarPreAtivacao(conviteToken: string, file: File): Promise<{ avatar_url: string }> {
+    const fd = new FormData()
+    fd.append('token', conviteToken)
+    fd.append('file', file)
+    return apiPostMultipart<{ avatar_url: string }>('/auth/avatar-pre-ativacao', fd)
   },
 }

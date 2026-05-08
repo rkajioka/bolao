@@ -26,6 +26,8 @@ export interface ConviteResultado {
   status: 'convite_criado' | 'convite_pendente' | 'ja_cadastrado'
   token?: string
   expiracao?: string
+  /** Quando true, o link foi enviado por e-mail (token omitido na API). */
+  convite_enviado_por_email?: boolean
 }
 
 export interface MembroEquipe {

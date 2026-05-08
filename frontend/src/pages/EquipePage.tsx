@@ -299,7 +299,12 @@ function InviteResults({ results, onClose }: { results: ConviteResultado[]; onCl
               {r.email}
             </p>
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-              {r.status === 'convite_criado' && 'Convite criado'}
+              {r.status === 'convite_criado' &&
+                (r.convite_enviado_por_email
+                  ? 'Convite enviado por e-mail — peça para checar a caixa de entrada'
+                  : r.token
+                    ? 'Convite criado — copie o link abaixo'
+                    : 'Convite criado')}
               {r.status === 'convite_pendente' && 'Convite pendente (já existe)'}
               {r.status === 'ja_cadastrado' && 'Usuário já cadastrado'}
             </p>

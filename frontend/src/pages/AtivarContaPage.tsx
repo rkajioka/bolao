@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { useMutation } from '@tanstack/react-query'
 import { KeyRound, User, Lock, Eye, EyeOff, CheckCircle2 } from 'lucide-react'
 import { useAuth } from '@/features/auth/AuthContext'
 import { equipeService } from '@/services/equipe.service'
+import { PERFIL_AVATAR_MAX_BYTES } from '@/services/perfil.service'
+import { UserAvatar } from '@/components/UserAvatar'
 import { setToken } from '@/lib/api'
 import { ApiError } from '@/lib/api'
 
@@ -16,11 +19,42 @@ export function AtivarContaPage() {
   const [nome, setNome] = useState('')
   const [senha, setSenha] = useState('')
   const [confirmar, setConfirmar] = useState('')
-  const [avatarUrl, setAvatarUrl] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [avatarError, setAvatarError] = useState<string | null>(null)
+  const [avatarOk, setAvatarOk] = useState(false)
   const [showSenha, setShowSenha] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+
+  const uploadMutation = useMutation({
+    mutationFn: (file: File) => equipeService.uploadAvatarPreAtivacao(token, file),
+    onSuccess: (data) => {
+      setAvatarUrl(data.avatar_url)
+      setAvatarError(null)
+      setAvatarOk(true)
+      setTimeout(() => setAvatarOk(false), 2000)
+    },
+    onError: (err) => {
+      setAvatarError(err instanceof ApiError ? err.message : 'Erro ao enviar foto')
+    },
+  })
+
+  const onPickAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (!/^image\/(jpeg|png|webp)$/i.test(file.type)) {
+      setAvatarError('Use uma imagem JPEG, PNG ou WebP')
+      return
+    }
+    if (file.size > PERFIL_AVATAR_MAX_BYTES) {
+      setAvatarError('A foto deve ter no máximo 2 MB')
+      return
+    }
+    setAvatarError(null)
+    uploadMutation.mutate(file)
+  }
 
   if (!token) {
     return (
@@ -50,7 +84,13 @@ export function AtivarContaPage() {
     setLoading(true)
     setError(null)
     try {
-      const res = await equipeService.ativarConta(token, nome, senha, confirmar, avatarUrl || undefined)
+      const res = await equipeService.ativarConta(
+        token,
+        nome,
+        senha,
+        confirmar,
+        avatarUrl ?? undefined,
+      )
       setToken(res.access_token)
       await refreshUser()
       setSuccess(true)
@@ -131,27 +171,42 @@ export function AtivarContaPage() {
               </div>
             </div>
 
-            {/* Avatar URL */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium" style={{ color: 'var(--text)' }}>
-                URL da foto de perfil{' '}
+            {/* Foto de perfil (upload) */}
+            <div className="flex flex-col gap-2 items-center">
+              <UserAvatar src={avatarUrl ?? undefined} alt="" size="xl" rounded="2xl" />
+              <label className="text-sm font-medium text-center w-full" style={{ color: 'var(--text)' }}>
+                Foto de perfil{' '}
                 <span className="font-normal" style={{ color: 'var(--text-muted)' }}>
                   (opcional)
                 </span>
               </label>
-              <div
-                className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
-                style={{ background: 'var(--glass)', border: '1px solid var(--border)' }}
-              >
-                <input
-                  type="url"
-                  value={avatarUrl}
-                  onChange={(e) => setAvatarUrl(e.target.value)}
-                  placeholder="https://..."
-                  className="flex-1 bg-transparent outline-none text-sm"
-                  style={{ color: 'var(--text)' }}
-                />
-              </div>
+              <p className="text-xs text-center w-full" style={{ color: 'var(--text-muted)' }}>
+                JPEG, PNG ou WebP — máx. 2 MB
+              </p>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={onPickAvatar}
+                disabled={uploadMutation.isPending || !token}
+                className="text-xs file:mr-2 file:py-1.5 file:px-2 file:rounded-lg file:border-0 file:text-xs file:font-medium w-full"
+                style={{ color: 'var(--text)' }}
+              />
+              {uploadMutation.isPending && (
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  Enviando…
+                </p>
+              )}
+              {avatarOk && (
+                <p className="text-xs flex items-center justify-center gap-1" style={{ color: 'var(--accent)' }}>
+                  <CheckCircle2 size={14} />
+                  Foto pronta — será aplicada ao ativar
+                </p>
+              )}
+              {avatarError && (
+                <p className="text-xs text-center" style={{ color: '#ef4444' }}>
+                  {avatarError}
+                </p>
+              )}
             </div>
 
             {/* Senha */}

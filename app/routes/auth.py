@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_active_user
 from app.core.config import get_settings
 from app.database import get_db
 from app.models.usuario import Usuario
-from app.schemas.convite import AtivarContaRequest, AtivarContaResponse
+from app.schemas.convite import AtivarContaRequest, AtivarContaResponse, AvatarPreAtivacaoResponse
 from app.schemas.password_reset import (
     ForgotPasswordRequest,
     ForgotPasswordResponse,
@@ -20,7 +20,7 @@ from app.schemas.usuario import (
     PrimeiroAcessoRequest,
     UsuarioRead,
 )
-from app.services import auth_service, ativacao_service, password_reset_service
+from app.services import auth_service, ativacao_service, avatar_upload_service, convite_service, password_reset_service
 from app.services.rate_limit_service import enforce_limit, reset_key
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -127,6 +127,21 @@ def post_change_password(
     user: Usuario = Depends(get_current_active_user),
 ) -> None:
     auth_service.change_password(db, user, data)
+
+
+@router.post("/avatar-pre-ativacao", response_model=AvatarPreAtivacaoResponse)
+async def post_avatar_pre_ativacao(
+    db: Session = Depends(get_db),
+    token: str = Form(...),
+    file: UploadFile = File(...),
+) -> AvatarPreAtivacaoResponse:
+    """Upload de foto antes de ativar conta — exige token de convite válido (sem JWT)."""
+    convite_service.validar_token(db, token)
+    raw = await avatar_upload_service.read_upload_limited(
+        file, avatar_upload_service.AVATAR_MAX_BYTES
+    )
+    path = avatar_upload_service.persist_avatar(raw, file.content_type)
+    return AvatarPreAtivacaoResponse(avatar_url=path)
 
 
 @router.post("/ativar-conta", response_model=AtivarContaResponse)

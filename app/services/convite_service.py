@@ -6,9 +6,10 @@ from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from app.models.convite import Convite
+from app.models.empresa import Empresa
 from app.models.usuario import Usuario
 from app.schemas.convite import BulkConviteRequest
-from app.services import audit_log_service
+from app.services import audit_log_service, email_service
 
 
 _TOKEN_BYTES = 48
@@ -100,12 +101,24 @@ def criar_bulk_convites(
             ip=ip,
         )
 
-        resultados.append({
+        empresa = db.get(Empresa, empresa_id)
+        empresa_nome = empresa.nome if empresa is not None else "Bolão"
+
+        item: dict = {
             "email": email,
             "status": "convite_criado",
-            "token": token,
             "expiracao": convite.expiracao.isoformat(),
-        })
+        }
+        if email_service.tentar_enviar_convite(db, email, token, empresa_nome):
+            item["convite_enviado_por_email"] = True
+        else:
+            item["token"] = token
+            print(
+                f"[bolao:email] convite criado para {email}: token na resposta da API (e-mail não enviado ou falhou)",
+                flush=True,
+            )
+
+        resultados.append(item)
 
     db.commit()
     return resultados

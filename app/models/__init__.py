@@ -2,6 +2,7 @@ from app.models.audit_log import AuditLog
 from app.models.auditoria_admin import AuditoriaAdmin
 from app.models.candidato_marcador_brasil import CandidatoMarcadorBrasil
 from app.models.configuracao_bolao import ConfiguracaoBolao
+from app.models.configuracao_email import ConfiguracaoEmail
 from app.models.convite import Convite
 from app.models.empresa import Empresa
 from app.models.jogo import Jogo
@@ -20,6 +21,7 @@ __all__ = [
     "AuditoriaAdmin",
     "CandidatoMarcadorBrasil",
     "ConfiguracaoBolao",
+    "ConfiguracaoEmail",
     "Convite",
     "Empresa",
     "Jogo",

@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     rate_limit_refresh_requests: int = 20
     rate_limit_window_seconds: int = 60
     debug: bool = False
+    public_app_url: str = "http://localhost:5173"
 
 
 @lru_cache

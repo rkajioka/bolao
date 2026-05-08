@@ -1,7 +1,7 @@
 # Próximos Passos — Bolão da Copa
 
-> Documento de referência do estado atual do sistema e do roadmap de evolução.
-> Atualizado em: 2026-05-08
+> Documento de referência do estado atual do sistema e do roadmap de evolução.  
+> Atualizado em: 2026-05-08 (revisão de itens implementados)
 
 ---
 
@@ -10,18 +10,16 @@
 ### Fundação (commits anteriores)
 
 - **Autenticação completa**: login com JWT (access token 60min + refresh token 7 dias via cookie httponly), rotação de refresh tokens, logout, rate limiting
-- **Primeiro acesso**: fluxo de onboarding para usuários criados pelo admin (define nome, função, senha)
+- **Primeiro acesso**: fluxo de onboarding (nome, função, senha); **upload de foto** via `POST /perfil/avatar` (sem URL manual)
 - **Sistema de palpites**: palpites de jogos por fase/rodada, palpites especiais (campeão, vice, terceiro, artilheiro), bloqueio automático por horário
-- **Pontuação**: engine de pontuação configurável por fase, recalculação automática quando admin finaliza jogo
-- **Ranking**: leaderboard com pontos totais, insights por período (destaque de resultado, placar exato, marcadores Brasil)
-- **Admin**: interface tabbed para gerenciar países, usuários, jogos, especiais
+- **Pontuação**: engine de pontuação configurável por fase, recálculo automática quando admin finaliza jogo
+- **Ranking**: leaderboard com pontos totais, insights por período; foto do usuário usa `coalesce(avatar_url, imagem_perfil)`
+- **Admin**: interface tabbed para **jogos, usuários, especiais** (aba **Países removida** — cadastro de países tratado como fixo)
 - **Grupos**: tabela de classificação dos grupos
 - **Auditoria de admin**: log de ações administrativas em `auditoria_admin`
 - **Dark/light mode**, design glass/premium, mobile-first
 
----
-
-### Multi-empresa (implementado em 2026-05-08)
+### Multi-empresa (2026-05-08)
 
 #### Banco de dados
 - Nova tabela `empresas` (id, nome, codigo_empresa, ativo)
@@ -29,32 +27,45 @@
 - Nova tabela `password_resets` (token único, expiração 60min, uso único)
 - Nova tabela `audit_logs` (log completo: usuário, empresa, ação, IP, metadata)
 - Tabela `usuarios` atualizada: `empresa_id`, `avatar_url`, `bloqueado`, `ultimo_login`
+- Tabela **`configuracao_email`**: `resend_api_key`, `email_from` (singleton `id=1`) — credenciais Resend no BD
 - Migration `a9b1c2d3e4f5_multi_empresa.py` com estratégia segura (usuários existentes vinculados à empresa DEFAULT)
+- Migration **`f9e8d7c6b5a4`**: `configuracao_email` + seed inicial
 
-#### Backend — novos endpoints
+#### Backend — novos / atualizados (trecho relevante)
 | Método | Rota | Descrição |
 |--------|------|-----------|
 | POST | `/auth/ativar-conta` | Ativa conta via token de convite, emite sessão |
-| POST | `/auth/forgot-password` | Solicita reset (resposta genérica, anti-enumeração) |
+| POST | `/auth/forgot-password` | Solicita reset (resposta genérica, anti-enumeração); **dispara e-mail** se Resend configurado no BD |
 | POST | `/auth/redefinir-senha` | Redefine senha com token |
-| GET | `/auth/reset-token-dev/{email}` | Expõe token de reset (só com `DEBUG=true`) |
+| GET | `/auth/reset-token-dev/{email}` | Expõe token de reset **somente** com `DEBUG=true` |
 | GET | `/equipe/` | Lista membros e convites pendentes da empresa |
-| POST | `/equipe/convites` | Bulk invite (até 50 e-mails) |
-| GET | `/equipe/convites` | Lista convites com status e token |
+| POST | `/equipe/convites` | Bulk invite; **envia e-mail** quando `resend_api_key` + `email_from` estão preenchidos; resposta **sem `token`** nesse caso |
+| GET | `/equipe/convites` | Lista convites (**ainda inclui `token`** na listagem — ver pendências) |
 | PATCH | `/equipe/{id}/bloquear` | Bloquear/desbloquear usuário |
 | DELETE | `/equipe/{id}` | Remover usuário da empresa |
 | GET/PATCH | `/perfil/` | Perfil do usuário autenticado |
+| POST | `/perfil/avatar` | Upload de foto (multipart), limite 2 MiB, JPEG/PNG/WebP |
 | POST | `/perfil/alterar-senha` | Alterar senha |
 | GET/POST/PATCH | `/empresas/*` | CRUD de empresas (admin global) |
 
-#### Frontend — novas páginas
+#### Frontend — páginas
 | Rota | Página | Descrição |
 |------|--------|-----------|
-| `/equipe` | `EquipePage` | Gestão de equipe: lista membros, convites pendentes, bloquear, remover |
-| `/perfil` | `PerfilPage` | Editar nome, função, avatar URL, alterar senha |
-| `/ativar-conta?token=...` | `AtivarContaPage` | Onboarding via convite: define nome, senha, avatar |
+| `/equipe` | `EquipePage` | Convites; mensagem quando convite foi **enviado por e-mail** (sem copiar link) |
+| `/perfil` | `PerfilPage` | Nome, função, **upload de foto**, alterar senha |
+| `/primeiro-acesso` | `PrimeiroAcessoPage` | **Upload de foto** + ícone genérico se não houver foto |
+| `/ativar-conta?token=...` | `AtivarContaPage` | Onboarding via convite (avatar ainda pode ser URL aqui) |
 | `/esqueci-senha` | `EsqueciSenhaPage` | Solicitar reset de senha |
 | `/redefinir-senha?token=...` | `RedefinirSenhaPage` | Definir nova senha com token |
+
+#### Envio de e-mail (Resend) — **OK**
+- Dependência `resend>=2.0.0`, serviço [`app/services/email_service.py`](app/services/email_service.py)
+- Credenciais lidas de **`configuracao_email`** (não de `RESEND_API_KEY` no `.env`)
+- Links baseados em **`PUBLIC_APP_URL`** ([`app/core/config.py`](app/core/config.py))
+- Convites e reset de senha integrados; fallback com `token` na resposta do POST quando e-mail não configurado ou falha do Resend
+
+#### UX avatar — **OK**
+- Componente [`UserAvatar`](frontend/src/components/UserAvatar.tsx) com ícone de pessoa quando não há foto (ranking, equipe, perfil, admin, layout)
 
 #### Segurança aplicada
 - Usuário bloqueado recebe 403 ao autenticar
@@ -68,263 +79,138 @@
 
 ## O que ainda precisa ser feito
 
-### Prioridade alta — necessário para funcionar em produção
+### ~~Prioridade alta — item 1: Envio real de e-mails (Resend)~~ **OK**
 
-#### 1. Envio real de e-mails (Resend)
+Implementado conforme plano (chave e `email_from` no BD; `PUBLIC_APP_URL` no `.env`). Pendências menores opcionais:
 
-**O que é:** substituir o fluxo manual de cópia de tokens por disparo automático de e-mail.
-
-**Como implementar:**
-
-1. Criar conta no [Resend](https://resend.com) e obter API key
-2. Adicionar dependência:
-   ```
-   resend>=2.0.0
-   ```
-3. Adicionar ao `.env`:
-   ```
-   RESEND_API_KEY=re_xxxx
-   EMAIL_FROM=bolao@suaempresa.com
-   ```
-4. Adicionar ao `config.py`:
-   ```python
-   resend_api_key: str = ""
-   email_from: str = "bolao@suaempresa.com"
-   ```
-5. Criar `app/services/email_service.py`:
-   ```python
-   import resend
-
-   def enviar_convite(email: str, token: str, empresa: str) -> None:
-       link = f"https://seudominio.com/ativar-conta?token={token}"
-       resend.Emails.send({
-           "from": settings.email_from,
-           "to": email,
-           "subject": f"Você foi convidado para o Bolão — {empresa}",
-           "html": f"<p>Clique <a href='{link}'>aqui</a> para ativar sua conta.</p>",
-       })
-
-   def enviar_reset_senha(email: str, token: str) -> None:
-       link = f"https://seudominio.com/redefinir-senha?token={token}"
-       resend.Emails.send({
-           "from": settings.email_from,
-           "to": email,
-           "subject": "Redefinição de senha — Bolão da Copa",
-           "html": f"<p>Clique <a href='{link}'>aqui</a> para redefinir sua senha.</p>",
-       })
-   ```
-6. Chamar `email_service.enviar_convite()` dentro de `convite_service.criar_bulk_convites()`
-7. Chamar `email_service.enviar_reset_senha()` dentro de `password_reset_service.solicitar_reset()`
-8. Remover o endpoint `/auth/reset-token-dev/{email}` (ou proteger por `DEBUG=true`)
-9. Remover exibição de tokens na resposta de `/equipe/convites` (substituir por "convite enviado")
+- Ocultar ou mascarar `token` em **`GET /equipe/convites`** quando política de produção exigir só e-mail.
+- Templates HTML mais ricos (ver item 9 abaixo).
 
 ---
 
+### Prioridade alta — ainda em aberto
+
 #### 2. Isolamento de ranking e palpites por empresa
 
-**O que é:** atualmente o ranking lista todos os usuários do sistema. Em multi-empresa, cada empresa deve ver apenas seus próprios participantes.
+**O que é:** o ranking ainda lista todos os usuários ativos do sistema. Em multi-empresa, filtrar por `empresa_id` do usuário autenticado (e alinhar insights).
 
-**Como implementar:**
-
-Em `app/services/ranking_service.py`, adicionar filtro `empresa_id` nas queries:
-```python
-# Onde lista usuarios para o ranking:
-.where(Usuario.empresa_id == empresa_id)
-```
-
-Passar `empresa_id` como parâmetro para `listar_ranking()` e `obter_insights_periodo()`.
-
-Atualizar `app/routes/ranking.py`:
-```python
-from app.auth.dependencies import get_empresa_id
-
-@router.get("")
-def get_ranking(
-    db: Session = Depends(get_db),
-    user: Usuario = Depends(get_current_active_user),
-    empresa_id: int = Depends(get_empresa_id),
-):
-    linhas_svc = ranking_service.listar_ranking(db, empresa_id=empresa_id)
-```
-
-Fazer o mesmo para `/palpites-jogos` e `/palpites-especiais` (verificar que usuário só vê os próprios palpites — isso já funciona por `usuario_id`, mas o admin não deve ver palpites de outras empresas).
+**Status:** não implementado — próxima entrega prioritária sugerida.
 
 ---
 
 #### 3. Vincular admin à empresa correta
 
-**O que é:** o script `scripts/seed_admin.py` cria o admin sem `empresa_id`, ou com a empresa DEFAULT. Em produção, cada empresa deve ter seu próprio admin.
+**O que é:** `scripts/seed_admin.py` / fluxo inicial não garante empresa + admin por tenant.
 
-**Como implementar:**
-
-Criar script `scripts/seed_empresa.py`:
-```python
-# Cria empresa + admin vinculado
-empresa = Empresa(nome="Minha Empresa", codigo_empresa="MINHAEMPRESA")
-db.add(empresa)
-db.flush()
-
-admin = Usuario(
-    empresa_id=empresa.id,
-    nome="Admin",
-    email="admin@minhaempresa.com",
-    senha_hash=hash_password("senha_inicial"),
-    tipo_usuario="admin",
-    primeiro_login=False,
-)
-db.add(admin)
-db.commit()
-```
-
-Ou adicionar endpoint `/empresas/{id}/criar-admin` para uso interno.
+**Status:** não implementado.
 
 ---
 
-#### 4. Endpoint para admin convidar com empresa_id explícita
+#### 4. Endpoint para admin convidar com `empresa_id` explícita
 
-**O que é:** atualmente um admin só pode convidar para sua própria empresa. Mas o admin "global" (sem empresa ou com tipo especial) precisa conseguir criar empresas e convidar para qualquer uma.
+**O que é:** super-admin global vs admin de empresa.
 
-**Decisão a tomar:** definir se haverá um super-admin global separado dos admins de empresa, ou se todo admin é sempre de empresa.
+**Status:** decisão de produto pendente; não implementado.
 
 ---
 
-### Prioridade média — melhora a experiência
+### Prioridade média
 
-#### 5. Upload real de avatar
+#### ~~5. Upload real de avatar~~ **OK** (MVP local)
 
-**O que é:** atualmente o avatar é apenas uma URL manual. O usuário precisa hospedar a imagem em outro lugar.
-
-**Opções:**
-- **Cloudinary** (gratuito até certo volume): upload via API, retorna URL
-- **Supabase Storage**: se já usar Supabase para banco
-- **Upload local**: salvar em `/static/avatars/` e servir via FastAPI
-
-**Como implementar com Cloudinary:**
-1. `pip install cloudinary`
-2. Criar endpoint `POST /perfil/avatar` que recebe `multipart/form-data`
-3. Fazer upload para Cloudinary, salvar URL no `usuario.avatar_url`
-4. No frontend, `PerfilPage` passa a ter um `<input type="file">` em vez de campo de URL
+Implementado: `POST /perfil/avatar`, arquivos em `static/uploads/avatars/`, primeiro acesso com upload, fallback com ícone. **Fora do escopo atual:** upload em Ativar conta por token (sem JWT) e Cloudinary/Supabase se quiser CDN.
 
 ---
 
 #### 6. Reenviar convite
 
-**O que é:** na `EquipePage`, o admin deve poder reenviar um convite expirado ou pendente.
-
-**Como implementar:**
-
-Backend — adicionar em `equipe.py`:
-```python
-@router.post("/convites/{convite_id}/reenviar")
-def reenviar_convite(convite_id: int, ...):
-    # Invalida convite antigo, cria novo, envia e-mail
-```
-
-Frontend — adicionar botão "Reenviar" nos cards de convite pendente na `EquipePage`.
+**Status:** não implementado — **bom próximo passo** após isolamento de ranking.
 
 ---
 
 #### 7. Nome da empresa no perfil/header
 
-**O que é:** o usuário vê "Empresa #1" na página de perfil. Deveria ver o nome real.
-
-**Como implementar:**
-- O endpoint `GET /auth/me` já retorna `empresa_id`
-- Criar endpoint `GET /empresas/minha` que retorna os dados da empresa do usuário autenticado
-- Ou incluir o campo `empresa_nome` no `UsuarioRead` via join no `usuario_service`
+**Status:** não implementado — **implementável agora** (endpoint ou `empresa_nome` no `UsuarioRead`).
 
 ---
 
 #### 8. Página de convite com informações da empresa
 
-**O que é:** quando o usuário acessa `/ativar-conta?token=...`, ele não vê para qual empresa está sendo convidado.
-
-**Como implementar:**
-- Criar endpoint público `GET /auth/convite-info?token=...` que retorna `{ email, empresa_nome }` sem revelar outros dados
-- Exibir o nome da empresa na `AtivarContaPage` antes de preencher o formulário
+**Status:** não implementado — **implementável agora** (`GET /auth/convite-info?token=...` + `AtivarContaPage`).
 
 ---
 
 #### 9. Templates de e-mail com HTML bonito
 
-**O que é:** os e-mails enviados pelo Resend são HTML simples. Criar templates com a identidade visual do produto.
-
-**Sugestão:** usar [react-email](https://react.email) para criar templates em React/TSX e exportar para HTML estático, ou usar strings HTML inline com estilo inline.
+**Status:** e-mails são HTML mínimo; melhoria cosmética quando quiser.
 
 ---
 
-### Prioridade baixa — evolução futura
+### Prioridade baixa
 
-#### 10. Múltiplos campeonatos
+#### 14. Painel super-admin  
+**Status:** não implementado.
 
-Atualmente o sistema é fixo para Copa do Mundo. Para suportar outros campeonatos (Libertadores, Copa do Brasil, etc.), seria necessário:
-- Adicionar `campeonato_id` em `jogos`, `palpites_jogos`, `palpites_especiais`
-- Cada empresa pode participar de múltiplos campeonatos
-
-#### 11. Google OAuth / SSO
-
-Permitir login social como alternativa à senha. Útil para empresas que já usam Google Workspace. Requer biblioteca `authlib` ou `python-social-auth`.
-
-#### 12. MFA (autenticação de dois fatores)
-
-TOTP via Google Authenticator ou SMS. Importante para contas de admin.
-
-#### 13. Notificações push / WebSocket
-
-Avisar usuários quando um jogo começa, quando o ranking muda, quando recebem palpite vencedor.
-
-#### 14. Painel super-admin
-
-Interface para gerenciar todas as empresas, ver relatórios globais, criar/desativar empresas.
-
-#### 15. RBAC mais granular
-
-Atualmente há apenas `admin` e `usuario`. Poderia ter:
-- `viewer`: só vê, não pode palpitar
-- `moderator`: pode editar jogos mas não criar usuários
-- `company_owner`: pode criar admins na própria empresa
+#### 15. RBAC mais granular  
+**Status:** não implementado.
 
 ---
 
-## Estado atual dos fluxos (o que funciona sem e-mail)
+## O que já dá para implementar (sem dependências bloqueantes)
 
-### Fluxo de convite (modo dev)
-1. Admin acessa `/equipe` → clica "Convidar" → insere e-mails
-2. Backend gera tokens e retorna na resposta (visível na UI)
-3. Admin copia o link manualmente e envia para o usuário
-4. Usuário acessa `/ativar-conta?token=...` → ativa a conta
+Sugestão de ordem:
 
-### Fluxo de reset de senha (modo dev)
-1. Usuário acessa `/esqueci-senha` → informa e-mail
-2. Token gerado no banco (sem e-mail)
-3. Admin busca o token em `GET /auth/reset-token-dev/{email}` (precisa `DEBUG=true` no `.env`)
-4. Usuário acessa `/redefinir-senha?token=...` → redefine senha
+1. **Isolamento do ranking (e insights) por `empresa_id`** — maior impacto em produção multi-tenant; revisar rotas de ranking e queries em [`app/services/ranking_service.py`](app/services/ranking_service.py).
+2. **Nome da empresa no perfil/header** — UX rápida; join ou rota `GET /empresas/minha`.
+3. **`GET /auth/convite-info?token=...`** — melhora confiança na ativação; rota pública só com token válido.
+4. **Reenviar convite** — endpoint + botão na `EquipePage`.
+5. **Remover/mascarar `token` em `GET /equipe/convites`** — endurecimento de segurança.
+6. **Seed / script empresa + admin** — item 3 do doc.
+7. **Templates de e-mail** — quando identidade visual estiver definida.
 
 ---
 
-## Configuração necessária em produção
+## Estado atual dos fluxos
+
+### Convite
+- Com Resend configurado no BD: usuário recebe e-mail com link; resposta do POST pode vir **sem** `token`.
+- Sem Resend ou falha de envio: resposta do POST inclui `token` para o admin copiar (modo dev/fallback).
+
+### Reset de senha
+- Com Resend: e-mail com link para `/redefinir-senha?token=...`.
+- Sem e-mail: com `DEBUG=true`, `GET /auth/reset-token-dev/{email}` ainda disponível para testes.
+
+---
+
+## Configuração em produção (resumo)
 
 ```env
-# .env
 DATABASE_URL=postgresql+psycopg2://user:pass@host:5432/bolao
 JWT_SECRET=gere-com-openssl-rand-hex-32
 JWT_REFRESH_COOKIE_SECURE=true
 DEBUG=false
-
-# Adicionar quando implementar Resend:
-RESEND_API_KEY=re_xxxx
-EMAIL_FROM=bolao@suaempresa.com
+PUBLIC_APP_URL=https://seu-dominio.com
 ```
+
+**Resend:** após `alembic upgrade head`, preencher no Postgres:
+
+```sql
+UPDATE configuracao_email
+SET resend_api_key = 're_...', email_from = 'noreply@seudominio.com'
+WHERE id = 1;
+```
+
+(`email_from` precisa ser domínio verificado no Resend, exceto testes com `onboarding@resend.dev`.)
 
 ---
 
-## Arquivos que precisam ser alterados para cada próximo passo
+## Arquivos de referência por tema
 
-| Próximo passo | Arquivos backend | Arquivos frontend |
-|---|---|---|
-| Resend / e-mail | `services/email_service.py` (novo), `services/convite_service.py`, `services/password_reset_service.py`, `core/config.py` | Remover exibição de tokens na `EquipePage` |
-| Isolamento ranking | `services/ranking_service.py`, `routes/ranking.py` | Nenhum |
-| Upload avatar | `routes/perfil.py`, novo `routes/upload.py` | `PerfilPage.tsx`, `AtivarContaPage.tsx` |
-| Reenviar convite | `routes/equipe.py`, `services/convite_service.py` | `EquipePage.tsx` |
+| Tema | Backend | Frontend |
+|------|---------|----------|
+| ~~Resend / e-mail~~ **OK** | `email_service.py`, `configuracao_email*`, `convite_service.py`, `password_reset_service.py`, `core/config.py` | `EquipePage.tsx`, tipos `ConviteResultado` |
+| Isolamento ranking | `ranking_service.py`, `routes/ranking.py` | Nenhum |
+| ~~Upload avatar~~ **OK** | `routes/perfil.py`, `avatar_upload_service.py` | `PerfilPage.tsx`, `PrimeiroAcessoPage.tsx`, `UserAvatar.tsx` |
+| Reenviar convite | `routes/equipe.py`, `convite_service.py` | `EquipePage.tsx` |
 | Nome empresa no perfil | `routes/empresas.py` ou `schemas/usuario.py` | `PerfilPage.tsx`, `AppLayout.tsx` |
 | Info convite público | `routes/auth.py` | `AtivarContaPage.tsx` |

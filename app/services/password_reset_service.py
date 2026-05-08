@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.auth.password import hash_password
 from app.models.password_reset import PasswordReset
 from app.models.usuario import Usuario
-from app.services import audit_log_service, usuario_service
+from app.services import audit_log_service, email_service, usuario_service
 
 
 _TOKEN_BYTES = 48
@@ -69,6 +69,7 @@ def solicitar_reset(
     )
 
     db.commit()
+    email_service.tentar_enviar_reset_senha(db, email, token)
     return token
 
 

@@ -78,3 +78,7 @@ class AtivarContaRequest(BaseModel):
 class AtivarContaResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class AvatarPreAtivacaoResponse(BaseModel):
+    avatar_url: str
