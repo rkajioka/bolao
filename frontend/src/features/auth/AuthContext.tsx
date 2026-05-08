@@ -12,7 +12,7 @@ interface AuthState {
 
 interface AuthContextValue extends AuthState {
   login: (email: string, senha: string) => Promise<{ primeiro_login: boolean }>
-  logout: () => void
+  logout: () => Promise<void>
   refreshUser: () => Promise<void>
 }
 
@@ -23,7 +23,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setTokenState] = useState<string | null>(getToken)
   const [isLoading, setIsLoading] = useState(true)
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    try {
+      await api.post('/auth/logout')
+    } catch {
+      // logout local deve ocorrer mesmo se a API falhar
+    }
     clearToken()
     setTokenState(null)
     setUser(null)
@@ -39,7 +44,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [logout])
 
   useEffect(() => {
-    const handleLogout = () => logout()
+    const handleLogout = () => {
+      void logout()
+    }
     window.addEventListener('bolao:logout', handleLogout)
     return () => window.removeEventListener('bolao:logout', handleLogout)
   }, [logout])
@@ -51,7 +58,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     api.get<User>('/auth/me')
       .then(setUser)
-      .catch(() => logout())
+      .catch(() => {
+        void logout()
+      })
       .finally(() => setIsLoading(false))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 

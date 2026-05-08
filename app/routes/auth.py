@@ -1,10 +1,12 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.auth.dependencies import get_current_active_user
 from app.database import get_db
 from app.models.usuario import Usuario
 from app.schemas.usuario import (
+    AccessTokenResponse,
     ChangePasswordRequest,
     ForgotPasswordRequest,
     ForgotPasswordResponse,
@@ -16,12 +18,62 @@ from app.schemas.usuario import (
 from app.services import auth_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+settings = get_settings()
+
+
+def _set_refresh_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key=settings.jwt_refresh_cookie_name,
+        value=token,
+        httponly=True,
+        secure=settings.jwt_refresh_cookie_secure,
+        samesite=settings.jwt_refresh_cookie_samesite,
+        path=settings.jwt_refresh_cookie_path,
+        max_age=settings.jwt_refresh_token_expire_minutes * 60,
+    )
+
+
+def _clear_refresh_cookie(response: Response) -> None:
+    response.delete_cookie(
+        key=settings.jwt_refresh_cookie_name,
+        path=settings.jwt_refresh_cookie_path,
+    )
 
 
 @router.post("/login", response_model=LoginResponse)
-def post_login(data: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse:
-    token, primeiro = auth_service.login(db, data)
-    return LoginResponse(access_token=token, primeiro_login=primeiro)
+def post_login(
+    data: LoginRequest,
+    response: Response,
+    db: Session = Depends(get_db),
+) -> LoginResponse:
+    access_token, refresh_token, primeiro = auth_service.login(db, data)
+    _set_refresh_cookie(response, refresh_token)
+    return LoginResponse(access_token=access_token, primeiro_login=primeiro)
+
+
+@router.post("/refresh", response_model=AccessTokenResponse)
+def post_refresh(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+) -> AccessTokenResponse:
+    cookie = request.cookies.get(settings.jwt_refresh_cookie_name)
+    if not cookie:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token não informado")
+    access_token, refresh_token = auth_service.refresh_access_token(db, cookie)
+    _set_refresh_cookie(response, refresh_token)
+    return AccessTokenResponse(access_token=access_token)
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+def post_logout(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+) -> None:
+    cookie = request.cookies.get(settings.jwt_refresh_cookie_name)
+    auth_service.logout(db, cookie)
+    _clear_refresh_cookie(response)
 
 
 @router.get("/me", response_model=UsuarioRead)

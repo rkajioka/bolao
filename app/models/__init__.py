@@ -7,6 +7,7 @@ from app.models.palpite_especial import PalpiteEspecial
 from app.models.palpite_jogo import PalpiteJogo
 from app.models.pontuacao_fase import PontuacaoFase
 from app.models.resultado_especial import ResultadoEspecial
+from app.models.refresh_token import RefreshToken
 from app.models.usuario import Usuario
 
 __all__ = [
@@ -16,6 +17,7 @@ __all__ = [
     "PalpiteJogo",
     "PalpiteEspecial",
     "ResultadoEspecial",
+    "RefreshToken",
     "PontuacaoFase",
     "MarcadorBrasilPalpite",
     "MarcadorBrasilResultado",

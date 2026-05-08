@@ -87,6 +87,11 @@ class LoginResponse(BaseModel):
     primeiro_login: bool
 
 
+class AccessTokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
 class PrimeiroAcessoRequest(BaseModel):
     nome: str = Field(min_length=1, max_length=255)
     funcao: str = Field(min_length=1, max_length=255)

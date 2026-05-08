@@ -135,7 +135,7 @@ Observações de runtime:
 ### Expiração e renovação
 
 - Access token com expiração configurável (`JWT_ACCESS_TOKEN_EXPIRE_MINUTES`).
-- Refresh token: NÃO IDENTIFICADO (não implementado).
+- Refresh token implementado via cookie HttpOnly (`bolao_refresh_token`) com rotação por uso em `/auth/refresh`.
 
 ### Proteção por URL
 
@@ -144,9 +144,9 @@ Observações de runtime:
 
 ### Possíveis falhas de autenticação e autorização
 
-- Token em `localStorage` exposto a risco de exfiltração em cenário de XSS (se houver brecha).
-- Não há refresh token/rotação: sessão mais simples, sem endurecimento.
-- Não há revogação central explícita de token (blacklist): dependência da expiração.
+- Access token em `localStorage` ainda exposto a risco de exfiltração em cenário de XSS (se houver brecha).
+- Refresh token com rotação reduz risco de sessão longa sem renovação controlada.
+- Revogação de refresh token é aplicada no logout e na rotação; access token segue dependente da expiração.
 - Bypass por URL admin no frontend não dá acesso efetivo às ações críticas por causa do backend.
 - Endpoints admin possuem validação backend de papel (positivo).
 

@@ -1,4 +1,6 @@
 const LS_TOKEN = 'bolao_access_token'
+const REFRESH_PATH = '/auth/refresh'
+let refreshPromise: Promise<string | null> | null = null
 
 export function getToken(): string | null {
   return localStorage.getItem(LS_TOKEN)
@@ -28,6 +30,32 @@ type RequestOptions = {
   body?: unknown
   headers?: Record<string, string>
   signal?: AbortSignal
+  _retryAfterRefresh?: boolean
+}
+
+async function tryRefreshToken(): Promise<string | null> {
+  if (!refreshPromise) {
+    refreshPromise = fetch(REFRESH_PATH, {
+      method: 'POST',
+      headers: { Accept: 'application/json' },
+      credentials: 'include',
+    })
+      .then(async (res) => {
+        if (!res.ok) return null
+        const data = (await res.json()) as { access_token?: string }
+        const token = data?.access_token
+        if (token) {
+          setToken(token)
+          return token
+        }
+        return null
+      })
+      .catch(() => null)
+      .finally(() => {
+        refreshPromise = null
+      })
+  }
+  return refreshPromise
 }
 
 export async function apiFetch<T>(path: string, opts: RequestOptions = {}): Promise<T> {
@@ -52,7 +80,21 @@ export async function apiFetch<T>(path: string, opts: RequestOptions = {}): Prom
     headers,
     body,
     signal: opts.signal,
+    credentials: 'include',
   })
+
+  if (
+    res.status === 401 &&
+    token &&
+    !opts._retryAfterRefresh &&
+    path !== REFRESH_PATH &&
+    path !== '/auth/logout'
+  ) {
+    const newToken = await tryRefreshToken()
+    if (newToken) {
+      return apiFetch<T>(path, { ...opts, _retryAfterRefresh: true })
+    }
+  }
 
   let data: unknown = null
   const ct = res.headers.get('content-type') || ''
