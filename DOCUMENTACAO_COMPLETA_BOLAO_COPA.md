@@ -86,8 +86,9 @@ Observações de runtime:
 - Não acessa: endpoints/admin features (bloqueio backend por `require_admin`).
 - Abas disponíveis: `Palpites`, `Especiais`, `Regras`, `Ranking`.
 - Ações bloqueadas por regra temporal:
-  - Palpite jogo: fecha 1h antes do primeiro jogo da rodada/fase.
-  - Especiais: bloqueio por configuração/primeiro jogo.
+  - Palpite jogo (grupos): jogos da rodada X fecham 1h antes do jogo mais cedo da própria rodada X.
+  - Palpite jogo (mata-mata): jogos da fase Y fecham 1h antes do jogo mais cedo da própria fase Y.
+  - Especiais: fecham 1h antes do jogo mais cedo da 1ª rodada da fase de grupos e não reabrem.
   - Marcadores BR: segue bloqueio do jogo.
 - Persistência de palpites:
   - Jogos: `palpites_jogos` (único por usuário+jogo).
@@ -179,7 +180,9 @@ Permitir preenchimento e atualização de palpites de jogos, em duas visões (`C
 - `/jogos/cronologico`, `/palpites-jogos/me`, `/paises`, `/marcadores-brasil/candidatos`, `/grupos`, `/grupos/{grupo}/tabela`.
 
 #### Regras de negócio aplicadas
-- Bloqueio temporal: 1h antes do primeiro jogo da mesma rodada (grupos) ou mesma fase (mata-mata).
+- Bloqueio temporal por conjunto:
+  - rodada de grupos X: `min(data_jogo da rodada X) - 1h`;
+  - fase de mata-mata Y: `min(data_jogo da fase Y) - 1h`.
 - Jogo finalizado é não editável.
 - Mata-mata exige classificado.
 - Marcadores BR apenas para jogos que envolvem BR.
@@ -216,7 +219,7 @@ Coletar palpites especiais do torneio.
 - `/palpites-especiais/me`, `/paises`, `POST /palpites-especiais`, `PUT /palpites-especiais/me`.
 
 #### Regras de negócio aplicadas
-- Bloqueio via backend (`palpites_especiais_esta_bloqueado`).
+- Bloqueio via backend (`palpites_especiais_esta_bloqueado`) em `min(data_jogo da 1ª rodada de grupos) - 1h`.
 - Validação de país existente.
 - Um registro por usuário.
 
@@ -227,7 +230,7 @@ Coletar palpites especiais do torneio.
 - Necessidade de manter documentação e material de apoio alinhados ao modelo atual (pódio + país do artilheiro).
 
 #### Melhorias recomendadas
-- Mensagem de prazo com data/hora explícita.
+- Manter mensagem de prazo com data/hora explícita e referência ao conjunto (rodada/fase).
 
 ### 5.3 Classificação/Grupos
 
@@ -343,7 +346,7 @@ Mostrar classificação geral de usuários por pontos.
 
 - Pontuam por categorias de especiais.
 - Resultado só vale quando resultado especial está `finalizado`.
-- Bloqueio temporal para criação/edição.
+- Bloqueio temporal para criação/edição: 1h antes do jogo mais cedo da 1ª rodada de grupos; após isso, não reabre.
 - Modelo consolidado em pódio + país do artilheiro.
 
 ### Bônus (Marcadores BR)

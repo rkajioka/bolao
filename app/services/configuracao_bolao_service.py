@@ -62,13 +62,19 @@ def atualizar_configuracao(db: Session, data: ConfiguracaoBolaoWrite) -> Configu
 
 def get_data_bloqueio_palpites_especiais_efetiva(db: Session) -> datetime | None:
     """
-    §10.2: data manual em `configuracoes_bolao`, senão data/hora do primeiro jogo cadastrado.
-    Retorna None se não houver config nem jogos (palpites especiais permanecem desbloqueados).
+    §10.2: data manual em `configuracoes_bolao`, senão 1h antes do primeiro jogo
+    da 1ª rodada da fase de grupos.
+    Retorna None se não houver configuração manual nem jogo da rodada 1 de grupos.
     """
     cfg = get_primeira_configuracao(db)
     if cfg and cfg.data_bloqueio_palpites_especiais is not None:
         return cfg.data_bloqueio_palpites_especiais
-    return db.scalar(select(func.min(Jogo.data_jogo)))
+    return db.scalar(
+        select(func.min(Jogo.data_jogo)).where(
+            Jogo.tipo_fase == "grupos",
+            Jogo.rodada == 1,
+        )
+    )
 
 
 def palpites_especiais_esta_bloqueado(db: Session) -> bool:
