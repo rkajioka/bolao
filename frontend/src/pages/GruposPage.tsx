@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { SectionHeader } from '@/components/SectionHeader'
 import { GroupStandingsTable } from '@/components/GroupStandingsTable'
-import type { GrupoTabela, GruposListResponse, TabelaGrupoResponse } from '@/types'
+import type { GruposListResponse, TabelaGrupoResponse } from '@/types'
 
 export function GruposPage() {
   const [grupoSelecionado, setGrupoSelecionado] = useState<string>('')
@@ -18,6 +18,7 @@ export function GruposPage() {
 
   useEffect(() => {
     if (grupos.length && !grupoSelecionado) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setGrupoSelecionado(grupos[0])
     }
   }, [grupos, grupoSelecionado])

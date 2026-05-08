@@ -16,6 +16,7 @@ Estado atual (análise objetiva):
 - **Partes maduras**: autenticação JWT básica, proteção backend por papel, fluxo de palpites com bloqueio temporal, cálculo de pontuação por jogo/especiais, ranking e UI principal responsiva.
 - **Partes parciais**: insights de ranking recém-introduzidos, alguns textos/regras ainda em transição, administração concentrada em uma tela extensa.
 - **Partes frágeis**: token em `localStorage` (risco residual de XSS) e ausência de middleware de CORS explícito em `main`.
+- **Qualidade técnica frontend (ciclo atual)**: `npm run lint` sem erros bloqueantes e `npm run build` concluído; pendências de lint tratadas nos arquivos críticos mapeados.
 
 ---
 

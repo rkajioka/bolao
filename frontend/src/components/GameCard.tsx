@@ -5,14 +5,13 @@ import { CountryFlag } from './CountryFlag'
 import { ScoreStepper } from './ScoreStepper'
 import { MatchStatusBadge } from './MatchStatusBadge'
 import { AutocompleteInput } from './AutocompleteInput'
-import type { Jogo, PalpiteJogo, Pais } from '@/types'
+import type { Jogo, PalpiteJogo } from '@/types'
 import { faseLabel, formatDate, jogoBloqueado, isBrasil } from '@/lib/utils'
 
 interface GameCardProps {
   jogo: Jogo
   palpite: PalpiteJogo | null
   todosJogos: Jogo[]
-  paises: Pais[]
   onSave: (jogoId: number, casa: number, fora: number, classificado?: number | null) => Promise<void>
   onSaveMarcadores?: (jogoId: number, marcadores: { nome_jogador: string; quantidade_gols: number }[]) => Promise<void>
   marcadores?: { nome_jogador: string; quantidade_gols: number }[]
@@ -23,7 +22,6 @@ export function GameCard({
   jogo,
   palpite,
   todosJogos,
-  paises,
   onSave,
   onSaveMarcadores,
   marcadores = [],
@@ -58,6 +56,7 @@ export function GameCard({
     casa !== null && fora !== null && (jogo.tipo_fase !== 'mata_mata' || classificado !== null)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCasa(palpite?.palpite_casa ?? null)
     setFora(palpite?.palpite_fora ?? null)
     setClassificado(palpite?.palpite_classificado_id ?? null)

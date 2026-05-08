@@ -11,9 +11,7 @@ import { useToast } from '@/components/Toast'
 import type {
   Jogo,
   PalpiteJogo,
-  Pais,
   MarcadorCandidato,
-  GrupoTabela,
   GruposListResponse,
   TabelaGrupoResponse,
 } from '@/types'
@@ -38,11 +36,6 @@ export function JogosPage() {
   const { data: palpites = [] } = useQuery({
     queryKey: ['palpites', 'me'],
     queryFn: () => api.get<PalpiteJogo[]>('/palpites-jogos/me'),
-  })
-
-  const { data: paises = [] } = useQuery({
-    queryKey: ['paises'],
-    queryFn: () => api.get<Pais[]>('/paises'),
   })
 
   const { data: candidatos = [] } = useQuery({
@@ -72,6 +65,7 @@ export function JogosPage() {
   useEffect(() => {
     if (!gruposDisponiveis.length) return
     if (!gruposDisponiveis.includes(grupoSelecionado)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setGrupoSelecionado(gruposDisponiveis[0])
     }
   }, [gruposDisponiveis, grupoSelecionado])
@@ -235,7 +229,6 @@ export function JogosPage() {
                     jogo={jogo}
                     palpite={palpiteMap.get(jogo.id) ?? null}
                     todosJogos={jogosCrono}
-                    paises={paises}
                     onSave={handleSave}
                     onSaveMarcadores={handleSaveMarcadores}
                     candidatos={candidatoNames}
@@ -329,7 +322,6 @@ export function JogosPage() {
                         jogo={jogo}
                         palpite={palpiteMap.get(jogo.id) ?? null}
                         todosJogos={jogosCrono}
-                        paises={paises}
                         onSave={handleSave}
                         onSaveMarcadores={handleSaveMarcadores}
                         candidatos={candidatoNames}

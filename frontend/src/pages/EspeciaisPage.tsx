@@ -33,6 +33,7 @@ export function EspeciaisPage() {
 
   useEffect(() => {
     if (palpite) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm({
         campeao_id: palpite.campeao_id ? String(palpite.campeao_id) : '',
         vice_campeao_id: palpite.vice_campeao_id ? String(palpite.vice_campeao_id) : '',
@@ -108,7 +109,7 @@ export function EspeciaisPage() {
             { key: 'vice_campeao_id', label: 'Vice-campeão', selected: selectedVice, placeholder: 'Selecione o vice-campeão' },
             { key: 'terceiro_lugar_id', label: '3º lugar', selected: selectedTerceiro, placeholder: 'Selecione o 3º lugar' },
             { key: 'artilheiro_pais_id', label: 'País do artilheiro', selected: selectedArtilheiroPais, placeholder: 'Selecione o país do artilheiro' },
-          ].map(({ key, label, selected, placeholder }, idx) => (
+          ].map(({ key, label, placeholder }, idx) => (
             <div key={key}>
               <label
                 className="block text-xs font-bold mb-2 uppercase tracking-wider flex items-center gap-1.5"
