@@ -21,7 +21,9 @@
       "Bash(cat \"C:\\\\Users\\\\GIANLU~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-Gianlucca-Agostini-Documents-Projetos-LPCopa-bolao\\\\2996cf6d-046b-4ec8-8964-318fd1d63ae9\\\\tasks\\\\bauwvidcs.output\" 2>/dev/null; ls \"C:\\\\Users\\\\GIANLU~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-Gianlucca-Agostini-Documents-Projetos-LPCopa-bolao\\\\\" 2>&1)",
       "Read(//c/Users/GIANLU~1/AppData/Local/Temp/claude/**)",
       "Bash(curl -s -X POST http://localhost:8000/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"admin@exemplo.com\",\"senha\":\"admin123\"}')",
-      "Bash(curl -s -X POST http://localhost:8000/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"admin@exemplo.com\",\"senha\":\"admin123\"}' -w \"\\\\nHTTP STATUS: %{http_code}\")"
+      "Bash(curl -s -X POST http://localhost:8000/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"admin@exemplo.com\",\"senha\":\"admin123\"}' -w \"\\\\nHTTP STATUS: %{http_code}\")",
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\Gianlucca Agostini\\\\Documents\\\\Projetos\\\\LPCopa\\\\bolao\" -Force | Select-Object Name, @{Name=\"Type\"; Expression={if \\($_.PSIsContainer\\) { \"DIR\" } else { \"FILE\" }}} | Format-Table -AutoSize)",
+      "Bash(dir \"c:\\\\Users\\\\Gianlucca Agostini\\\\Documents\\\\Projetos\\\\LPCopa\\\\bolao\\\\alembic\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\Gianlucca Agostini\\.claude\\projects\\c--Users-Gianlucca-Agostini-Documents-Projetos-LPCopa-bolao"

@@ -130,3 +130,31 @@ export function getInitials(nome: string): string {
 export function pluralize(n: number, singular: string, plural: string): string {
   return n === 1 ? singular : plural
 }
+
+export function deadlineText(
+  jogo: Jogo,
+  todosJogos: Jogo[],
+): { text: string; urgent: boolean } | null {
+  if (jogo.finalizado) return null
+  const lim = momentoFimEdicao(jogo, todosJogos)
+  if (!Number.isFinite(lim)) return null
+  const diff = lim - Date.now()
+  if (diff <= 0) return null
+
+  const h = Math.floor(diff / 3_600_000)
+  const m = Math.floor((diff % 3_600_000) / 60_000)
+
+  let text: string
+  if (h >= 24) {
+    const d = Math.floor(h / 24)
+    text = `Fecha em ${d}d ${h % 24}h`
+  } else if (h >= 1) {
+    text = `Fecha em ${h}h${m > 0 ? ` ${m}min` : ''}`
+  } else if (m >= 1) {
+    text = `Fecha em ${m}min`
+  } else {
+    text = 'Fecha em breve'
+  }
+
+  return { text, urgent: diff < 3_600_000 }
+}

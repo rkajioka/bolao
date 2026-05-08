@@ -22,6 +22,10 @@
     --safe-top: env(safe-area-inset-top, 0px);
     --topbar-bg: rgba(7, 10, 18, 0.85);
     --nav-bg: rgba(7, 10, 18, 0.90);
+    --segmented-bg: rgba(255, 255, 255, 0.04);
+    --segmented-border: rgba(255, 255, 255, 0.08);
+    --segmented-active-bg: rgba(255, 255, 255, 0.12);
+    --segmented-active-border: rgba(255, 255, 255, 0.14);
   }
 
   /* ── Light mode ── */
@@ -42,6 +46,10 @@
     --danger-dim: rgba(224, 48, 80, 0.10);
     --topbar-bg: rgba(240, 242, 247, 0.88);
     --nav-bg: rgba(240, 242, 247, 0.92);
+    --segmented-bg: rgba(0, 0, 0, 0.05);
+    --segmented-border: rgba(0, 0, 0, 0.09);
+    --segmented-active-bg: rgba(255, 255, 255, 0.92);
+    --segmented-active-border: rgba(0, 0, 0, 0.10);
   }
 
   * {
@@ -102,6 +110,31 @@
   .scrollbar-hidden::-webkit-scrollbar {
     display: none;
   }
+}
+
+/* Focus visible global — só mostra anel de foco com teclado */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* Remove outline padrão para clique/touch */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Melhora touch targets mínimos */
+button, a, [role="button"] {
+  min-height: 40px;
+  min-width: 40px;
+}
+
+/* Transição suave de cor para todos elementos interativos */
+button, a {
+  transition-property: color, background-color, border-color, opacity;
+  transition-duration: 150ms;
+  transition-timing-function: ease;
 }
 
 #root {

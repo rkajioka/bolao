@@ -7,6 +7,7 @@ interface SkeletonProps {
 export function Skeleton({ className }: SkeletonProps) {
   return (
     <div
+      aria-hidden="true"
       className={cn('animate-pulse rounded-xl', className)}
       style={{ background: 'rgba(255,255,255,0.06)' }}
     />
@@ -15,7 +16,7 @@ export function Skeleton({ className }: SkeletonProps) {
 
 export function GameCardSkeleton() {
   return (
-    <div className="glass rounded-2xl p-4 space-y-3">
+    <div className="glass rounded-2xl p-4 space-y-3" role="status" aria-label="Carregando jogo">
       <div className="flex justify-between">
         <Skeleton className="h-5 w-24" />
         <Skeleton className="h-5 w-32" />
@@ -42,7 +43,7 @@ export function GameCardSkeleton() {
 
 export function RankingCardSkeleton() {
   return (
-    <div className="glass rounded-2xl p-4 flex items-center gap-3">
+    <div className="glass rounded-2xl p-4 flex items-center gap-3" role="status" aria-label="Carregando posição">
       <Skeleton className="w-8 h-8 rounded-full" />
       <Skeleton className="w-10 h-10 rounded-full" />
       <div className="flex-1 space-y-2">

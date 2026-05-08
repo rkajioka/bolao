@@ -7,6 +7,7 @@ import { GameCardSkeleton } from '@/components/Skeleton'
 import { EmptyState } from '@/components/EmptyState'
 import { SectionHeader } from '@/components/SectionHeader'
 import { GroupStandingsTable } from '@/components/GroupStandingsTable'
+import { SegmentedControl } from '@/components/SegmentedControl'
 import { useToast } from '@/components/Toast'
 import type {
   Jogo,
@@ -20,6 +21,16 @@ import { jogoBloqueado, momentoFimEdicao } from '@/lib/utils'
 
 type Tab = 'cronologico' | 'grupos'
 type StatusFiltro = 'abertos' | 'fechados'
+
+const TAB_SEGMENTS = [
+  { key: 'cronologico' as Tab, label: 'Cronológico' },
+  { key: 'grupos' as Tab, label: 'Por grupo' },
+]
+
+const STATUS_SEGMENTS = [
+  { key: 'abertos' as StatusFiltro, label: 'Em aberto' },
+  { key: 'fechados' as StatusFiltro, label: 'Fechados' },
+]
 
 export function JogosPage() {
   const [tab, setTab] = useState<Tab>('cronologico')
@@ -149,25 +160,12 @@ export function JogosPage() {
     <div className="space-y-4">
       <SectionHeader title="Palpites" subtitle="Faça seus palpites antes do fechamento" />
 
-      {/* Tab switcher */}
-      <div
-        className="flex p-1 rounded-xl"
-        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
-      >
-        {(['cronologico', 'grupos'] as Tab[]).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className="flex-1 py-2 rounded-lg text-sm font-semibold transition-all duration-150"
-            style={{
-              background: tab === t ? 'rgba(255,255,255,0.10)' : 'transparent',
-              color: tab === t ? 'var(--text)' : 'var(--text-muted)',
-            }}
-          >
-            {t === 'cronologico' ? 'Cronológico' : 'Por grupo'}
-          </button>
-        ))}
-      </div>
+      <SegmentedControl
+        segments={TAB_SEGMENTS}
+        value={tab}
+        onChange={setTab}
+        controlId="jogos-tab"
+      />
 
       {loadingJogos ? (
         <div className="space-y-3">
@@ -190,27 +188,12 @@ export function JogosPage() {
               transition={{ duration: 0.15 }}
               className="space-y-3"
             >
-              <div
-                className="flex p-1 rounded-xl"
-                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
-              >
-                {([
-                  { key: 'abertos', label: 'Em aberto' },
-                  { key: 'fechados', label: 'Fechados' },
-                ] as { key: StatusFiltro; label: string }[]).map((opt) => (
-                  <button
-                    key={opt.key}
-                    onClick={() => setFiltroStatus(opt.key)}
-                    className="flex-1 py-2 rounded-lg text-sm font-semibold transition-all duration-150"
-                    style={{
-                      background: filtroStatus === opt.key ? 'rgba(255,255,255,0.10)' : 'transparent',
-                      color: filtroStatus === opt.key ? 'var(--text)' : 'var(--text-muted)',
-                    }}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
+              <SegmentedControl
+                segments={STATUS_SEGMENTS}
+                value={filtroStatus}
+                onChange={setFiltroStatus}
+                controlId="crono-status"
+              />
 
               {jogosCronoFiltrados.length === 0 ? (
                 <EmptyState
@@ -281,30 +264,15 @@ export function JogosPage() {
                 />
               </div>
 
-              <div>
-                <div
-                  className="flex p-1 rounded-xl mb-3"
-                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
-                >
-                  {([
-                    { key: 'abertos', label: 'Em aberto' },
-                    { key: 'fechados', label: 'Fechados' },
-                  ] as { key: StatusFiltro; label: string }[]).map((opt) => (
-                    <button
-                      key={opt.key}
-                      onClick={() => setFiltroStatus(opt.key)}
-                      className="flex-1 py-2 rounded-lg text-sm font-semibold transition-all duration-150"
-                      style={{
-                        background: filtroStatus === opt.key ? 'rgba(255,255,255,0.10)' : 'transparent',
-                        color: filtroStatus === opt.key ? 'var(--text)' : 'var(--text-muted)',
-                      }}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
+              <div className="space-y-3">
+                <SegmentedControl
+                  segments={STATUS_SEGMENTS}
+                  value={filtroStatus}
+                  onChange={setFiltroStatus}
+                  controlId="grupos-status"
+                />
 
-                <h3 className="text-xs font-bold uppercase tracking-wider mb-3 px-1" style={{ color: 'var(--accent)' }}>
+                <h3 className="text-xs font-bold uppercase tracking-wider px-1" style={{ color: 'var(--accent)' }}>
                   Palpites do Grupo {grupoSelecionado}
                 </h3>
 

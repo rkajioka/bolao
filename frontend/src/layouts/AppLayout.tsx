@@ -128,6 +128,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             {/* Logout */}
             <button
               onClick={handleLogout}
+              aria-label="Sair da conta"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all duration-150"
               style={{
                 background: 'var(--glass)',
@@ -149,6 +150,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
       {/* Bottom navigation */}
       <nav
+        aria-label="Navegação principal"
         className="fixed bottom-0 left-0 right-0 z-50"
         style={{
           background: 'var(--nav-bg)',
