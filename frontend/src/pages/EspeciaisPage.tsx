@@ -6,6 +6,7 @@ import { api } from '@/lib/api'
 import { useToast } from '@/components/Toast'
 import { SectionHeader } from '@/components/SectionHeader'
 import { CountryFlag } from '@/components/CountryFlag'
+import { CountrySelect } from '@/components/CountrySelect'
 import type { PalpiteEspecial, Pais } from '@/types'
 
 export function EspeciaisPage() {
@@ -69,18 +70,10 @@ export function EspeciaisPage() {
     }
   }
 
-  const paisesOrdenados = [...paises].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
   const selectedPais = paises.find((p) => String(p.id) === form.campeao_id)
   const selectedVice = paises.find((p) => String(p.id) === form.vice_campeao_id)
   const selectedTerceiro = paises.find((p) => String(p.id) === form.terceiro_lugar_id)
   const selectedArtilheiroPais = paises.find((p) => String(p.id) === form.artilheiro_pais_id)
-
-  const inputClass = "w-full px-3 py-3 rounded-xl text-sm transition-all duration-150 outline-none disabled:opacity-40"
-  const inputStyle = {
-    background: 'rgba(255,255,255,0.06)',
-    border: '1px solid rgba(255,255,255,0.10)',
-    color: 'var(--text)',
-  }
 
   return (
     <div className="space-y-4">
@@ -127,25 +120,13 @@ export function EspeciaisPage() {
                 {idx === 0 ? <Star size={12} /> : null}
                 {label}
               </label>
-              <div className="relative">
-                {selected && (
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                    <CountryFlag pais={selected} size="sm" />
-                  </div>
-                )}
-                <select
-                  value={form[key as keyof typeof form]}
-                  onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-                  disabled={bloqueado}
-                  className={inputClass}
-                  style={{ ...inputStyle, paddingLeft: selected ? '3.5rem' : '0.75rem' }}
-                >
-                  <option value="">{placeholder}</option>
-                  {paisesOrdenados.map((p) => (
-                    <option key={p.id} value={p.id}>{p.nome}</option>
-                  ))}
-                </select>
-              </div>
+              <CountrySelect
+                value={form[key as keyof typeof form]}
+                countries={paises}
+                onChange={(val) => setForm((f) => ({ ...f, [key]: val }))}
+                placeholder={placeholder}
+                disabled={bloqueado}
+              />
             </div>
           ))}
 

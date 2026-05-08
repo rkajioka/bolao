@@ -24,28 +24,45 @@ export function RankingPage() {
 
   const linhas = data?.linhas ?? []
   const top3 = linhas.slice(0, 3)
-  const rest = linhas.slice(3)
-
-  const myPosition = linhas.findIndex((l) => l.usuario_id === user?.id)
+  const top50 = linhas.slice(0, 50)
+  const listaTop50 = top50.slice(3)
+  const linhaUsuario = linhas.find((l) => l.usuario_id === user?.id)
+  const usuarioForaTop50 = Boolean(linhaUsuario && linhaUsuario.posicao > 50)
 
   return (
     <div className="space-y-4">
       <SectionHeader title="Ranking" subtitle="Classificação geral do bolão" />
 
-      {/* My position highlight (if not top 3) */}
-      {myPosition >= 3 && !isLoading && (
+      {/* User highlight card */}
+      {linhaUsuario && !isLoading && (
         <div
           className="flex items-center gap-3 px-4 py-3 rounded-2xl"
           style={{
-            background: 'rgba(53,208,127,0.08)',
-            border: '1px solid rgba(53,208,127,0.25)',
+            background: 'rgba(53,208,127,0.06)',
+            border: '1px solid rgba(53,208,127,0.30)',
           }}
         >
-          <span className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
-            Sua posição: #{myPosition + 1}
-          </span>
-          <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            {linhas[myPosition]?.pontos_totais} pts
+          <div
+            className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold overflow-hidden shrink-0"
+            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
+          >
+            {linhaUsuario.imagem_perfil ? (
+              <img src={imgUrl(linhaUsuario.imagem_perfil)} alt={linhaUsuario.nome} className="w-full h-full object-cover" />
+            ) : (
+              <span style={{ color: 'var(--text-muted)' }}>{getInitials(linhaUsuario.nome)}</span>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--accent)' }}>
+              Seu desempenho
+            </p>
+            <p className="text-sm font-semibold truncate">{linhaUsuario.nome}</p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+              Posição #{linhaUsuario.posicao}
+            </p>
+          </div>
+          <span className="text-sm font-black" style={{ color: 'var(--accent)' }}>
+            {linhaUsuario.pontos_totais} pts
           </span>
         </div>
       )}
@@ -64,17 +81,19 @@ export function RankingPage() {
         <div className="space-y-2">
           {/* Top 3 podium */}
           {top3.length > 0 && (
-            <div className="flex gap-2 mb-4">
-              {top3.map((linha, i) => {
-                const p = podiumColors[i]
+            <div className="flex gap-2 mb-4 items-end">
+              {[1, 0, 2].filter((idx) => top3[idx]).map((idx) => {
+                const linha = top3[idx]
+                const p = podiumColors[idx]
                 const isMe = linha.usuario_id === user?.id
+                const heightClass = idx === 0 ? 'min-h-[160px]' : idx === 1 ? 'min-h-[140px]' : 'min-h-[128px]'
                 return (
                   <motion.div
                     key={linha.usuario_id}
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.25, delay: i * 0.06 }}
-                    className="flex-1 flex flex-col items-center gap-1.5 py-4 px-2 rounded-2xl text-center"
+                    transition={{ duration: 0.25, delay: idx * 0.06 }}
+                    className={`flex-1 flex flex-col items-center justify-end gap-1.5 py-4 px-2 rounded-2xl text-center ${heightClass}`}
                     style={{
                       background: `rgba(${p.color === '#F6C65B' ? '246,198,91' : p.color === '#A7B0C0' ? '167,176,192' : '205,127,50'},0.07)`,
                       border: `1px solid ${p.shadow.replace('0.3', '0.35').replace('0.2', '0.25')}`,
@@ -102,22 +121,22 @@ export function RankingPage() {
                       </p>
                       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>pts</p>
                     </div>
-                    {i === 0 && <Medal size={14} style={{ color: p.color }} />}
+                    {idx === 0 && <Medal size={14} style={{ color: p.color }} />}
                   </motion.div>
                 )
               })}
             </div>
           )}
 
-          {/* Rest */}
-          {rest.map((linha, i) => {
+          {/* Positions 4..50 */}
+          {listaTop50.map((linha, i) => {
             const isMe = linha.usuario_id === user?.id
             return (
               <motion.div
                 key={linha.usuario_id}
                 initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.2, delay: (i + top3.length) * 0.04 }}
+                transition={{ duration: 0.2, delay: (i + 3) * 0.04 }}
                 className="flex items-center gap-3 px-4 py-3 rounded-2xl"
                 style={{
                   background: isMe ? 'rgba(53,208,127,0.06)' : 'var(--glass)',
@@ -144,7 +163,9 @@ export function RankingPage() {
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm truncate">{linha.nome}</p>
+                  <p className="font-semibold text-sm truncate">
+                    {linha.nome} {isMe ? '· Você' : ''}
+                  </p>
                   <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
                     Jogos: {linha.pontos_jogos} · Especiais: {linha.pontos_especiais} · Brasil: {linha.bonus_brasil}
                   </p>
@@ -157,6 +178,52 @@ export function RankingPage() {
               </motion.div>
             )
           })}
+
+          {usuarioForaTop50 && linhaUsuario && (
+            <motion.div
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.2 }}
+              className="flex items-center gap-3 px-4 py-3 rounded-2xl mt-3"
+              style={{
+                background: 'rgba(53,208,127,0.06)',
+                border: '1px solid rgba(53,208,127,0.25)',
+                backdropFilter: 'blur(12px)',
+              }}
+            >
+              <span
+                className="w-7 text-center font-bold text-sm tabular-nums"
+                style={{ color: 'var(--accent)' }}
+              >
+                {linhaUsuario.posicao}
+              </span>
+
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold overflow-hidden shrink-0"
+                style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
+              >
+                {linhaUsuario.imagem_perfil ? (
+                  <img src={imgUrl(linhaUsuario.imagem_perfil)} alt={linhaUsuario.nome} className="w-full h-full object-cover" />
+                ) : (
+                  <span style={{ color: 'var(--text-muted)' }}>{getInitials(linhaUsuario.nome)}</span>
+                )}
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm truncate">
+                  {linhaUsuario.nome} · Você
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                  Fora do top 50
+                </p>
+              </div>
+
+              <div className="text-right shrink-0">
+                <p className="font-black text-base">{linhaUsuario.pontos_totais}</p>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>pts</p>
+              </div>
+            </motion.div>
+          )}
         </div>
       )}
     </div>
