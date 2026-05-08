@@ -1,13 +1,44 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
+import { ChevronDown } from 'lucide-react'
 import { CountryFlag } from '@/components/CountryFlag'
 import { AutocompleteInput } from '@/components/AutocompleteInput'
 import { SelectInput } from '@/components/SelectInput'
 import type { Jogo, Pais } from '@/types'
-import { formatDate, faseLabel } from '@/lib/utils'
+import { compareJogosPorDataJogoAsc, formatDate, faseLabel } from '@/lib/utils'
 import { gamesService } from '@/services/games.service'
 import { adminService } from '@/services/admin.service'
+
+type ResultadoEdicao = { placar_casa: number; placar_fora: number }
+
+/** Chave yyyy-mm-dd no fuso local para agrupar / filtrar. */
+function dataChaveLocal(iso: string): string {
+  const d = new Date(iso)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+function labelDataCabecalho(iso: string): string {
+  return new Date(iso).toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  })
+}
+
+function labelDataFiltro(yyyyMmDd: string): string {
+  const [y, m, d] = yyyyMmDd.split('-').map(Number)
+  if (!y || !m || !d) return yyyyMmDd
+  return new Date(y, m - 1, d).toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+}
 
 interface AdminGamesProps {
   success: (msg: string) => void
@@ -41,9 +72,10 @@ export function AdminGames({ success, error }: AdminGamesProps) {
     queryFn: () => gamesService.getCandidatesAdmin(),
   })
 
-  const [editingId, setEditingId] = useState<number | null>(null)
-  const [result, setResult] = useState({ placar_casa: 0, placar_fora: 0, finalizar: false })
+  const [resultadosEdicao, setResultadosEdicao] = useState<Record<number, ResultadoEdicao>>({})
   const [editingMarcadoresId, setEditingMarcadoresId] = useState<number | null>(null)
+  const [finalizadosAbertos, setFinalizadosAbertos] = useState(false)
+  const [filtroDataPendentes, setFiltroDataPendentes] = useState<string>('todas')
   const [marcadoresForm, setMarcadoresForm] = useState<Record<number, { nome_jogador: string; quantidade_gols: number }[]>>({})
   const [novoCandidato, setNovoCandidato] = useState('')
   const [novoJogo, setNovoJogo] = useState({
@@ -79,6 +111,77 @@ export function AdminGames({ success, error }: AdminGamesProps) {
     () => paisesDisponiveis.map((p: Pais) => ({ value: String(p.id), label: p.nome })),
     [paisesDisponiveis],
   )
+
+  const jogosOrdenados = useMemo(() => [...jogos].sort(compareJogosPorDataJogoAsc), [jogos])
+
+  const jogosPendentes = useMemo(
+    () => jogosOrdenados.filter((j) => !j.finalizado),
+    [jogosOrdenados],
+  )
+
+  const jogosFinalizados = useMemo(
+    () => jogosOrdenados.filter((j) => j.finalizado),
+    [jogosOrdenados],
+  )
+
+  const datasPendentes = useMemo(() => {
+    const s = new Set<string>()
+    for (const j of jogosPendentes) s.add(dataChaveLocal(j.data_jogo))
+    return [...s].sort()
+  }, [jogosPendentes])
+
+  const opcoesFiltroData = useMemo(
+    () => [
+      { value: 'todas', label: 'Todas as datas' },
+      ...datasPendentes.map((d) => ({ value: d, label: labelDataFiltro(d) })),
+    ],
+    [datasPendentes],
+  )
+
+  useEffect(() => {
+    setResultadosEdicao((prev) => {
+      const next: Record<number, ResultadoEdicao> = { ...prev }
+      for (const j of jogos) {
+        if (j.finalizado) {
+          delete next[j.id]
+          continue
+        }
+        if (next[j.id] === undefined) {
+          next[j.id] = {
+            placar_casa: j.placar_casa ?? 0,
+            placar_fora: j.placar_fora ?? 0,
+          }
+        }
+      }
+      for (const id of Object.keys(next)) {
+        const n = Number(id)
+        if (!jogos.some((j) => j.id === n)) delete next[n]
+      }
+      return next
+    })
+  }, [jogos])
+
+  useEffect(() => {
+    if (filtroDataPendentes !== 'todas' && !datasPendentes.includes(filtroDataPendentes)) {
+      setFiltroDataPendentes('todas')
+    }
+  }, [filtroDataPendentes, datasPendentes])
+
+  const pendentesFiltrados = useMemo(() => {
+    if (filtroDataPendentes === 'todas') return jogosPendentes
+    return jogosPendentes.filter((j) => dataChaveLocal(j.data_jogo) === filtroDataPendentes)
+  }, [jogosPendentes, filtroDataPendentes])
+
+  const pendentesAgrupadosPorData = useMemo(() => {
+    const m = new Map<string, Jogo[]>()
+    for (const j of pendentesFiltrados) {
+      const k = dataChaveLocal(j.data_jogo)
+      const arr = m.get(k) ?? []
+      arr.push(j)
+      m.set(k, arr)
+    }
+    return [...m.entries()].sort(([a], [b]) => a.localeCompare(b))
+  }, [pendentesFiltrados])
 
   const criarJogo = async () => {
     try {
@@ -127,19 +230,18 @@ export function AdminGames({ success, error }: AdminGamesProps) {
     }
   }
 
-  const handleFinalize = async (jogo: Jogo) => {
+  const handleSalvarResultado = async (jogo: Jogo) => {
     if (jogo.finalizado) return
+    const r = resultadosEdicao[jogo.id]
+    if (!r) return
     try {
       await gamesService.updateResult(jogo.id, {
-        placar_casa: result.placar_casa,
-        placar_fora: result.placar_fora,
+        placar_casa: r.placar_casa,
+        placar_fora: r.placar_fora,
       })
-      if (result.finalizar) {
-        await gamesService.finalize(jogo.id)
-      }
+      await gamesService.finalize(jogo.id)
       await queryClient.invalidateQueries({ queryKey: ['jogos'] })
-      success('Resultado salvo!')
-      setEditingId(null)
+      success('Jogo finalizado e pontos calculados.')
     } catch (err) {
       error(err instanceof Error ? err.message : 'Erro ao salvar resultado')
     }
@@ -297,184 +399,260 @@ export function AdminGames({ success, error }: AdminGamesProps) {
         </div>
       </div>
 
-      {/* Lista de jogos */}
-      {jogos.map((jogo) => (
-        <div key={jogo.id} className="glass rounded-2xl p-4">
-          <div className="flex items-start justify-between gap-2 mb-2">
-            <div>
-              <p className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
-                {faseLabel(jogo)} · {formatDate(jogo.data_jogo)}
-              </p>
-              <p className="font-semibold text-sm mt-0.5">
-                {jogo.pais_casa.nome} vs {jogo.pais_fora.nome}
-              </p>
+      {/* Resultados — pendentes */}
+      <div className="glass rounded-2xl p-4 space-y-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-semibold">
+            Lançar resultados
+            <span className="font-normal text-xs ml-2" style={{ color: 'var(--text-muted)' }}>
+              ({jogosPendentes.length} em aberto)
+            </span>
+          </p>
+          {datasPendentes.length > 0 && (
+            <div className="w-full sm:w-56">
+              <SelectInput
+                value={filtroDataPendentes}
+                onChange={(v) => setFiltroDataPendentes(v)}
+                options={opcoesFiltroData}
+                placeholder="Data"
+              />
             </div>
-            <div className="flex items-center gap-2 flex-wrap justify-end">
-              {jogo.finalizado && (
-                <span
-                  className="text-xs px-2 py-1 rounded-full font-semibold"
-                  style={{ background: 'var(--highlight-dim)', color: 'var(--highlight)', border: '1px solid rgba(246,198,91,0.3)' }}
-                >
-                  Finalizado
-                </span>
-              )}
-              {!jogo.finalizado && (
-                <button
-                  onClick={() => setEditingId(editingId === jogo.id ? null : jogo.id)}
-                  aria-expanded={editingId === jogo.id}
-                  className="text-xs px-3 py-1.5 rounded-xl font-semibold"
-                  style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text)' }}
-                >
-                  {editingId === jogo.id ? 'Fechar' : 'Resultado'}
-                </button>
-              )}
-              {(jogo.pais_casa.sigla === 'BR' || jogo.pais_fora.sigla === 'BR') && jogo.finalizado && (
-                <button
-                  onClick={() => openMarcadores(jogo.id)}
-                  aria-expanded={editingMarcadoresId === jogo.id}
-                  className="text-xs px-3 py-1.5 rounded-xl font-semibold"
-                  style={{ background: 'rgba(246,198,91,0.10)', border: '1px solid rgba(246,198,91,0.3)', color: 'var(--highlight)' }}
-                >
-                  Marcadores BR
-                </button>
-              )}
-            </div>
-          </div>
-
-          {jogo.placar_casa !== null && (
-            <p className="text-xs" style={{ color: 'var(--accent)' }}>
-              Resultado: {jogo.placar_casa} × {jogo.placar_fora}
-            </p>
           )}
+        </div>
 
-          {/* Form de resultado */}
-          <AnimatePresence>
-            {editingId === jogo.id && !jogo.finalizado && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden"
-              >
-                <div className="pt-3 mt-3 space-y-3" style={{ borderTop: '1px dashed rgba(255,255,255,0.08)' }}>
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1.5 flex-1">
-                      <CountryFlag pais={jogo.pais_casa} size="sm" />
-                      <input
-                        type="number"
-                        min={0}
-                        aria-label={`Placar ${jogo.pais_casa.nome}`}
-                        value={result.placar_casa}
-                        onChange={(e) => setResult((r) => ({ ...r, placar_casa: parseInt(e.target.value) || 0 }))}
-                        className="w-16 text-center text-lg font-bold py-2 rounded-xl outline-none"
-                        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
-                      />
-                    </div>
-                    <span style={{ color: 'var(--text-muted)' }}>×</span>
-                    <div className="flex items-center gap-1.5 flex-1 justify-end">
-                      <input
-                        type="number"
-                        min={0}
-                        aria-label={`Placar ${jogo.pais_fora.nome}`}
-                        value={result.placar_fora}
-                        onChange={(e) => setResult((r) => ({ ...r, placar_fora: parseInt(e.target.value) || 0 }))}
-                        className="w-16 text-center text-lg font-bold py-2 rounded-xl outline-none"
-                        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
-                      />
-                      <CountryFlag pais={jogo.pais_fora} size="sm" />
-                    </div>
-                  </div>
-                  <label className="flex items-center gap-2 text-sm cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={result.finalizar}
-                      onChange={(e) => setResult((r) => ({ ...r, finalizar: e.target.checked }))}
-                      className="w-4 h-4 rounded"
-                    />
-                    <span style={{ color: 'var(--text-muted)' }}>Finalizar jogo (pontos calculados)</span>
-                  </label>
-                  <button
-                    onClick={() => handleFinalize(jogo)}
-                    className="w-full py-2.5 rounded-xl text-sm font-semibold"
-                    style={{ background: 'var(--accent)', color: '#070A12' }}
-                  >
-                    Salvar resultado
-                  </button>
+        {pendentesFiltrados.length === 0 ? (
+          <p className="text-sm py-4 text-center" style={{ color: 'var(--text-muted)' }}>
+            {jogosPendentes.length === 0
+              ? 'Nenhum jogo pendente de finalização.'
+              : 'Nenhum jogo nesta data.'}
+          </p>
+        ) : (
+          <div className="space-y-6">
+            {pendentesAgrupadosPorData.map(([dataKey, lista]) => (
+              <div key={dataKey} className="space-y-3">
+                <h3
+                  className="text-xs font-bold uppercase tracking-wider px-0.5"
+                  style={{ color: 'var(--accent)' }}
+                >
+                  {labelDataCabecalho(lista[0].data_jogo)}
+                </h3>
+                <div className="space-y-3">
+                  {lista.map((jogo) => {
+                    const r = resultadosEdicao[jogo.id] ?? {
+                      placar_casa: jogo.placar_casa ?? 0,
+                      placar_fora: jogo.placar_fora ?? 0,
+                    }
+                    return (
+                      <div key={jogo.id} className="rounded-xl p-3 space-y-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
+                              {faseLabel(jogo)} · {formatDate(jogo.data_jogo)}
+                            </p>
+                            <p className="font-semibold text-sm mt-0.5 truncate">
+                              {jogo.pais_casa.nome} vs {jogo.pais_fora.nome}
+                            </p>
+                          </div>
+                        </div>
+                        {jogo.placar_casa !== null && (
+                          <p className="text-xs" style={{ color: 'var(--accent)' }}>
+                            No servidor: {jogo.placar_casa} × {jogo.placar_fora}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                            <CountryFlag pais={jogo.pais_casa} size="sm" />
+                            <input
+                              type="number"
+                              min={0}
+                              aria-label={`Placar ${jogo.pais_casa.nome}`}
+                              value={r.placar_casa}
+                              onChange={(e) =>
+                                setResultadosEdicao((prev) => ({
+                                  ...prev,
+                                  [jogo.id]: {
+                                    ...r,
+                                    placar_casa: parseInt(e.target.value, 10) || 0,
+                                  },
+                                }))
+                              }
+                              className="w-16 text-center text-lg font-bold py-2 rounded-xl outline-none shrink-0"
+                              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
+                            />
+                          </div>
+                          <span style={{ color: 'var(--text-muted)' }}>×</span>
+                          <div className="flex items-center gap-1.5 flex-1 justify-end min-w-0">
+                            <input
+                              type="number"
+                              min={0}
+                              aria-label={`Placar ${jogo.pais_fora.nome}`}
+                              value={r.placar_fora}
+                              onChange={(e) =>
+                                setResultadosEdicao((prev) => ({
+                                  ...prev,
+                                  [jogo.id]: {
+                                    ...r,
+                                    placar_fora: parseInt(e.target.value, 10) || 0,
+                                  },
+                                }))
+                              }
+                              className="w-16 text-center text-lg font-bold py-2 rounded-xl outline-none shrink-0"
+                              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
+                            />
+                            <CountryFlag pais={jogo.pais_fora} size="sm" />
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleSalvarResultado(jogo)}
+                          className="w-full py-2.5 rounded-xl text-sm font-semibold"
+                          style={{ background: 'var(--accent)', color: '#070A12' }}
+                        >
+                          Salvar e finalizar
+                        </button>
+                      </div>
+                    )
+                  })}
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
-          {/* Form de marcadores */}
-          <AnimatePresence>
-            {editingMarcadoresId === jogo.id && jogo.finalizado && (
+      {/* Finalizados — colapsado */}
+      {jogosFinalizados.length > 0 && (
+        <div className="glass rounded-2xl overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setFinalizadosAbertos((v) => !v)}
+            className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left"
+            style={{ background: 'rgba(255,255,255,0.03)', border: 'none', color: 'var(--text)' }}
+            aria-expanded={finalizadosAbertos}
+          >
+            <span className="text-sm font-semibold">
+              Jogos finalizados ({jogosFinalizados.length})
+            </span>
+            <ChevronDown
+              size={18}
+              className="shrink-0 transition-transform duration-200"
+              style={{ transform: finalizadosAbertos ? 'rotate(180deg)' : 'rotate(0deg)', color: 'var(--text-muted)' }}
+            />
+          </button>
+          <AnimatePresence initial={false}>
+            {finalizadosAbertos && (
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
                 className="overflow-hidden"
               >
-                <div className="pt-3 mt-3 space-y-2" style={{ borderTop: '1px dashed rgba(255,255,255,0.08)' }}>
-                  {(marcadoresForm[jogo.id] || []).map((m, idx) => (
-                    <div key={idx} className="flex gap-2 items-center">
-                      <AutocompleteInput
-                        value={m.nome_jogador}
-                        onChange={(val) =>
-                          setMarcadoresForm((old) => ({
-                            ...old,
-                            [jogo.id]: (old[jogo.id] || []).map((x, i) =>
-                              i === idx ? { ...x, nome_jogador: val } : x,
-                            ),
-                          }))
-                        }
-                        options={candidatosAdmin.filter((c) => c.ativo).map((c) => c.nome)}
-                        placeholder="Nome do jogador"
-                      />
-                      <input
-                        type="number"
-                        min={0}
-                        aria-label="Quantidade de gols"
-                        value={m.quantidade_gols}
-                        onChange={(e) =>
-                          setMarcadoresForm((old) => ({
-                            ...old,
-                            [jogo.id]: (old[jogo.id] || []).map((x, i) =>
-                              i === idx ? { ...x, quantidade_gols: parseInt(e.target.value) || 0 } : x,
-                            ),
-                          }))
-                        }
-                        className="w-16 px-2 py-2 rounded-xl text-sm text-center outline-none"
-                        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
-                      />
+                <div className="px-3 pb-3 pt-1 space-y-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                  {jogosFinalizados.map((jogo) => (
+                    <div
+                      key={jogo.id}
+                      className="rounded-xl p-3 space-y-2"
+                      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}
+                    >
+                      <div className="flex flex-wrap items-center gap-2 justify-between">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
+                            {labelDataFiltro(dataChaveLocal(jogo.data_jogo))} · {faseLabel(jogo)}
+                          </p>
+                          <p className="text-sm font-medium truncate">
+                            {jogo.pais_casa.nome} {jogo.placar_casa ?? '—'} × {jogo.placar_fora ?? '—'}{' '}
+                            {jogo.pais_fora.nome}
+                          </p>
+                        </div>
+                        {(jogo.pais_casa.sigla === 'BR' || jogo.pais_fora.sigla === 'BR') && (
+                          <button
+                            type="button"
+                            onClick={() => openMarcadores(jogo.id)}
+                            aria-expanded={editingMarcadoresId === jogo.id}
+                            className="text-xs px-3 py-1.5 rounded-xl font-semibold shrink-0"
+                            style={{ background: 'rgba(246,198,91,0.10)', border: '1px solid rgba(246,198,91,0.3)', color: 'var(--highlight)' }}
+                          >
+                            Marcadores BR
+                          </button>
+                        )}
+                      </div>
+                      <AnimatePresence>
+                        {editingMarcadoresId === jogo.id && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="pt-2 space-y-2" style={{ borderTop: '1px dashed rgba(255,255,255,0.08)' }}>
+                              {(marcadoresForm[jogo.id] || []).map((m, idx) => (
+                                <div key={idx} className="flex gap-2 items-center">
+                                  <AutocompleteInput
+                                    value={m.nome_jogador}
+                                    onChange={(val) =>
+                                      setMarcadoresForm((old) => ({
+                                        ...old,
+                                        [jogo.id]: (old[jogo.id] || []).map((x, i) =>
+                                          i === idx ? { ...x, nome_jogador: val } : x,
+                                        ),
+                                      }))
+                                    }
+                                    options={candidatosAdmin.filter((c) => c.ativo).map((c) => c.nome)}
+                                    placeholder="Nome do jogador"
+                                  />
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    aria-label="Quantidade de gols"
+                                    value={m.quantidade_gols}
+                                    onChange={(e) =>
+                                      setMarcadoresForm((old) => ({
+                                        ...old,
+                                        [jogo.id]: (old[jogo.id] || []).map((x, i) =>
+                                          i === idx ? { ...x, quantidade_gols: parseInt(e.target.value, 10) || 0 } : x,
+                                        ),
+                                      }))
+                                    }
+                                    className="w-16 px-2 py-2 rounded-xl text-sm text-center outline-none"
+                                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
+                                  />
+                                </div>
+                              ))}
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setMarcadoresForm((old) => ({
+                                      ...old,
+                                      [jogo.id]: [...(old[jogo.id] || []), { nome_jogador: '', quantidade_gols: 1 }],
+                                    }))
+                                  }
+                                  className="flex-1 py-2 rounded-xl text-xs font-semibold"
+                                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text-muted)' }}
+                                >
+                                  + Adicionar
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => salvarMarcadores(jogo.id)}
+                                  className="flex-1 py-2 rounded-xl text-xs font-semibold"
+                                  style={{ background: 'var(--highlight-dim)', border: '1px solid rgba(246,198,91,0.3)', color: 'var(--highlight)' }}
+                                >
+                                  Salvar marcadores
+                                </button>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   ))}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() =>
-                        setMarcadoresForm((old) => ({
-                          ...old,
-                          [jogo.id]: [...(old[jogo.id] || []), { nome_jogador: '', quantidade_gols: 1 }],
-                        }))
-                      }
-                      className="flex-1 py-2 rounded-xl text-xs font-semibold"
-                      style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text-muted)' }}
-                    >
-                      + Adicionar
-                    </button>
-                    <button
-                      onClick={() => salvarMarcadores(jogo.id)}
-                      className="flex-1 py-2 rounded-xl text-xs font-semibold"
-                      style={{ background: 'var(--highlight-dim)', border: '1px solid rgba(246,198,91,0.3)', color: 'var(--highlight)' }}
-                    >
-                      Salvar marcadores
-                    </button>
-                  </div>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
-      ))}
+      )}
     </div>
   )
 }
