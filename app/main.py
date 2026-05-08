@@ -9,6 +9,8 @@ from fastapi.staticfiles import StaticFiles
 from app.routes import (
     auth,
     configuracao_bolao,
+    empresas,
+    equipe,
     grupos,
     health,
     jogos,
@@ -16,6 +18,7 @@ from app.routes import (
     paises,
     palpites_especiais,
     palpites_jogos,
+    perfil,
     pontuacao_fase,
     ranking,
     resultados_especiais,
@@ -24,7 +27,7 @@ from app.routes import (
 
 app = FastAPI(
     title="Bolão da Copa do Mundo — MVP",
-    version="0.1.0",
+    version="0.2.0",
 )
 
 _root = Path(__file__).resolve().parent.parent
@@ -37,6 +40,9 @@ _frontend_dist = _root / "frontend" / "dist"
 app.include_router(health.router, tags=["health"])
 app.include_router(auth.router)
 app.include_router(configuracao_bolao.router)
+app.include_router(empresas.router)
+app.include_router(equipe.router)
+app.include_router(perfil.router)
 app.include_router(usuarios.router)
 app.include_router(paises.router)
 app.include_router(jogos.router)
@@ -58,7 +64,6 @@ if _frontend_dist.exists():
     @app.get("/", include_in_schema=False)
     @app.get("/{full_path:path}", include_in_schema=False)
     def serve_spa(full_path: str = "") -> FileResponse:
-        # Serve index.html for all unmatched routes (SPA client-side routing)
         index = _frontend_dist / "index.html"
         if index.exists():
             return FileResponse(str(index))

@@ -24,6 +24,8 @@ class RankingResponse(BaseModel):
 
 
 class InsightDestaqueRead(BaseModel):
+    model_config = {"from_attributes": True}
+
     usuario_id: int
     nome: str
     valor: int = Field(ge=0)

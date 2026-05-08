@@ -1,25 +1,35 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
 from app.auth.dependencies import get_current_active_user
+from app.core.config import get_settings
 from app.database import get_db
 from app.models.usuario import Usuario
+from app.schemas.convite import AtivarContaRequest, AtivarContaResponse
+from app.schemas.password_reset import (
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
+    PasswordResetTokenInfo,
+    ResetPasswordRequest,
+)
 from app.schemas.usuario import (
     AccessTokenResponse,
     ChangePasswordRequest,
-    ForgotPasswordRequest,
-    ForgotPasswordResponse,
     LoginRequest,
     LoginResponse,
     PrimeiroAcessoRequest,
     UsuarioRead,
 )
-from app.services import auth_service
+from app.services import auth_service, ativacao_service, password_reset_service
 from app.services.rate_limit_service import enforce_limit, reset_key
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 settings = get_settings()
+
+_FORGOT_PASSWORD_MSG = (
+    "Se existir uma conta vinculada ao e-mail informado, "
+    "você receberá as instruções de redefinição em breve."
+)
 
 
 def _set_refresh_cookie(response: Response, token: str) -> None:
@@ -119,12 +129,84 @@ def post_change_password(
     auth_service.change_password(db, user, data)
 
 
+@router.post("/ativar-conta", response_model=AtivarContaResponse)
+def post_ativar_conta(
+    data: AtivarContaRequest,
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+) -> AtivarContaResponse:
+    """Ativa conta via token de convite. Cria usuário e emite tokens de sessão."""
+    ip = request.client.host if request.client else None
+    usuario = ativacao_service.ativar_conta(db, data, ip)
+    access_token, refresh_token = auth_service.issue_token_pair(db, usuario)
+    _set_refresh_cookie(response, refresh_token)
+    return AtivarContaResponse(access_token=access_token)
+
+
 @router.post("/forgot-password", response_model=ForgotPasswordResponse)
-def post_forgot_password(_body: ForgotPasswordRequest) -> ForgotPasswordResponse:
+def post_forgot_password(
+    body: ForgotPasswordRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> ForgotPasswordResponse:
     """
-    MVP sem envio de e-mail (§6.2): resposta fixa conforme especificação.
-    Não revela se o e-mail existe no sistema.
+    Gera token de reset. Resposta é sempre a mesma para evitar enumeração de usuários.
+    Em dev: token retornado em campo extra quando gerado (apenas admin pode ver via /equipe).
     """
-    return ForgotPasswordResponse(
-        mensagem="Para redefinir sua senha, entre em contato com o administrador.",
+    ip = request.client.host if request.client else None
+    enforce_limit(
+        key=f"auth:forgot:{ip}",
+        limit=5,
+        window_seconds=300,
     )
+    password_reset_service.solicitar_reset(db, str(body.email), ip)
+    return ForgotPasswordResponse(mensagem=_FORGOT_PASSWORD_MSG)
+
+
+@router.post("/redefinir-senha", status_code=status.HTTP_204_NO_CONTENT)
+def post_redefinir_senha(
+    data: ResetPasswordRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> None:
+    ip = request.client.host if request.client else None
+    password_reset_service.redefinir_senha(db, data.token, data.nova_senha, ip)
+
+
+@router.get("/reset-token-dev/{email}", response_model=PasswordResetTokenInfo)
+def get_reset_token_dev(
+    email: str,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> PasswordResetTokenInfo:
+    """
+    Endpoint temporário para obter token de reset em ambiente de desenvolvimento/testes.
+    Deve ser desabilitado em produção via variável de ambiente.
+    """
+    from sqlalchemy import and_, select
+    from app.models.password_reset import PasswordReset
+    from app.services import usuario_service
+    from datetime import UTC, datetime
+
+    if not settings.debug:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+
+    usuario = usuario_service.get_by_email(db, email)
+    if usuario is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado")
+
+    agora = datetime.now(UTC)
+    pr = db.scalar(
+        select(PasswordReset).where(
+            and_(
+                PasswordReset.usuario_id == usuario.id,
+                PasswordReset.usado.is_(False),
+                PasswordReset.expiracao > agora,
+            )
+        ).order_by(PasswordReset.created_at.desc())
+    )
+    if pr is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Token não encontrado")
+
+    return PasswordResetTokenInfo(token=pr.token, expiracao=pr.expiracao.isoformat())

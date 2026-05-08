@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { NavLink, useNavigate, useLocation } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   CalendarDays,
   Star,
@@ -11,6 +11,7 @@ import {
   User,
   Moon,
   Sun,
+  Users,
 } from 'lucide-react'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useTheme } from '@/hooks/useTheme'
@@ -28,6 +29,7 @@ const navItems: NavItem[] = [
   { to: '/especiais', icon: <Star size={22} />, label: 'Especiais' },
   { to: '/regras', icon: <ScrollText size={22} />, label: 'Regras' },
   { to: '/ranking', icon: <Trophy size={22} />, label: 'Ranking' },
+  { to: '/equipe', icon: <Users size={22} />, label: 'Equipe', adminOnly: true },
   { to: '/admin', icon: <Settings size={22} />, label: 'Admin', adminOnly: true },
 ]
 
@@ -39,6 +41,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { user, logout, isAdmin } = useAuth()
   const { isDark, toggle } = useTheme()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const handleLogout = async () => {
     await logout()
@@ -46,6 +49,8 @@ export function AppLayout({ children }: AppLayoutProps) {
   }
 
   const visibleItems = navItems.filter((item) => !item.adminOnly || isAdmin)
+
+  const avatarSrc = user?.avatar_url || user?.imagem_perfil
 
   return (
     <div className="min-h-dvh flex flex-col" style={{ background: 'var(--bg)', transition: 'background 200ms ease' }}>
@@ -76,16 +81,20 @@ export function AppLayout({ children }: AppLayoutProps) {
 
           {/* Right side: user + theme toggle + logout */}
           <div className="flex items-center gap-2">
-            {/* Avatar */}
+            {/* Avatar — clicável para ir ao perfil */}
             {user && (
-              <div className="flex items-center gap-2">
+              <button
+                onClick={() => navigate('/perfil')}
+                className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                aria-label="Meu perfil"
+              >
                 <div
                   className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold overflow-hidden"
                   style={{ background: 'var(--glass)', border: '1px solid var(--border)' }}
                 >
-                  {user.imagem_perfil ? (
+                  {avatarSrc ? (
                     <img
-                      src={imgUrl(user.imagem_perfil)}
+                      src={imgUrl(avatarSrc)}
                       alt={user.nome}
                       className="w-full h-full object-cover"
                     />
@@ -99,7 +108,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                 >
                   {user.nome}
                 </span>
-              </div>
+              </button>
             )}
 
             {/* Theme toggle */}
@@ -145,7 +154,17 @@ export function AppLayout({ children }: AppLayoutProps) {
 
       {/* Main content */}
       <main className="flex-1 max-w-2xl w-full mx-auto px-4 pt-4 safe-bottom">
-        {children}
+        <AnimatePresence mode="sync" initial={false}>
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.16, ease: 'easeOut' }}
+          >
+            {children}
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       {/* Bottom navigation */}

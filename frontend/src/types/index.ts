@@ -2,11 +2,52 @@ export interface User {
   id: number
   nome: string
   email: string
-  funcao: string
+  funcao: string | null
   imagem_perfil: string | null
+  avatar_url: string | null
   tipo_usuario: 'admin' | 'usuario'
   ativo: boolean
+  bloqueado: boolean
   primeiro_login: boolean
+  empresa_id: number | null
+}
+
+export interface Empresa {
+  id: number
+  nome: string
+  codigo_empresa: string
+  ativo: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface ConviteResultado {
+  email: string
+  status: 'convite_criado' | 'convite_pendente' | 'ja_cadastrado'
+  token?: string
+  expiracao?: string
+}
+
+export interface MembroEquipe {
+  tipo: 'usuario' | 'convite'
+  // campos de usuário
+  id?: number
+  nome?: string
+  email: string
+  funcao?: string | null
+  avatar_url?: string | null
+  tipo_usuario?: 'admin' | 'usuario'
+  ativo?: boolean
+  bloqueado?: boolean
+  primeiro_login?: boolean
+  ultimo_login?: string | null
+  created_at: string
+  // campos de convite
+  convite_id?: number
+  token?: string
+  expiracao?: string
+  status?: string
+  criado_por?: number | null
 }
 
 export interface Pais {
@@ -187,6 +228,11 @@ export interface LoginResponse {
   access_token: string
   token_type: string
   primeiro_login: boolean
+}
+
+export interface AtivarContaResponse {
+  access_token: string
+  token_type: string
 }
 
 export interface ApiError {

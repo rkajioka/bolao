@@ -2,22 +2,29 @@ import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { Trophy, TrendingUp, Star } from 'lucide-react'
 import { useState } from 'react'
-import { RankingCardSkeleton } from '@/components/Skeleton'
+import { RankingCardSkeleton, PodiumSkeleton } from '@/components/Skeleton'
 import { SegmentedControl } from '@/components/SegmentedControl'
 import { SectionHeader } from '@/components/SectionHeader'
 import { EmptyState } from '@/components/EmptyState'
 import { imgUrl, getInitials } from '@/lib/utils'
 import { CountryFlag } from '@/components/CountryFlag'
 import { rankingService } from '@/services/ranking.service'
-import type { Pais } from '@/types'
+import type { Pais, RankingLinha } from '@/types'
 import { api } from '@/lib/api'
 import { useAuth } from '@/features/auth/AuthContext'
 
 type Aba = 'classificacao' | 'insights'
+type SortBy = 'total' | 'jogos' | 'especiais'
 
 const ABA_SEGMENTS = [
   { key: 'classificacao' as Aba, label: 'Classificação' },
   { key: 'insights' as Aba, label: 'Insights' },
+]
+
+const SORT_SEGMENTS = [
+  { key: 'total' as SortBy, label: 'Total' },
+  { key: 'jogos' as SortBy, label: 'Jogos' },
+  { key: 'especiais' as SortBy, label: 'Especiais' },
 ]
 
 const MEDAL_CONFIG = [
@@ -26,10 +33,16 @@ const MEDAL_CONFIG = [
   { color: '#CD7F32', shadow: 'rgba(205,127,50,0.15)', rgb: '205,127,50', label: '3º', symbol: '🥉' },
 ]
 
-function Avatar({ src, alt, initials, size = 10 }: { src?: string | null; alt: string; initials: string; size?: number }) {
+function sortValue(linha: RankingLinha, sort: SortBy): number {
+  if (sort === 'jogos') return linha.pontos_jogos
+  if (sort === 'especiais') return linha.pontos_especiais + linha.bonus_brasil
+  return linha.pontos_totais
+}
+
+function Avatar({ src, alt, initials }: { src?: string | null; alt: string; initials: string }) {
   return (
     <div
-      className={`w-${size} h-${size} rounded-full flex items-center justify-center text-xs font-bold overflow-hidden shrink-0`}
+      className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold overflow-hidden shrink-0"
       style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
     >
       {src ? (
@@ -44,6 +57,7 @@ function Avatar({ src, alt, initials, size = 10 }: { src?: string | null; alt: s
 export function RankingPage() {
   const { user } = useAuth()
   const [aba, setAba] = useState<Aba>('classificacao')
+  const [sortBy, setSortBy] = useState<SortBy>('total')
 
   const { data, isLoading } = useQuery({
     queryKey: ['ranking'],
@@ -59,13 +73,22 @@ export function RankingPage() {
   })
 
   const linhas = data?.linhas ?? []
-  const top3 = linhas.slice(0, 3)
-  const top50 = linhas.slice(0, 50)
+
+  const sortedLinhas = sortBy === 'total'
+    ? linhas
+    : [...linhas].sort((a, b) => sortValue(b, sortBy) - sortValue(a, sortBy))
+
+  const top3 = sortedLinhas.slice(0, 3)
+  const top50 = sortedLinhas.slice(0, 50)
   const listaTop50 = top50.slice(3)
+
   const linhaUsuario = linhas.find((l) => l.usuario_id === user?.id)
-  const usuarioForaTop50 = Boolean(linhaUsuario && linhaUsuario.posicao > 50)
+  const linhaUsuarioSorted = sortedLinhas.find((l) => l.usuario_id === user?.id)
+  const posicaoUsuario = sortedLinhas.findIndex((l) => l.usuario_id === user?.id) + 1
+  const usuarioForaTop50 = posicaoUsuario > 50
+
   const getPais = (id?: number | null) => paises.find((p) => p.id === id) ?? null
-  const liderPts = top3[0]?.pontos_totais ?? 0
+  const liderPts = top3[0] ? sortValue(top3[0], sortBy) : 0
 
   const insightSemConteudo =
     !!insights &&
@@ -73,6 +96,8 @@ export function RankingPage() {
     insights.destaques_resultado.length === 0 &&
     insights.destaques_placar_exato.length === 0 &&
     insights.destaques_marcadores_br.length === 0
+
+  const sortLabel = sortBy === 'jogos' ? 'pts jogos' : sortBy === 'especiais' ? 'pts especiais' : 'pts'
 
   return (
     <div className="space-y-4">
@@ -85,50 +110,51 @@ export function RankingPage() {
         controlId="ranking-aba"
       />
 
-      {/* Minha posição destaque */}
+      {/* Minha posição */}
       {aba === 'classificacao' && linhaUsuario && !isLoading && (
         <motion.div
           initial={{ opacity: 0, y: -6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2 }}
           className="flex items-center gap-3 px-4 py-3 rounded-2xl"
-          style={{
-            background: 'rgba(53,208,127,0.06)',
-            border: '1px solid rgba(53,208,127,0.28)',
-          }}
+          style={{ background: 'rgba(53,208,127,0.06)', border: '1px solid rgba(53,208,127,0.28)' }}
           aria-label="Sua posição no ranking"
         >
           <div className="flex items-center justify-center w-9 shrink-0">
             <span className="text-lg font-black tabular-nums" style={{ color: 'var(--accent)' }}>
-              #{linhaUsuario.posicao}
+              #{posicaoUsuario}
             </span>
           </div>
           <Avatar
             src={linhaUsuario.imagem_perfil}
             alt={linhaUsuario.nome}
             initials={getInitials(linhaUsuario.nome)}
-            size={9}
           />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold truncate">{linhaUsuario.nome}</p>
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-              {linhaUsuario.posicao === 1
-                ? `+${(listaTop50[0]?.pontos_totais != null ? linhaUsuario.pontos_totais - listaTop50[0].pontos_totais : 0)} do 2º`
-                : `${liderPts - linhaUsuario.pontos_totais} pts atrás do líder`}
+              {posicaoUsuario === 1
+                ? listaTop50[0]
+                  ? `+${sortValue(linhaUsuario, sortBy) - sortValue(listaTop50[0], sortBy)} do 2º`
+                  : 'Líder'
+                : `${liderPts - sortValue(linhaUsuario, sortBy)} pts atrás do líder`}
             </p>
           </div>
           <div className="text-right shrink-0">
             <p className="text-2xl font-black tabular-nums" style={{ color: 'var(--accent)' }}>
-              {linhaUsuario.pontos_totais}
+              {sortValue(linhaUsuario, sortBy)}
             </p>
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>pts</p>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{sortLabel}</p>
           </div>
         </motion.div>
       )}
 
       {aba === 'classificacao' && (isLoading ? (
-        <div className="space-y-2" aria-busy="true" aria-label="Carregando ranking">
-          {[1, 2, 3, 4, 5].map((i) => <RankingCardSkeleton key={i} />)}
+        <div aria-busy="true" aria-label="Carregando ranking">
+          <PodiumSkeleton />
+          <div className="space-y-2 mt-2">
+            {[1, 2, 3, 4].map((i) => <RankingCardSkeleton key={i} />)}
+          </div>
         </div>
       ) : linhas.length === 0 ? (
         <EmptyState
@@ -137,182 +163,191 @@ export function RankingPage() {
           description="Os pontos aparecerão após os jogos serem finalizados."
         />
       ) : (
-        <div className="space-y-2">
-          {/* Pódio compacto top 3 */}
-          {top3.length > 0 && (
-            <div className="flex gap-2 items-end mb-2" role="list" aria-label="Top 3 do ranking">
-              {([1, 0, 2] as const).filter((idx) => top3[idx]).map((idx) => {
-                const linha = top3[idx]
-                const p = MEDAL_CONFIG[idx]
-                const isMe = linha.usuario_id === user?.id
-                const paisFlags = [linha.campeao_id, linha.vice_campeao_id, linha.terceiro_lugar_id]
-                  .map((id) => getPais(id))
-                  .filter(Boolean)
-                  .slice(0, 2)
+        <>
+          {/* Filtro de ordenação */}
+          <div className="space-y-1">
+            <p className="text-[11px] font-medium px-0.5" style={{ color: 'var(--text-muted)' }}>
+              Ordenar por
+            </p>
+            <SegmentedControl
+              segments={SORT_SEGMENTS}
+              value={sortBy}
+              onChange={setSortBy}
+              controlId="ranking-sort"
+            />
+          </div>
 
-                const diffFromLeader = idx === 0
-                  ? (top3[1] ? linha.pontos_totais - top3[1].pontos_totais : null)
-                  : liderPts - linha.pontos_totais
+          <div className="space-y-2">
+            {/* Pódio top 3 */}
+            {top3.length > 0 && (
+              <div className="flex gap-2 items-end mb-2" role="list" aria-label="Top 3 do ranking">
+                {([1, 0, 2] as const).filter((idx) => top3[idx]).map((idx) => {
+                  const linha = top3[idx]
+                  const p = MEDAL_CONFIG[idx]
+                  const isMe = linha.usuario_id === user?.id
+                  const pts = sortValue(linha, sortBy)
+                  const liderVal = sortValue(top3[0], sortBy)
+                  const diff = idx === 0
+                    ? top3[1] ? pts - sortValue(top3[1], sortBy) : null
+                    : liderVal - pts
+                  const paisFlags = [linha.campeao_id, linha.vice_campeao_id, linha.terceiro_lugar_id]
+                    .map((id) => getPais(id))
+                    .filter(Boolean)
+                    .slice(0, 2)
 
-                return (
-                  <motion.div
-                    key={linha.usuario_id}
-                    role="listitem"
-                    aria-label={`${p.label} lugar: ${linha.nome}, ${linha.pontos_totais} pontos`}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.22, delay: idx * 0.05 }}
-                    className="flex-1 flex flex-col items-center justify-end gap-1 py-3 px-2 rounded-2xl text-center"
-                    style={{
-                      minHeight: idx === 0 ? '150px' : idx === 1 ? '130px' : '116px',
-                      background: `rgba(${p.rgb},0.07)`,
-                      border: `1px solid rgba(${p.rgb},${isMe ? '0.55' : '0.22'})`,
-                      boxShadow: isMe ? `0 0 0 2px var(--accent), 0 0 12px rgba(53,208,127,0.12)` : 'none',
-                    }}
-                  >
-                    <span className="text-base leading-none" aria-hidden="true">{p.symbol}</span>
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold overflow-hidden"
+                  return (
+                    <motion.div
+                      key={linha.usuario_id}
+                      role="listitem"
+                      aria-label={`${p.label} lugar: ${linha.nome}, ${pts} pontos`}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.22, delay: idx * 0.05 }}
+                      className="flex-1 flex flex-col items-center justify-end gap-1 py-3 px-2 rounded-2xl text-center"
                       style={{
-                        background: 'rgba(255,255,255,0.08)',
-                        border: `2px solid ${p.color}`,
+                        minHeight: idx === 0 ? '150px' : idx === 1 ? '130px' : '116px',
+                        background: `rgba(${p.rgb},0.07)`,
+                        border: `1px solid rgba(${p.rgb},${isMe ? '0.55' : '0.22'})`,
+                        boxShadow: isMe ? `0 0 0 2px var(--accent), 0 0 12px rgba(53,208,127,0.12)` : 'none',
                       }}
                     >
-                      {linha.imagem_perfil ? (
-                        <img src={imgUrl(linha.imagem_perfil)} alt={linha.nome} className="w-full h-full object-cover" />
-                      ) : (
-                        <span style={{ color: p.color, fontSize: '11px' }}>{getInitials(linha.nome)}</span>
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold truncate max-w-[80px]">{linha.nome.split(' ')[0]}</p>
-                      <p className="text-lg font-black tabular-nums leading-tight mt-0.5" style={{ color: p.color }}>
-                        {linha.pontos_totais}
-                      </p>
-                      <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>pts</p>
-                    </div>
-                    {diffFromLeader !== null && diffFromLeader > 0 && (
-                      <p className="text-[10px] tabular-nums" style={{ color: 'var(--text-muted)' }}>
-                        {idx === 0 ? `+${diffFromLeader} do 2º` : `-${diffFromLeader}`}
-                      </p>
-                    )}
-                    {paisFlags.length > 0 && (
-                      <div className="flex items-center gap-0.5">
-                        {paisFlags.map((pais) => (
-                          <div key={pais!.id} title={pais!.nome}>
-                            <CountryFlag pais={pais!} size="sm" />
-                          </div>
-                        ))}
+                      <span className="text-base leading-none" aria-hidden="true">{p.symbol}</span>
+                      <div
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold overflow-hidden"
+                        style={{ background: 'rgba(255,255,255,0.08)', border: `2px solid ${p.color}` }}
+                      >
+                        {linha.imagem_perfil ? (
+                          <img src={imgUrl(linha.imagem_perfil)} alt={linha.nome} className="w-full h-full object-cover" />
+                        ) : (
+                          <span style={{ color: p.color, fontSize: '11px' }}>{getInitials(linha.nome)}</span>
+                        )}
                       </div>
-                    )}
-                  </motion.div>
-                )
-              })}
-            </div>
-          )}
-
-          {/* Posições 4..50 */}
-          {listaTop50.map((linha, i) => {
-            const isMe = linha.usuario_id === user?.id
-            const diffDoLider = liderPts - linha.pontos_totais
-            const prevPts = i === 0 ? top3[2]?.pontos_totais : listaTop50[i - 1]?.pontos_totais
-            const diffDoPrev = prevPts != null ? prevPts - linha.pontos_totais : null
-
-            return (
-              <motion.div
-                key={linha.usuario_id}
-                initial={{ opacity: 0, x: -6 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.18, delay: Math.min((i + 3) * 0.025, 0.4) }}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-2xl"
-                aria-label={`${linha.posicao}º lugar: ${linha.nome}, ${linha.pontos_totais} pontos`}
-                style={{
-                  background: isMe ? 'rgba(53,208,127,0.06)' : 'var(--glass)',
-                  border: `1px solid ${isMe ? 'rgba(53,208,127,0.25)' : 'var(--border)'}`,
-                  backdropFilter: 'blur(12px)',
-                }}
-              >
-                <span
-                  className="w-6 text-center font-bold text-sm tabular-nums shrink-0"
-                  style={{ color: isMe ? 'var(--accent)' : 'var(--text-muted)', fontSize: '13px' }}
-                >
-                  {linha.posicao}
-                </span>
-
-                <Avatar
-                  src={linha.imagem_perfil}
-                  alt={linha.nome}
-                  initials={getInitials(linha.nome)}
-                  size={9}
-                />
-
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm truncate leading-tight">
-                    {linha.nome}
-                    {isMe && <span style={{ color: 'var(--accent)' }}> · Você</span>}
-                  </p>
-                  <p className="text-xs mt-0.5 tabular-nums" style={{ color: 'var(--text-muted)' }}>
-                    {diffDoPrev !== null && diffDoPrev > 0 ? `-${diffDoPrev} pts` : ''}
-                    {diffDoPrev !== null && diffDoPrev > 0 && diffDoLider > 0 ? ' · ' : ''}
-                    {diffDoLider > 0 ? `${diffDoLider} do líder` : 'Líder'}
-                  </p>
-                </div>
-
-                <div className="text-right shrink-0">
-                  <p className="font-black text-base tabular-nums">{linha.pontos_totais}</p>
-                  <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                    J:{linha.pontos_jogos} E:{linha.pontos_especiais}
-                    {linha.bonus_brasil > 0 ? ` BR:${linha.bonus_brasil}` : ''}
-                  </p>
-                </div>
-              </motion.div>
-            )
-          })}
-
-          {/* Usuário fora do top 50 */}
-          {usuarioForaTop50 && linhaUsuario && (
-            <>
-              <div className="text-center py-1">
-                <span className="text-xs tracking-widest" style={{ color: 'var(--text-muted)' }}>· · ·</span>
+                      <div>
+                        <p className="text-xs font-semibold truncate max-w-[80px]">{linha.nome.split(' ')[0]}</p>
+                        <p className="text-lg font-black tabular-nums leading-tight mt-0.5" style={{ color: p.color }}>
+                          {pts}
+                        </p>
+                        <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{sortLabel}</p>
+                      </div>
+                      {diff !== null && diff > 0 && (
+                        <p className="text-[10px] tabular-nums" style={{ color: 'var(--text-muted)' }}>
+                          {idx === 0 ? `+${diff} do 2º` : `-${diff}`}
+                        </p>
+                      )}
+                      {paisFlags.length > 0 && (
+                        <div className="flex items-center gap-0.5">
+                          {paisFlags.map((pais) => (
+                            <div key={pais!.id} title={pais!.nome}>
+                              <CountryFlag pais={pais!} size="sm" />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </motion.div>
+                  )
+                })}
               </div>
-              <motion.div
-                initial={{ opacity: 0, x: -6 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.18 }}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-2xl"
-                style={{
-                  background: 'rgba(53,208,127,0.06)',
-                  border: '1px solid rgba(53,208,127,0.25)',
-                  backdropFilter: 'blur(12px)',
-                }}
-              >
-                <span className="w-6 text-center font-bold text-sm tabular-nums shrink-0" style={{ color: 'var(--accent)' }}>
-                  {linhaUsuario.posicao}
-                </span>
-                <Avatar
-                  src={linhaUsuario.imagem_perfil}
-                  alt={linhaUsuario.nome}
-                  initials={getInitials(linhaUsuario.nome)}
-                  size={9}
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm truncate">
-                    {linhaUsuario.nome} <span style={{ color: 'var(--accent)' }}>· Você</span>
-                  </p>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                    {liderPts - linhaUsuario.pontos_totais > 0
-                      ? `${liderPts - linhaUsuario.pontos_totais} pts atrás do líder`
-                      : 'Fora do top 50'}
-                  </p>
+            )}
+
+            {/* Posições 4..50 */}
+            {listaTop50.map((linha, i) => {
+              const isMe = linha.usuario_id === user?.id
+              const pts = sortValue(linha, sortBy)
+              const prevPts = i === 0 ? sortValue(top3[2], sortBy) : sortValue(listaTop50[i - 1], sortBy)
+              const diffDoPrev = prevPts - pts
+              const diffDoLider = liderPts - pts
+              const posicaoAtual = i + 4
+
+              return (
+                <motion.div
+                  key={linha.usuario_id}
+                  initial={{ opacity: 0, x: -6 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.18, delay: Math.min((i + 3) * 0.025, 0.4) }}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-2xl"
+                  aria-label={`${posicaoAtual}º lugar: ${linha.nome}, ${pts} pontos`}
+                  style={{
+                    background: isMe ? 'rgba(53,208,127,0.06)' : 'var(--glass)',
+                    border: `1px solid ${isMe ? 'rgba(53,208,127,0.25)' : 'var(--border)'}`,
+                    backdropFilter: 'blur(12px)',
+                  }}
+                >
+                  <span
+                    className="w-6 text-center font-bold tabular-nums shrink-0"
+                    style={{ color: isMe ? 'var(--accent)' : 'var(--text-muted)', fontSize: '13px' }}
+                  >
+                    {posicaoAtual}
+                  </span>
+                  <Avatar
+                    src={linha.imagem_perfil}
+                    alt={linha.nome}
+                    initials={getInitials(linha.nome)}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm truncate leading-tight">
+                      {linha.nome}
+                      {isMe && <span style={{ color: 'var(--accent)' }}> · Você</span>}
+                    </p>
+                    <p className="text-xs mt-0.5 tabular-nums" style={{ color: 'var(--text-muted)' }}>
+                      {diffDoPrev > 0 ? `-${diffDoPrev} · ` : ''}{diffDoLider > 0 ? `${diffDoLider} do líder` : 'Líder'}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="font-black text-base tabular-nums">{pts}</p>
+                    <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                      {sortBy === 'total'
+                        ? `J:${linha.pontos_jogos} E:${linha.pontos_especiais}${linha.bonus_brasil > 0 ? ` BR:${linha.bonus_brasil}` : ''}`
+                        : sortLabel}
+                    </p>
+                  </div>
+                </motion.div>
+              )
+            })}
+
+            {/* Usuário fora do top 50 */}
+            {usuarioForaTop50 && linhaUsuarioSorted && (
+              <>
+                <div className="text-center py-1">
+                  <span className="text-xs tracking-widest" style={{ color: 'var(--text-muted)' }}>· · ·</span>
                 </div>
-                <div className="text-right shrink-0">
-                  <p className="font-black text-base tabular-nums">{linhaUsuario.pontos_totais}</p>
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>pts</p>
-                </div>
-              </motion.div>
-            </>
-          )}
-        </div>
+                <motion.div
+                  initial={{ opacity: 0, x: -6 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.18 }}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-2xl"
+                  style={{
+                    background: 'rgba(53,208,127,0.06)',
+                    border: '1px solid rgba(53,208,127,0.25)',
+                    backdropFilter: 'blur(12px)',
+                  }}
+                >
+                  <span className="w-6 text-center font-bold text-sm tabular-nums shrink-0" style={{ color: 'var(--accent)' }}>
+                    {posicaoUsuario}
+                  </span>
+                  <Avatar
+                    src={linhaUsuarioSorted.imagem_perfil}
+                    alt={linhaUsuarioSorted.nome}
+                    initials={getInitials(linhaUsuarioSorted.nome)}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm truncate">
+                      {linhaUsuarioSorted.nome} <span style={{ color: 'var(--accent)' }}>· Você</span>
+                    </p>
+                    <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                      {liderPts - sortValue(linhaUsuarioSorted, sortBy) > 0
+                        ? `${liderPts - sortValue(linhaUsuarioSorted, sortBy)} pts atrás do líder`
+                        : 'Fora do top 50'}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="font-black text-base tabular-nums">{sortValue(linhaUsuarioSorted, sortBy)}</p>
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{sortLabel}</p>
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </div>
+        </>
       ))}
 
       {/* Aba Insights */}
@@ -343,7 +378,6 @@ export function RankingPage() {
                     {insights.jogos_periodo} jogo{insights.jogos_periodo !== 1 ? 's' : ''}
                   </span>
                 </div>
-
                 {!insightSemConteudo ? (
                   <div className="space-y-2">
                     {insights.destaques_resultado[0] && (
@@ -417,11 +451,7 @@ export function RankingPage() {
                   Legenda
                 </p>
                 <div className="space-y-1">
-                  {[
-                    'J: Pontos de jogos',
-                    'E: Pontos de especiais',
-                    'BR: Bônus marcadores Brasil',
-                  ].map((label) => (
+                  {['J: Pontos de jogos', 'E: Pontos de especiais', 'BR: Bônus marcadores Brasil'].map((label) => (
                     <p key={label} className="text-xs" style={{ color: 'var(--text-muted)' }}>{label}</p>
                   ))}
                 </div>

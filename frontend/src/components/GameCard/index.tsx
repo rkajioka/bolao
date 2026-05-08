@@ -87,8 +87,14 @@ export function GameCard({
       layout
       className="glass rounded-2xl overflow-hidden"
       initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.18 }}
+      animate={{
+        opacity: 1,
+        y: 0,
+        boxShadow: justSaved
+          ? '0 0 0 1.5px rgba(53,208,127,0.5), 0 0 20px rgba(53,208,127,0.10)'
+          : '0 0 0 0px rgba(53,208,127,0)',
+      }}
+      transition={{ duration: 0.18, boxShadow: { duration: 0.35, ease: 'easeOut' } }}
       aria-label={`Jogo: ${jogo.pais_casa.nome} vs ${jogo.pais_fora.nome}`}
     >
       <MatchHeader jogo={jogo} todosJogos={todosJogos} status={status} />
@@ -134,10 +140,12 @@ export function GameCard({
 
         {/* Botão salvar */}
         {!bloqueado && (
-          <button
+          <motion.button
             type="button"
             onClick={handleSave}
             disabled={saving || !podeSalvar || (temPalpite && !palpiteAlterado)}
+            whileTap={saving || !podeSalvar || (temPalpite && !palpiteAlterado) ? {} : { scale: 0.97 }}
+            transition={{ duration: 0.1 }}
             className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
             style={{
               background: justSaved
@@ -173,7 +181,7 @@ export function GameCard({
                   : palpiteAlterado
                     ? 'Atualizar palpite'
                     : 'Palpite salvo'}
-          </button>
+          </motion.button>
         )}
 
         {/* Marcadores do Brasil */}

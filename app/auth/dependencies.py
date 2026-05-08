@@ -1,5 +1,5 @@
 """
-Dependências de autenticação e autorização (Etapa 2).
+Dependências de autenticação e autorização.
 """
 
 from fastapi import Depends, HTTPException, status
@@ -63,6 +63,11 @@ def get_current_active_user(user: Usuario = Depends(get_current_user)) -> Usuari
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Usuário inativo",
         )
+    if user.bloqueado:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Usuário bloqueado pelo administrador",
+        )
     return user
 
 
@@ -76,12 +81,20 @@ def require_admin(user: Usuario = Depends(get_current_active_user)) -> Usuario:
 
 
 def require_primeiro_login_concluido(user: Usuario = Depends(get_current_active_user)) -> Usuario:
-    """
-    Rotas pós-onboarding (palpites, dashboard, etc.): exige primeiro acesso concluído.
-    """
+    """Rotas pós-onboarding: exige primeiro acesso concluído."""
     if user.primeiro_login:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Conclua o primeiro acesso para continuar",
         )
     return user
+
+
+def get_empresa_id(user: Usuario = Depends(get_current_active_user)) -> int:
+    """Retorna empresa_id do usuário autenticado. Garante isolamento tenant."""
+    if user.empresa_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Usuário não está vinculado a uma empresa",
+        )
+    return user.empresa_id

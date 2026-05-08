@@ -25,7 +25,7 @@ def _is_expired(ts: datetime) -> bool:
     return ts <= datetime.now(UTC)
 
 
-def _issue_token_pair(db: Session, user: Usuario) -> tuple[str, str]:
+def issue_token_pair(db: Session, user: Usuario) -> tuple[str, str]:
     access_token = create_access_token(user.id)
     refresh_token, jti = create_refresh_token(user.id)
     db.add(
@@ -52,7 +52,7 @@ def login(db: Session, data: LoginRequest) -> tuple[str, str, bool]:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Usuário inativo",
         )
-    access_token, refresh_token = _issue_token_pair(db, user)
+    access_token, refresh_token = issue_token_pair(db, user)
     return access_token, refresh_token, user.primeiro_login
 
 
@@ -99,7 +99,7 @@ def refresh_access_token(db: Session, refresh_token: str) -> tuple[str, str]:
         )
 
     token_row.revogado = True
-    access_token = create_access_token(user.id)
+    new_access_token = create_access_token(user.id)
     new_refresh_token, new_jti = create_refresh_token(user.id)
     db.add(
         RefreshToken(
@@ -110,7 +110,7 @@ def refresh_access_token(db: Session, refresh_token: str) -> tuple[str, str]:
         )
     )
     db.commit()
-    return access_token, new_refresh_token
+    return new_access_token, new_refresh_token
 
 
 def logout(db: Session, refresh_token: str | None) -> None:

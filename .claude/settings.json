@@ -23,7 +23,13 @@
       "Bash(curl -s -X POST http://localhost:8000/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"admin@exemplo.com\",\"senha\":\"admin123\"}')",
       "Bash(curl -s -X POST http://localhost:8000/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"admin@exemplo.com\",\"senha\":\"admin123\"}' -w \"\\\\nHTTP STATUS: %{http_code}\")",
       "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\Gianlucca Agostini\\\\Documents\\\\Projetos\\\\LPCopa\\\\bolao\" -Force | Select-Object Name, @{Name=\"Type\"; Expression={if \\($_.PSIsContainer\\) { \"DIR\" } else { \"FILE\" }}} | Format-Table -AutoSize)",
-      "Bash(dir \"c:\\\\Users\\\\Gianlucca Agostini\\\\Documents\\\\Projetos\\\\LPCopa\\\\bolao\\\\alembic\")"
+      "Bash(dir \"c:\\\\Users\\\\Gianlucca Agostini\\\\Documents\\\\Projetos\\\\LPCopa\\\\bolao\\\\alembic\")",
+      "PowerShell(cd \"c:\\\\Users\\\\Gianlucca Agostini\\\\Documents\\\\Projetos\\\\LPCopa\\\\bolao\"; Get-ChildItem -Force | Select-Object Name, PSIsContainer | ForEach-Object { $type = if \\($_.PSIsContainer\\) { \"[DIR]\" } else { \"[FILE]\" }; Write-Output \\(\"{0} {1}\" -f $type, $_.Name\\) })",
+      "Bash(python -m pytest tests/ -x -q)",
+      "Bash(python -c \"from app.main import app; print\\('OK'\\)\")",
+      "Bash(python -m alembic heads)",
+      "Bash(python -m alembic history --verbose)",
+      "Bash(python -m alembic current)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Gianlucca Agostini\\.claude\\projects\\c--Users-Gianlucca-Agostini-Documents-Projetos-LPCopa-bolao"

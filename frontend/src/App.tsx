@@ -18,6 +18,21 @@ const AdminPage = lazy(() => import('@/pages/AdminPage').then((m) => ({ default:
 const RegrasPage = lazy(() =>
   import('@/pages/RegrasPage').then((m) => ({ default: m.RegrasPage })),
 )
+const EquipePage = lazy(() =>
+  import('@/pages/EquipePage').then((m) => ({ default: m.EquipePage })),
+)
+const PerfilPage = lazy(() =>
+  import('@/pages/PerfilPage').then((m) => ({ default: m.PerfilPage })),
+)
+const AtivarContaPage = lazy(() =>
+  import('@/pages/AtivarContaPage').then((m) => ({ default: m.AtivarContaPage })),
+)
+const EsqueciSenhaPage = lazy(() =>
+  import('@/pages/EsqueciSenhaPage').then((m) => ({ default: m.EsqueciSenhaPage })),
+)
+const RedefinirSenhaPage = lazy(() =>
+  import('@/pages/RedefinirSenhaPage').then((m) => ({ default: m.RedefinirSenhaPage })),
+)
 
 function LoadingScreen() {
   return (
@@ -70,6 +85,7 @@ function AppPage({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <Routes>
+      {/* Públicas */}
       <Route
         path="/login"
         element={
@@ -86,17 +102,52 @@ export default function App() {
           </Suspense>
         }
       />
+      <Route
+        path="/ativar-conta"
+        element={
+          <Suspense fallback={<LoadingScreen />}>
+            <AtivarContaPage />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/esqueci-senha"
+        element={
+          <Suspense fallback={<LoadingScreen />}>
+            <EsqueciSenhaPage />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/redefinir-senha"
+        element={
+          <Suspense fallback={<LoadingScreen />}>
+            <RedefinirSenhaPage />
+          </Suspense>
+        }
+      />
+
+      {/* Protegidas */}
       <Route path="/" element={<Navigate to="/jogos" replace />} />
       <Route path="/jogos" element={<AppPage><JogosPage /></AppPage>} />
       <Route path="/especiais" element={<AppPage><EspeciaisPage /></AppPage>} />
       <Route path="/regras" element={<AppPage><RegrasPage /></AppPage>} />
       <Route path="/grupos" element={<Navigate to="/jogos" replace />} />
       <Route path="/ranking" element={<AppPage><RankingPage /></AppPage>} />
+      <Route path="/perfil" element={<AppPage><PerfilPage /></AppPage>} />
       <Route
         path="/admin"
         element={
           <AppPage>
             <AdminRoute><AdminPage /></AdminRoute>
+          </AppPage>
+        }
+      />
+      <Route
+        path="/equipe"
+        element={
+          <AppPage>
+            <AdminRoute><EquipePage /></AdminRoute>
           </AppPage>
         }
       />

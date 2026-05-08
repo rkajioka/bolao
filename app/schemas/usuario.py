@@ -12,9 +12,12 @@ class UsuarioBase(BaseModel):
     email: EmailStr
     funcao: str | None = Field(default=None, max_length=255)
     imagem_perfil: str | None = Field(default=None, max_length=2048)
+    avatar_url: str | None = Field(default=None, max_length=2048)
     tipo_usuario: str = Field(pattern="^(admin|usuario)$")
     ativo: bool = True
+    bloqueado: bool = False
     primeiro_login: bool = True
+    empresa_id: int | None = None
 
     @field_validator("email", mode="before")
     @classmethod

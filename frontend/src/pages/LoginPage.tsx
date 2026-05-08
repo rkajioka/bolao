@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Mail, Lock, ArrowRight } from 'lucide-react'
 import { useAuth } from '@/features/auth/AuthContext'
@@ -157,6 +157,16 @@ export function LoginPage() {
               </>
             )}
           </button>
+
+          <div className="text-center pt-1">
+            <Link
+              to="/esqueci-senha"
+              className="text-xs"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              Esqueci minha senha
+            </Link>
+          </div>
         </form>
       </motion.div>
     </div>
