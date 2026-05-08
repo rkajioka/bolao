@@ -98,6 +98,26 @@ export interface RankingResponse {
   linhas: RankingLinha[]
 }
 
+export interface InsightDestaque {
+  usuario_id: number
+  nome: string
+  valor: number
+}
+
+export interface RankingInsights {
+  periodo_label: string
+  periodo_tipo: 'rodada_grupos' | 'fase_mata_mata' | 'sem_periodo'
+  jogos_periodo: number
+  destaques_resultado: InsightDestaque[]
+  destaques_placar_exato: InsightDestaque[]
+  destaques_marcadores_br: InsightDestaque[]
+  meu_preenchidos: number
+  meu_acertos_resultado: number
+  meu_acertos_placar_exato: number
+  meu_bonus_marcadores_br: number
+  meus_pontos_periodo: number
+}
+
 export interface MarcadorPalpite {
   id?: number
   nome_jogador: string

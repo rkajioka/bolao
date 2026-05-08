@@ -7,7 +7,7 @@ import { SectionHeader } from '@/components/SectionHeader'
 import { EmptyState } from '@/components/EmptyState'
 import { imgUrl, getInitials } from '@/lib/utils'
 import { CountryFlag } from '@/components/CountryFlag'
-import type { RankingResponse, Pais } from '@/types'
+import type { RankingResponse, RankingInsights, Pais } from '@/types'
 import { useAuth } from '@/features/auth/AuthContext'
 
 const podiumColors = [
@@ -25,6 +25,10 @@ export function RankingPage() {
   const { data: paises = [] } = useQuery({
     queryKey: ['paises'],
     queryFn: () => api.get<Pais[]>('/paises'),
+  })
+  const { data: insights } = useQuery({
+    queryKey: ['ranking', 'insights'],
+    queryFn: () => api.get<RankingInsights>('/ranking/insights'),
   })
 
   const linhas = data?.linhas ?? []
@@ -128,10 +132,10 @@ export function RankingPage() {
                       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>pts</p>
                     </div>
                     <div className="flex items-center gap-1">
-                      {[linha.campeao_id, linha.vice_campeao_id, linha.terceiro_lugar_id, linha.artilheiro_pais_id]
+                      {[linha.campeao_id, linha.vice_campeao_id, linha.terceiro_lugar_id]
                         .map((id) => getPais(id))
                         .filter(Boolean)
-                        .slice(0, 4)
+                        .slice(0, 3)
                         .map((pais) => (
                           <div key={pais!.id} title={pais!.nome}>
                             <CountryFlag pais={pais!} size="sm" />
@@ -240,6 +244,42 @@ export function RankingPage() {
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>pts</p>
               </div>
             </motion.div>
+          )}
+
+          {insights && (
+            <>
+              <div className="glass rounded-2xl p-4 mt-4">
+                <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--accent)' }}>
+                  Resumo geral
+                </p>
+                <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
+                  Período: {insights.periodo_label} · {insights.jogos_periodo} jogos
+                </p>
+                <div className="space-y-1.5 text-sm" style={{ color: 'var(--text-muted)' }}>
+                  <p>
+                    Resultados: {insights.destaques_resultado[0] ? `${insights.destaques_resultado[0].nome} (${insights.destaques_resultado[0].valor})` : 'sem destaque no período'}
+                  </p>
+                  <p>
+                    Placar exato: {insights.destaques_placar_exato[0] ? `${insights.destaques_placar_exato[0].nome} (${insights.destaques_placar_exato[0].valor})` : 'sem destaque no período'}
+                  </p>
+                  <p>
+                    Marcadores BR: {insights.destaques_marcadores_br[0] ? `${insights.destaques_marcadores_br[0].nome} (${insights.destaques_marcadores_br[0].valor})` : 'sem destaque no período'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="glass rounded-2xl p-4">
+                <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--accent)' }}>
+                  Meu resumo
+                </p>
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                  No período atual, você preencheu {insights.meu_preenchidos} palpites e somou {insights.meus_pontos_periodo} pontos.
+                </p>
+                <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
+                  Acertos de resultado: {insights.meu_acertos_resultado} · Placar exato: {insights.meu_acertos_placar_exato} · Bônus marcadores BR: {insights.meu_bonus_marcadores_br}
+                </p>
+              </div>
+            </>
           )}
         </div>
       )}

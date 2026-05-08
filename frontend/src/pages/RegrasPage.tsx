@@ -9,14 +9,14 @@ export function RegrasPage() {
         <div>
           <h3 className="text-sm font-bold mb-1.5">Palpites especiais</h3>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            São preenchidos apenas uma vez e fecham 2 horas antes do primeiro jogo da Copa.
+            São preenchidos apenas uma vez e fecham 1 hora antes do primeiro jogo da Copa (horário de Brasília).
           </p>
         </div>
 
         <div>
           <h3 className="text-sm font-bold mb-1.5">Fechamento por rodada</h3>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            Cada rodada fecha 2 horas antes do primeiro jogo daquela rodada. Depois do fechamento, não é possível editar ou preencher palpites pendentes.
+            Cada rodada/fase fecha 1 hora antes do primeiro jogo daquele bloco (horário de Brasília). Depois do fechamento, não é possível editar ou preencher palpites pendentes.
           </p>
         </div>
 
@@ -33,6 +33,7 @@ export function RegrasPage() {
             <p>Grupos (rodadas 1, 2 e 3): exato 10, resultado 5.</p>
             <p>32-avos: exato 12, resultado 6, classificado 6.</p>
             <p>16-avos: exato 14, resultado 7, classificado 7.</p>
+            <p>Oitavas: exato 15, resultado 7, classificado 7.</p>
             <p>Quartas: exato 16, resultado 8, classificado 8.</p>
             <p>Semifinal: exato 18, resultado 9, classificado 9.</p>
             <p>Disputa 3º lugar: exato 20, resultado 10, classificado 10.</p>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Settings, Users, Globe, Trophy, Star, Shield } from 'lucide-react'
@@ -19,6 +19,16 @@ const tabs: { key: AdminTab; label: string; icon: React.ReactNode }[] = [
   { key: 'especiais', label: 'Especiais', icon: <Star size={16} /> },
   { key: 'config', label: 'Config', icon: <Settings size={16} /> },
 ]
+
+const GRUPOS_DISPONIVEIS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'] as const
+const FASES_MATA_MATA = [
+  { value: 'dezesseis_avos', label: '16-avos' },
+  { value: 'oitavas', label: 'Oitavas' },
+  { value: 'quartas', label: 'Quartas' },
+  { value: 'semi', label: 'Semifinal' },
+  { value: 'terceiro_lugar', label: '3º lugar' },
+  { value: 'final', label: 'Final' },
+] as const
 
 export function AdminPage() {
   const [activeTab, setActiveTab] = useState<AdminTab>('jogos')
@@ -89,16 +99,83 @@ function AdminJogos({ success, error, queryClient }: AdminSectionProps) {
     queryKey: ['jogos', 'cronologico'],
     queryFn: () => api.get<Jogo[]>('/jogos/cronologico'),
   })
+  const { data: paises = [] } = useQuery({
+    queryKey: ['paises'],
+    queryFn: () => api.get<Pais[]>('/paises'),
+  })
 
   const [editingId, setEditingId] = useState<number | null>(null)
   const [result, setResult] = useState({ placar_casa: 0, placar_fora: 0, finalizar: false })
   const [editingMarcadoresId, setEditingMarcadoresId] = useState<number | null>(null)
   const [marcadoresForm, setMarcadoresForm] = useState<Record<number, { nome_jogador: string; quantidade_gols: number }[]>>({})
+  const [novoJogo, setNovoJogo] = useState({
+    tipo_fase: 'grupos' as 'grupos' | 'mata_mata',
+    grupo: 'A',
+    rodada: 1,
+    fase_mata: 'oitavas',
+    pais_casa_id: '',
+    pais_fora_id: '',
+    data_jogo: '',
+    hora_jogo: '',
+  })
+  const [novoCandidato, setNovoCandidato] = useState('')
 
   const { data: candidatosAdmin = [] } = useQuery({
     queryKey: ['marcadores', 'candidatos', 'admin'],
     queryFn: () => api.get<{ id: number; nome: string; ativo: boolean }[]>('/marcadores-brasil/candidatos/admin'),
   })
+
+  const paisesDisponiveis = useMemo(() => {
+    if (novoJogo.tipo_fase === 'grupos') {
+      return paises.filter((p) => (p.grupo || '').toUpperCase() === novoJogo.grupo)
+    }
+    return paises
+  }, [novoJogo.tipo_fase, novoJogo.grupo, paises])
+
+  const criarJogo = async () => {
+    try {
+      if (!novoJogo.data_jogo || !novoJogo.hora_jogo) throw new Error('Informe data e horário do jogo')
+      if (!novoJogo.pais_casa_id || !novoJogo.pais_fora_id) throw new Error('Selecione os dois países')
+      const iso = new Date(`${novoJogo.data_jogo}T${novoJogo.hora_jogo}:00`).toISOString()
+      await api.post('/jogos', {
+        tipo_fase: novoJogo.tipo_fase,
+        grupo: novoJogo.tipo_fase === 'grupos' ? novoJogo.grupo : null,
+        rodada: novoJogo.tipo_fase === 'grupos' ? novoJogo.rodada : null,
+        fase: novoJogo.tipo_fase === 'grupos' ? `Grupo ${novoJogo.grupo} - Rodada ${novoJogo.rodada}` : novoJogo.fase_mata,
+        pais_casa_id: Number(novoJogo.pais_casa_id),
+        pais_fora_id: Number(novoJogo.pais_fora_id),
+        data_jogo: iso,
+      })
+      await queryClient.invalidateQueries({ queryKey: ['jogos'] })
+      success('Jogo cadastrado')
+      setNovoJogo((old) => ({ ...old, pais_casa_id: '', pais_fora_id: '', data_jogo: '', hora_jogo: '' }))
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Erro ao cadastrar jogo')
+    }
+  }
+
+  const criarCandidato = async () => {
+    try {
+      const nome = novoCandidato.trim()
+      if (!nome) return
+      await api.post('/marcadores-brasil/candidatos', { nome })
+      await queryClient.invalidateQueries({ queryKey: ['marcadores', 'candidatos', 'admin'] })
+      setNovoCandidato('')
+      success('Candidato adicionado')
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Erro ao adicionar candidato')
+    }
+  }
+
+  const atualizarCandidato = async (id: number, payload: { nome?: string; ativo?: boolean }) => {
+    try {
+      await api.put(`/marcadores-brasil/candidatos/${id}`, payload)
+      await queryClient.invalidateQueries({ queryKey: ['marcadores', 'candidatos', 'admin'] })
+      success('Candidato atualizado')
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Erro ao atualizar candidato')
+    }
+  }
 
   const handleFinalize = async (jogo: Jogo) => {
     try {
@@ -146,6 +223,127 @@ function AdminJogos({ success, error, queryClient }: AdminSectionProps) {
 
   return (
     <div className="space-y-3">
+      <div className="glass rounded-2xl p-4 space-y-3">
+        <p className="text-sm font-semibold">Cadastro guiado de jogo</p>
+        <div className="grid grid-cols-2 gap-2">
+          <select
+            value={novoJogo.tipo_fase}
+            onChange={(e) => setNovoJogo((old) => ({ ...old, tipo_fase: e.target.value as 'grupos' | 'mata_mata', pais_casa_id: '', pais_fora_id: '' }))}
+            className="px-3 py-2 rounded-xl text-sm outline-none"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
+          >
+            <option value="grupos">Fase de grupos</option>
+            <option value="mata_mata">Mata-mata</option>
+          </select>
+          {novoJogo.tipo_fase === 'grupos' ? (
+            <select
+              value={novoJogo.grupo}
+              onChange={(e) => setNovoJogo((old) => ({ ...old, grupo: e.target.value, pais_casa_id: '', pais_fora_id: '' }))}
+              className="px-3 py-2 rounded-xl text-sm outline-none"
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
+            >
+              {GRUPOS_DISPONIVEIS.map((g) => <option key={g} value={g}>Grupo {g}</option>)}
+            </select>
+          ) : (
+            <select
+              value={novoJogo.fase_mata}
+              onChange={(e) => setNovoJogo((old) => ({ ...old, fase_mata: e.target.value }))}
+              className="px-3 py-2 rounded-xl text-sm outline-none"
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
+            >
+              {FASES_MATA_MATA.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
+            </select>
+          )}
+          {novoJogo.tipo_fase === 'grupos' ? (
+            <select
+              value={novoJogo.rodada}
+              onChange={(e) => setNovoJogo((old) => ({ ...old, rodada: Number(e.target.value) || 1 }))}
+              className="px-3 py-2 rounded-xl text-sm outline-none"
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
+            >
+              <option value={1}>Rodada 1</option>
+              <option value={2}>Rodada 2</option>
+              <option value={3}>Rodada 3</option>
+            </select>
+          ) : (
+            <div />
+          )}
+          <input
+            type="date"
+            value={novoJogo.data_jogo}
+            onChange={(e) => setNovoJogo((old) => ({ ...old, data_jogo: e.target.value }))}
+            className="px-3 py-2 rounded-xl text-sm outline-none"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
+          />
+          <input
+            type="time"
+            value={novoJogo.hora_jogo}
+            onChange={(e) => setNovoJogo((old) => ({ ...old, hora_jogo: e.target.value }))}
+            className="px-3 py-2 rounded-xl text-sm outline-none"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
+          />
+          <select
+            value={novoJogo.pais_casa_id}
+            onChange={(e) => setNovoJogo((old) => ({ ...old, pais_casa_id: e.target.value }))}
+            className="px-3 py-2 rounded-xl text-sm outline-none"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
+          >
+            <option value="">Time A</option>
+            {paisesDisponiveis.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+          </select>
+          <select
+            value={novoJogo.pais_fora_id}
+            onChange={(e) => setNovoJogo((old) => ({ ...old, pais_fora_id: e.target.value }))}
+            className="px-3 py-2 rounded-xl text-sm outline-none"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
+          >
+            <option value="">Time B</option>
+            {paisesDisponiveis.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+          </select>
+        </div>
+        <button
+          onClick={criarJogo}
+          className="w-full py-2.5 rounded-xl text-sm font-semibold"
+          style={{ background: 'var(--accent)', color: '#070A12' }}
+        >
+          Cadastrar jogo
+        </button>
+      </div>
+
+      <div className="glass rounded-2xl p-4 space-y-2">
+        <p className="text-sm font-semibold">Candidatos a marcadores do Brasil</p>
+        <div className="flex gap-2">
+          <input
+            value={novoCandidato}
+            onChange={(e) => setNovoCandidato(e.target.value)}
+            placeholder="Nome do jogador"
+            className="flex-1 px-3 py-2 rounded-xl text-sm outline-none"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
+          />
+          <button
+            onClick={criarCandidato}
+            className="px-4 py-2 rounded-xl text-sm font-semibold"
+            style={{ background: 'rgba(53,208,127,0.16)', border: '1px solid rgba(53,208,127,0.35)', color: 'var(--accent)' }}
+          >
+            Adicionar
+          </button>
+        </div>
+        <div className="space-y-1.5">
+          {candidatosAdmin.map((c) => (
+            <div key={c.id} className="flex items-center gap-2">
+              <span className="flex-1 text-sm">{c.nome}</span>
+              <button
+                onClick={() => atualizarCandidato(c.id, { ativo: !c.ativo })}
+                className="text-xs px-3 py-1.5 rounded-xl font-medium"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text-muted)' }}
+              >
+                {c.ativo ? 'Desativar' : 'Ativar'}
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {jogos.map((jogo) => (
         <div key={jogo.id} className="glass rounded-2xl p-4">
           <div className="flex items-start justify-between gap-2 mb-2">
@@ -158,37 +356,36 @@ function AdminJogos({ success, error, queryClient }: AdminSectionProps) {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              {jogo.finalizado ? (
+              {jogo.finalizado && (
                 <span className="text-xs px-2 py-1 rounded-full font-semibold" style={{ background: 'var(--highlight-dim)', color: 'var(--highlight)', border: '1px solid rgba(246,198,91,0.3)' }}>
                   Finalizado
                 </span>
-              ) : (
-                <div className="flex gap-1.5">
-                  <button
-                    onClick={() => setEditingId(editingId === jogo.id ? null : jogo.id)}
-                    className="text-xs px-3 py-1.5 rounded-xl font-semibold transition-all"
-                    style={{
-                      background: 'rgba(255,255,255,0.08)',
-                      border: '1px solid rgba(255,255,255,0.12)',
-                      color: 'var(--text)',
-                    }}
-                  >
-                    {editingId === jogo.id ? 'Fechar' : 'Resultado'}
-                  </button>
-                  {(jogo.pais_casa.sigla === 'BR' || jogo.pais_fora.sigla === 'BR') && (
-                    <button
-                      onClick={() => openMarcadores(jogo.id)}
-                      className="text-xs px-3 py-1.5 rounded-xl font-semibold transition-all"
-                      style={{
-                        background: 'rgba(246,198,91,0.10)',
-                        border: '1px solid rgba(246,198,91,0.3)',
-                        color: 'var(--highlight)',
-                      }}
-                    >
-                      Marcadores BR
-                    </button>
-                  )}
-                </div>
+              )}
+              {!jogo.finalizado && (
+                <button
+                  onClick={() => setEditingId(editingId === jogo.id ? null : jogo.id)}
+                  className="text-xs px-3 py-1.5 rounded-xl font-semibold transition-all"
+                  style={{
+                    background: 'rgba(255,255,255,0.08)',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    color: 'var(--text)',
+                  }}
+                >
+                  {editingId === jogo.id ? 'Fechar' : 'Resultado'}
+                </button>
+              )}
+              {(jogo.pais_casa.sigla === 'BR' || jogo.pais_fora.sigla === 'BR') && jogo.finalizado && (
+                <button
+                  onClick={() => openMarcadores(jogo.id)}
+                  className="text-xs px-3 py-1.5 rounded-xl font-semibold transition-all"
+                  style={{
+                    background: 'rgba(246,198,91,0.10)',
+                    border: '1px solid rgba(246,198,91,0.3)',
+                    color: 'var(--highlight)',
+                  }}
+                >
+                  Marcadores BR
+                </button>
               )}
             </div>
           </div>
@@ -253,7 +450,7 @@ function AdminJogos({ success, error, queryClient }: AdminSectionProps) {
           </AnimatePresence>
 
           <AnimatePresence>
-            {editingMarcadoresId === jogo.id && (
+            {editingMarcadoresId === jogo.id && jogo.finalizado && (
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
@@ -487,7 +684,7 @@ function AdminEspeciais({ success, error, queryClient }: AdminSectionProps) {
           </p>
         </div>
         <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
-          Data de bloqueio atual: {config?.data_bloqueio_palpites_especiais ? formatDate(config.data_bloqueio_palpites_especiais) : 'Automática (2h antes do primeiro jogo)'}
+          Data de bloqueio atual: {config?.data_bloqueio_palpites_especiais ? formatDate(config.data_bloqueio_palpites_especiais) : 'Automática (1h antes do primeiro jogo, horário de Brasília)'}
         </p>
       </div>
     </div>
