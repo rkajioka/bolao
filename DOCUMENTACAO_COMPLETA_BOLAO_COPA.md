@@ -422,8 +422,8 @@ Mostrar classificação geral de usuários por pontos.
 
 - Pydantic valida formatos e campos mínimos.
 - Services reforçam regras de domínio (prazos, classificado, jogo BR etc.).
-- Limite de placares “absurdos”: NÃO IDENTIFICADO (não há teto numérico, só `>=0`).
-- **Risco**: **Médio**.
+- Limite de placares “absurdos”: Mitigado com teto numérico em schemas (`le=30` para placar/pênaltis e `le=15` para quantidade de gols de marcadores BR).
+- **Risco**: **Baixo**.
 
 ### Exposição de dados
 
@@ -447,9 +447,9 @@ Mostrar classificação geral de usuários por pontos.
 
 ### Rate limiting e abuso
 
-- Rate limiting de login/API: **NÃO IDENTIFICADO**.
-- Proteção contra brute force de login: **NÃO IDENTIFICADO**.
-- **Risco**: **Médio-alto**.
+- Rate limiting em autenticação: Mitigado em `/auth/login` (tentativas inválidas) e `/auth/refresh` por janela configurável.
+- Proteção contra brute force de login: Mitigado via limitação por chave de cliente/identificador e janela de tempo.
+- **Risco**: **Baixo** (depende de calibração dos limites por ambiente/carga).
 
 ### Principais achados de segurança (resumo objetivo)
 
@@ -547,13 +547,13 @@ Mostrar classificação geral de usuários por pontos.
 | -- | ---- | ---- | --------- | ---------- | ------- | ------------ |
 | B01 | Segurança | Risco de segurança | JWT secret default fraco em config pode vazar para ambiente mal configurado | Alta | Compromete autenticação | Exigir secret forte por ambiente e falhar startup sem override |
 | B02 | Segurança | Risco de segurança | Token em `localStorage` aumenta risco em cenário XSS | Média | Sequestro de sessão | Considerar estratégia com cookie `HttpOnly` + proteção adicional |
-| B03 | Segurança | Mitigado | Rate limit aplicado em login e refresh por janela | Baixa | Reduz brute force/abuso | Manter ajuste de limites por ambiente |
-| B04 | Backend | Mitigado | Trilha de auditoria admin em rotas de mutação | Baixa | Melhora rastreabilidade operacional | Expandir cobertura quando novas rotas admin forem criadas |
-| B05 | Regras | Mitigado | Mensagem de especiais alinhada à regra real (edição até bloqueio) | Baixa | Reduz ruído de entendimento | Revisar copy sempre que regra de produto mudar |
+| ~~B03~~ | ~~Segurança~~ | ~~Mitigado~~ | ~~Rate limit aplicado em login e refresh por janela~~ | ~~Baixa~~ | ~~Reduz brute force/abuso~~ | ~~Manter ajuste de limites por ambiente~~ |
+| ~~B04~~ | ~~Backend~~ | ~~Mitigado~~ | ~~Trilha de auditoria admin em rotas de mutação~~ | ~~Baixa~~ | ~~Melhora rastreabilidade operacional~~ | ~~Expandir cobertura quando novas rotas admin forem criadas~~ |
+| ~~B05~~ | ~~Regras~~ | ~~Mitigado~~ | ~~Mensagem de especiais alinhada à regra real (edição até bloqueio)~~ | ~~Baixa~~ | ~~Reduz ruído de entendimento~~ | ~~Revisar copy sempre que regra de produto mudar~~ |
 | B06 | UX | Problema de UX | Diferença fechado vs finalizado pode confundir usuário | Média | Erro de percepção | Refinar copy, badges e ajuda contextual |
 | B07 | Infra/API | Risco de segurança | CORS/headers de segurança não explícitos | Média | Exposição em deploy aberto | Definir CORS por ambiente e hardening de headers |
-| B08 | Dados | Mitigado | Limites máximos definidos para placar/pênaltis e quantidade de gols | Baixa | Evita payloads absurdos | Ajustar limites se houver necessidade de produto |
-| B09 | Frontend | Mitigado | Rota duplicada `/grupos` descontinuada com redirecionamento para `/jogos` | Baixa | Remove duplicidade de navegação | Manter fluxo único em `JogosPage` |
+| ~~B08~~ | ~~Dados~~ | ~~Mitigado~~ | ~~Limites máximos definidos para placar/pênaltis e quantidade de gols~~ | ~~Baixa~~ | ~~Evita payloads absurdos~~ | ~~Ajustar limites se houver necessidade de produto~~ |
+| ~~B09~~ | ~~Frontend~~ | ~~Mitigado~~ | ~~Rota duplicada `/grupos` descontinuada com redirecionamento para `/jogos`~~ | ~~Baixa~~ | ~~Remove duplicidade de navegação~~ | ~~Manter fluxo único em `JogosPage`~~ |
 | B10 | Produto | Regra de negócio indefinida | Critério formal de desempate no ranking além nome não explicitado | Baixa | Contestação de ranking | Definir regra oficial e exibir na UI |
 
 ---
@@ -562,22 +562,28 @@ Mostrar classificação geral de usuários por pontos.
 
 ### Essenciais para produção
 
-- Hardening de segurança operacional:
+- Hardening de segurança operacional (**Pendente**):
   - política forte de JWT secret;
   - CORS/headers definidos por ambiente.
-- Auditoria administrativa contínua para novas operações críticas.
+- Auditoria administrativa contínua para novas operações críticas (**Pendente** para novas rotas).
 
 ### Importantes, mas não bloqueantes
 
-- Melhorias de UX no entendimento de bloqueios e prazos.
-- Separação da tela Admin em módulos menores.
-- Critério de desempate formal publicado.
+- Melhorias de UX no entendimento de bloqueios e prazos (**Pendente**, alinhado ao B06).
+- Separação da tela Admin em módulos menores (**Pendente**).
+- Critério de desempate formal publicado (**Pendente**, alinhado ao B10).
 
 ### Desejáveis
 
 - Histórico de alterações por palpite/resultado.
 - Observabilidade avançada (métricas de erro/performance).
 - Exportações e relatórios administrativos.
+- Implementação obrigatória futura de imagem de perfil opcional com fallback padrão:
+  - usuário pode enviar imagem no perfil/primeiro acesso;
+  - se não houver imagem válida, UI deve exibir imagem de fallback;
+  - upload deve aceitar apenas arquivos de imagem permitidos;
+  - upload deve aplicar limite máximo de tamanho por segurança;
+  - ranking deve exibir imagem do usuário ou fallback.
 
 ---
 
@@ -585,13 +591,13 @@ Mostrar classificação geral de usuários por pontos.
 
 ### Prioridade 1 — Segurança e integridade
 
-- Tornar obrigatório `JWT_SECRET` forte por ambiente.
-- Definir CORS explícito e headers de segurança.
-- Revisar estratégia de armazenamento de sessão/token.
+- Tornar obrigatório `JWT_SECRET` forte por ambiente (**Pendente**, alinhado ao B01).
+- Definir CORS explícito e headers de segurança (**Pendente**, alinhado ao B07).
+- Revisar estratégia de armazenamento de sessão/token (**Pendente**, alinhado ao B02).
 
 ### Prioridade 2 — Fluxo principal do bolão
 
-- Refinar comunicação de regras e estados em especiais.
+- Refinar comunicação de regras e estados em especiais (**Pendente**, alinhado ao B06).
 - Melhorar comunicação de status de bloqueio por jogo.
 - Garantir consistência final entre regras documentadas e comportamento de UI.
 
@@ -604,7 +610,7 @@ Mostrar classificação geral de usuários por pontos.
 ### Prioridade 4 — UX/UI
 
 - Revisar contraste, legibilidade e estados disabled.
-- Exibir deadlines e critério de desempate no ranking.
+- Exibir deadlines e critério de desempate no ranking (**Pendente**, alinhado ao B10).
 - Uniformizar mensagens de erro/sucesso em fluxos críticos.
 
 ### Prioridade 5 — Futuro
