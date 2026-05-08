@@ -17,13 +17,21 @@ import type {
   GruposListResponse,
   TabelaGrupoResponse,
 } from '@/types'
-import { CalendarDays } from 'lucide-react'
+import { CalendarDays, ChevronDown } from 'lucide-react'
+import { jogoBloqueado, momentoFimEdicao } from '@/lib/utils'
 
 type Tab = 'cronologico' | 'grupos'
+type CronoFiltro = 'pendentes' | 'resultados' | 'todos'
 
 export function JogosPage() {
   const [tab, setTab] = useState<Tab>('cronologico')
+  const [filtroCrono, setFiltroCrono] = useState<CronoFiltro>('pendentes')
   const [grupoSelecionado, setGrupoSelecionado] = useState<string>('A')
+  const [secoesTodosAbertas, setSecoesTodosAbertas] = useState({
+    abertos: true,
+    fechados: false,
+    finalizados: false,
+  })
   const { success, error } = useToast()
   const queryClient = useQueryClient()
 
@@ -121,6 +129,37 @@ export function JogosPage() {
   const jogosDoGrupoSelecionado = jogosCrono.filter(
     (jogo) => jogo.tipo_fase === 'grupos' && (jogo.grupo || '').toUpperCase() === grupoSelecionado,
   )
+  const isJogoAberto = (jogo: Jogo) => !jogoBloqueado(jogo, jogosCrono)
+  const isJogoFinalizado = (jogo: Jogo) =>
+    jogo.finalizado || (jogo.placar_casa !== null && jogo.placar_fora !== null)
+  const isJogoFechado = (jogo: Jogo) => !isJogoAberto(jogo) && !isJogoFinalizado(jogo)
+
+  const jogosParaPreencher = [...jogosCrono]
+    .filter((jogo) => isJogoAberto(jogo))
+    .sort((a, b) => momentoFimEdicao(a, jogosCrono) - momentoFimEdicao(b, jogosCrono))
+
+  const jogosResultados = [...jogosCrono]
+    .filter((jogo) => isJogoFinalizado(jogo))
+    .sort((a, b) => new Date(b.data_jogo).getTime() - new Date(a.data_jogo).getTime())
+
+  const jogosTodosAbertos = [...jogosCrono]
+    .filter((jogo) => isJogoAberto(jogo))
+    .sort((a, b) => momentoFimEdicao(a, jogosCrono) - momentoFimEdicao(b, jogosCrono))
+
+  const jogosTodosFechados = [...jogosCrono]
+    .filter((jogo) => isJogoFechado(jogo))
+    .sort((a, b) => new Date(a.data_jogo).getTime() - new Date(b.data_jogo).getTime())
+
+  const jogosTodosFinalizados = [...jogosCrono]
+    .filter((jogo) => isJogoFinalizado(jogo))
+    .sort((a, b) => new Date(b.data_jogo).getTime() - new Date(a.data_jogo).getTime())
+
+  const jogosDoGrupoOrdenados = [...jogosDoGrupoSelecionado].sort((a, b) => {
+    const peso = (j: Jogo) => (isJogoAberto(j) ? 0 : isJogoFinalizado(j) ? 2 : 1)
+    const diff = peso(a) - peso(b)
+    if (diff !== 0) return diff
+    return new Date(a.data_jogo).getTime() - new Date(b.data_jogo).getTime()
+  })
 
   const candidatoNames = candidatos.map((c) => c.nome)
 
@@ -148,6 +187,31 @@ export function JogosPage() {
         ))}
       </div>
 
+      {tab === 'cronologico' && (
+        <div
+          className="flex p-1 rounded-xl"
+          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
+        >
+          {([
+            { key: 'pendentes', label: 'Para preencher' },
+            { key: 'resultados', label: 'Resultados' },
+            { key: 'todos', label: 'Todos' },
+          ] as { key: CronoFiltro; label: string }[]).map((opt) => (
+            <button
+              key={opt.key}
+              onClick={() => setFiltroCrono(opt.key)}
+              className="flex-1 py-2 rounded-lg text-sm font-semibold transition-all duration-150"
+              style={{
+                background: filtroCrono === opt.key ? 'rgba(255,255,255,0.10)' : 'transparent',
+                color: filtroCrono === opt.key ? 'var(--text)' : 'var(--text-muted)',
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {loadingJogos ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => <GameCardSkeleton key={i} />)}
@@ -169,18 +233,117 @@ export function JogosPage() {
               transition={{ duration: 0.15 }}
               className="space-y-3"
             >
-              {jogosCrono.map((jogo) => (
-                <GameCard
-                  key={jogo.id}
-                  jogo={jogo}
-                  palpite={palpiteMap.get(jogo.id) ?? null}
-                  todosJogos={jogosCrono}
-                  paises={paises}
-                  onSave={handleSave}
-                  onSaveMarcadores={handleSaveMarcadores}
-                  candidatos={candidatoNames}
-                />
-              ))}
+              {filtroCrono === 'pendentes' && (
+                jogosParaPreencher.length === 0 ? (
+                  <EmptyState
+                    icon={<CalendarDays size={26} style={{ color: 'var(--text-muted)' }} />}
+                    title="Nenhum palpite pendente"
+                    description="Você não tem jogos abertos para preencher no momento."
+                  />
+                ) : (
+                  jogosParaPreencher.map((jogo) => (
+                    <GameCard
+                      key={jogo.id}
+                      jogo={jogo}
+                      palpite={palpiteMap.get(jogo.id) ?? null}
+                      todosJogos={jogosCrono}
+                      paises={paises}
+                      onSave={handleSave}
+                      onSaveMarcadores={handleSaveMarcadores}
+                      candidatos={candidatoNames}
+                    />
+                  ))
+                )
+              )}
+
+              {filtroCrono === 'resultados' && (
+                jogosResultados.length === 0 ? (
+                  <EmptyState
+                    icon={<CalendarDays size={26} style={{ color: 'var(--text-muted)' }} />}
+                    title="Sem resultados ainda"
+                    description="Os jogos finalizados aparecerão aqui para consulta."
+                  />
+                ) : (
+                  jogosResultados.map((jogo) => (
+                    <GameCard
+                      key={jogo.id}
+                      jogo={jogo}
+                      palpite={palpiteMap.get(jogo.id) ?? null}
+                      todosJogos={jogosCrono}
+                      paises={paises}
+                      onSave={handleSave}
+                      onSaveMarcadores={handleSaveMarcadores}
+                      candidatos={candidatoNames}
+                    />
+                  ))
+                )
+              )}
+
+              {filtroCrono === 'todos' && (
+                <div className="space-y-4">
+                  {[
+                    { key: 'abertos' as const, titulo: 'Abertos para palpite', jogos: jogosTodosAbertos },
+                    { key: 'fechados' as const, titulo: 'Fechados', jogos: jogosTodosFechados },
+                    { key: 'finalizados' as const, titulo: 'Finalizados', jogos: jogosTodosFinalizados },
+                  ].map((secao) => (
+                    <div key={secao.key} className="glass rounded-2xl overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSecoesTodosAbertas((prev) => ({ ...prev, [secao.key]: !prev[secao.key] }))
+                        }
+                        className="w-full flex items-center gap-2 px-4 py-3"
+                        style={{ borderBottom: secoesTodosAbertas[secao.key] ? '1px solid rgba(255,255,255,0.06)' : 'none' }}
+                      >
+                        <span className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
+                          {secao.titulo}
+                        </span>
+                        <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)' }}>
+                          {secao.jogos.length}
+                        </span>
+                        <ChevronDown
+                          size={16}
+                          className="ml-auto transition-transform duration-200"
+                          style={{ transform: secoesTodosAbertas[secao.key] ? 'rotate(180deg)' : 'rotate(0deg)', color: 'var(--text-muted)' }}
+                        />
+                      </button>
+
+                      <AnimatePresence initial={false}>
+                        {secoesTodosAbertas[secao.key] && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.18 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="p-3 space-y-3">
+                              {secao.jogos.length === 0 ? (
+                                <p className="text-sm px-2 py-3" style={{ color: 'var(--text-muted)' }}>
+                                  Nenhum jogo nesta seção.
+                                </p>
+                              ) : (
+                                secao.jogos.map((jogo) => (
+                                  <GameCard
+                                    key={jogo.id}
+                                    jogo={jogo}
+                                    palpite={palpiteMap.get(jogo.id) ?? null}
+                                    todosJogos={jogosCrono}
+                                    paises={paises}
+                                    onSave={handleSave}
+                                    onSaveMarcadores={handleSaveMarcadores}
+                                    candidatos={candidatoNames}
+                                  />
+                                ))
+                              )}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  ))}
+                </div>
+              )}
             </motion.div>
           ) : (
             <motion.div
@@ -232,7 +395,7 @@ export function JogosPage() {
                   Palpites do Grupo {grupoSelecionado}
                 </h3>
 
-                {jogosDoGrupoSelecionado.length === 0 ? (
+                {jogosDoGrupoOrdenados.length === 0 ? (
                   <div className="glass rounded-2xl p-8 text-center">
                     <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                       Nenhum jogo encontrado para o grupo {grupoSelecionado}.
@@ -240,7 +403,7 @@ export function JogosPage() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {jogosDoGrupoSelecionado.map((jogo) => (
+                    {jogosDoGrupoOrdenados.map((jogo) => (
                       <GameCard
                         key={jogo.id}
                         jogo={jogo}
