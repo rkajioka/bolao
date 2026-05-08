@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { api } from '@/lib/api'
@@ -17,7 +17,13 @@ import type {
   TabelaGrupoResponse,
 } from '@/types'
 import { CalendarDays } from 'lucide-react'
-import { jogoBloqueado, momentoFimEdicao } from '@/lib/utils'
+import {
+  compareJogosPorDataJogoAsc,
+  jogoBloqueado,
+  palpiteDefaultSegmentKey,
+  palpiteSegmentKey,
+  palpiteSegmentOptionsFromJogos,
+} from '@/lib/utils'
 
 type Tab = 'cronologico' | 'grupos'
 type StatusFiltro = 'abertos' | 'fechados'
@@ -36,6 +42,8 @@ export function JogosPage() {
   const [tab, setTab] = useState<Tab>('cronologico')
   const [filtroStatus, setFiltroStatus] = useState<StatusFiltro>('abertos')
   const [grupoSelecionado, setGrupoSelecionado] = useState<string>('A')
+  const [segmentoCrono, setSegmentoCrono] = useState<string>('')
+  const [segmentoGrupo, setSegmentoGrupo] = useState<string>('')
   const { success, error } = useToast()
   const queryClient = useQueryClient()
 
@@ -104,6 +112,7 @@ export function JogosPage() {
         })
       }
       await queryClient.invalidateQueries({ queryKey: ['palpites'] })
+      await queryClient.invalidateQueries({ queryKey: ['marcadores-brasil', 'me', jogoId] })
       success('Palpite salvo!')
     } catch (err) {
       error(err instanceof Error ? err.message : 'Erro ao salvar palpite')
@@ -119,6 +128,7 @@ export function JogosPage() {
     if (!existing) return
     try {
       await api.put(`/marcadores-brasil/${jogoId}`, { marcadores })
+      await queryClient.invalidateQueries({ queryKey: ['marcadores-brasil', 'me', jogoId] })
       success('Marcadores salvos!')
     } catch (err) {
       error(err instanceof Error ? err.message : 'Erro ao salvar marcadores')
@@ -126,35 +136,80 @@ export function JogosPage() {
     }
   }
 
-  const jogosDoGrupoSelecionado = jogosCrono.filter(
-    (jogo) => jogo.tipo_fase === 'grupos' && (jogo.grupo || '').toUpperCase() === grupoSelecionado,
+  /** Uma única ordenação crescente por data; sublistas só filtram e preservam essa ordem. */
+  const jogosOrdenadosAsc = useMemo(
+    () => [...jogosCrono].sort(compareJogosPorDataJogoAsc),
+    [jogosCrono],
   )
+
   const isJogoAberto = (jogo: Jogo) => !jogoBloqueado(jogo, jogosCrono)
-  const isJogoFinalizado = (jogo: Jogo) =>
-    jogo.finalizado || (jogo.placar_casa !== null && jogo.placar_fora !== null)
+  const isJogoFinalizado = (jogo: Jogo) => jogo.finalizado
   const isJogoFechado = (jogo: Jogo) => !isJogoAberto(jogo) && !isJogoFinalizado(jogo)
 
-  const jogosCronoAbertos = [...jogosCrono]
-    .filter((jogo) => isJogoAberto(jogo))
-    .sort((a, b) => momentoFimEdicao(a, jogosCrono) - momentoFimEdicao(b, jogosCrono))
+  /** Filtros recalculados a cada render (jogoBloqueado usa Date.now); ordem vem sempre de jogosOrdenadosAsc. */
+  const jogosCronoAbertos = jogosOrdenadosAsc.filter((jogo) => isJogoAberto(jogo))
 
-  const jogosCronoFechados = [...jogosCrono]
-    .filter((jogo) => isJogoFechado(jogo) || isJogoFinalizado(jogo))
-    .sort((a, b) => new Date(b.data_jogo).getTime() - new Date(a.data_jogo).getTime())
+  const jogosCronoFechados = [
+    ...jogosOrdenadosAsc.filter((jogo) => isJogoFechado(jogo) || isJogoFinalizado(jogo)),
+  ].reverse()
 
   const jogosCronoFiltrados = filtroStatus === 'abertos' ? jogosCronoAbertos : jogosCronoFechados
 
-  const jogosGrupoAbertos = [...jogosDoGrupoSelecionado]
-    .filter((jogo) => isJogoAberto(jogo))
-    .sort((a, b) => momentoFimEdicao(a, jogosCrono) - momentoFimEdicao(b, jogosCrono))
+  const jogosDoGrupoSelecionado = jogosOrdenadosAsc.filter(
+    (jogo) => jogo.tipo_fase === 'grupos' && (jogo.grupo || '').toUpperCase() === grupoSelecionado,
+  )
 
-  const jogosGrupoFechados = [...jogosDoGrupoSelecionado]
-    .filter((jogo) => isJogoFechado(jogo) || isJogoFinalizado(jogo))
-    .sort((a, b) => new Date(b.data_jogo).getTime() - new Date(a.data_jogo).getTime())
+  const jogosGrupoAbertos = jogosDoGrupoSelecionado.filter((jogo) => isJogoAberto(jogo))
+
+  const jogosGrupoFechados = [
+    ...jogosDoGrupoSelecionado.filter((jogo) => isJogoFechado(jogo) || isJogoFinalizado(jogo)),
+  ].reverse()
 
   const jogosDoGrupoFiltrados = filtroStatus === 'abertos' ? jogosGrupoAbertos : jogosGrupoFechados
 
-  const candidatoNames = candidatos.map((c) => c.nome)
+  const segmentosCrono = useMemo(
+    () => palpiteSegmentOptionsFromJogos(jogosCronoFiltrados),
+    [jogosCronoFiltrados],
+  )
+
+  const segmentosGrupo = useMemo(
+    () => palpiteSegmentOptionsFromJogos(jogosDoGrupoFiltrados),
+    [jogosDoGrupoFiltrados],
+  )
+
+  const segmentoCronoAtivo = useMemo(() => {
+    if (!segmentosCrono.length) return ''
+    if (segmentosCrono.some((s) => s.key === segmentoCrono)) return segmentoCrono
+    return palpiteDefaultSegmentKey(jogosCronoFiltrados) ?? segmentosCrono[0].key
+  }, [segmentosCrono, segmentoCrono, jogosCronoFiltrados])
+
+  const segmentoGrupoAtivo = useMemo(() => {
+    if (!segmentosGrupo.length) return ''
+    if (segmentosGrupo.some((s) => s.key === segmentoGrupo)) return segmentoGrupo
+    return palpiteDefaultSegmentKey(jogosDoGrupoFiltrados) ?? segmentosGrupo[0].key
+  }, [segmentosGrupo, segmentoGrupo, jogosDoGrupoFiltrados])
+
+  useEffect(() => {
+    if (segmentoCronoAtivo !== segmentoCrono) {
+      setSegmentoCrono(segmentoCronoAtivo)
+    }
+  }, [segmentoCronoAtivo, segmentoCrono])
+
+  useEffect(() => {
+    if (segmentoGrupoAtivo !== segmentoGrupo) {
+      setSegmentoGrupo(segmentoGrupoAtivo)
+    }
+  }, [segmentoGrupoAtivo, segmentoGrupo])
+
+  const jogosCronoNaFase = useMemo(
+    () => jogosCronoFiltrados.filter((j) => palpiteSegmentKey(j) === segmentoCronoAtivo),
+    [jogosCronoFiltrados, segmentoCronoAtivo],
+  )
+
+  const jogosGrupoNaFase = useMemo(
+    () => jogosDoGrupoFiltrados.filter((j) => palpiteSegmentKey(j) === segmentoGrupoAtivo),
+    [jogosDoGrupoFiltrados, segmentoGrupoAtivo],
+  )
 
   return (
     <div className="space-y-4">
@@ -195,6 +250,16 @@ export function JogosPage() {
                 controlId="crono-status"
               />
 
+              {segmentosCrono.length > 1 && (
+                <SegmentedControl
+                  segments={segmentosCrono}
+                  value={segmentoCronoAtivo}
+                  onChange={setSegmentoCrono}
+                  controlId="crono-fase"
+                  scrollable={segmentosCrono.length > 3}
+                />
+              )}
+
               {jogosCronoFiltrados.length === 0 ? (
                 <EmptyState
                   icon={<CalendarDays size={26} style={{ color: 'var(--text-muted)' }} />}
@@ -206,7 +271,7 @@ export function JogosPage() {
                   }
                 />
               ) : (
-                jogosCronoFiltrados.map((jogo) => (
+                jogosCronoNaFase.map((jogo) => (
                   <GameCard
                     key={jogo.id}
                     jogo={jogo}
@@ -214,7 +279,7 @@ export function JogosPage() {
                     todosJogos={jogosCrono}
                     onSave={handleSave}
                     onSaveMarcadores={handleSaveMarcadores}
-                    candidatos={candidatoNames}
+                    candidatos={candidatos}
                   />
                 ))
               )}
@@ -272,6 +337,16 @@ export function JogosPage() {
                   controlId="grupos-status"
                 />
 
+                {segmentosGrupo.length > 1 && (
+                  <SegmentedControl
+                    segments={segmentosGrupo}
+                    value={segmentoGrupoAtivo}
+                    onChange={setSegmentoGrupo}
+                    controlId="grupo-fase"
+                    scrollable={segmentosGrupo.length > 3}
+                  />
+                )}
+
                 <h3 className="text-xs font-bold uppercase tracking-wider px-1" style={{ color: 'var(--accent)' }}>
                   Palpites do Grupo {grupoSelecionado}
                 </h3>
@@ -284,7 +359,7 @@ export function JogosPage() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {jogosDoGrupoFiltrados.map((jogo) => (
+                    {jogosGrupoNaFase.map((jogo) => (
                       <GameCard
                         key={jogo.id}
                         jogo={jogo}
@@ -292,7 +367,7 @@ export function JogosPage() {
                         todosJogos={jogosCrono}
                         onSave={handleSave}
                         onSaveMarcadores={handleSaveMarcadores}
-                        candidatos={candidatoNames}
+                        candidatos={candidatos}
                       />
                     ))}
                   </div>

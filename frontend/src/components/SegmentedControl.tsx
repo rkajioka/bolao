@@ -10,6 +10,8 @@ interface SegmentedControlProps<T extends string> {
   value: T
   onChange: (value: T) => void
   controlId: string
+  /** Muitos segmentos: rolagem horizontal em vez de dividir espaço igualmente. */
+  scrollable?: boolean
 }
 
 export function SegmentedControl<T extends string>({
@@ -17,6 +19,7 @@ export function SegmentedControl<T extends string>({
   value,
   onChange,
   controlId,
+  scrollable = false,
 }: SegmentedControlProps<T>) {
   return (
     <div
@@ -30,6 +33,9 @@ export function SegmentedControl<T extends string>({
         backdropFilter: 'blur(8px)',
         WebkitBackdropFilter: 'blur(8px)',
         gap: '2px',
+        flexWrap: scrollable ? 'nowrap' : undefined,
+        overflowX: scrollable ? 'auto' : undefined,
+        WebkitOverflowScrolling: scrollable ? 'touch' : undefined,
       }}
     >
       {segments.map((seg) => (
@@ -40,7 +46,7 @@ export function SegmentedControl<T extends string>({
           aria-selected={value === seg.key}
           onClick={() => onChange(seg.key)}
           style={{
-            flex: 1,
+            flex: scrollable ? '0 0 auto' : 1,
             position: 'relative',
             padding: '6px 12px',
             borderRadius: '9px',

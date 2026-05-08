@@ -72,24 +72,111 @@ export function faseLabel(jogo: Jogo): string {
   return jogo.fase
 }
 
+/** True se `jogo.fase` já contém a rodada numérica (evita "…Rodada 1 · Rodada 1" no header). */
+export function jogoFaseJaMencionaRodada(jogo: Jogo): boolean {
+  if (jogo.rodada == null) return false
+  return new RegExp(`rodada\\s*${jogo.rodada}\\b`, 'i').test(jogo.fase)
+}
+
+/** Chave estável para agrupar/filtrar palpites por rodada (grupos) ou fase (mata-mata). */
+export function palpiteSegmentKey(jogo: Jogo): string {
+  if (jogo.tipo_fase === 'grupos') {
+    const r = jogo.rodada ?? 0
+    return `grupos:rodada:${r}`
+  }
+  const slug = normalizeFaseSlug(jogo.fase)
+  if (slug) return `mata:${slug}`
+  const raw = jogo.fase.trim().toLowerCase().replace(/\s+/g, '_')
+  return `mata:raw:${raw}`
+}
+
+/** Rótulo curto para chips de filtro (Palpites). */
+export function palpiteSegmentLabel(jogo: Jogo): string {
+  if (jogo.tipo_fase === 'grupos') {
+    return jogo.rodada != null ? `Rodada ${jogo.rodada}` : 'Grupos'
+  }
+  return faseLabel(jogo)
+}
+
+export interface PalpiteSegmentOption {
+  key: string
+  label: string
+}
+
+/** Opções de segmento a partir dos jogos já filtrados; ordenadas pelo primeiro horário de cada segmento. */
+export function palpiteSegmentOptionsFromJogos(jogos: Jogo[]): PalpiteSegmentOption[] {
+  if (!jogos.length) return []
+  const byKey = new Map<string, { label: string; minMs: number }>()
+  for (const j of jogos) {
+    const k = palpiteSegmentKey(j)
+    const label = palpiteSegmentLabel(j)
+    const ms = dataJogoParaMs(j.data_jogo)
+    const t = Number.isFinite(ms) ? ms : Number.POSITIVE_INFINITY
+    const prev = byKey.get(k)
+    if (!prev || t < prev.minMs) {
+      byKey.set(k, { label, minMs: t })
+    }
+  }
+  return [...byKey.entries()]
+    .sort((a, b) => a[1].minMs - b[1].minMs || a[0].localeCompare(b[0]))
+    .map(([key, v]) => ({ key, label: v.label }))
+}
+
+/**
+ * Segmento padrão: primeiro jogo na ordem de exibição da lista (abertos = crescente; fechados = decrescente).
+ */
+export function palpiteDefaultSegmentKey(jogosEmOrdemDeExibicao: Jogo[]): string | null {
+  if (!jogosEmOrdemDeExibicao.length) return null
+  return palpiteSegmentKey(jogosEmOrdemDeExibicao[0])
+}
+
 export function isBrasil(jogo: Jogo): boolean {
   return jogo.pais_casa?.sigla === 'BR' || jogo.pais_fora?.sigla === 'BR'
+}
+
+/** Timestamp UTC do início do jogo (ISO do backend). */
+export function dataJogoParaMs(iso: string): number {
+  const t = Date.parse(iso)
+  return Number.isFinite(t) ? t : NaN
+}
+
+/** Ordem crescente por horário de início do jogo (desempate estável por id). */
+export function compareJogosPorDataJogoAsc(a: Jogo, b: Jogo): number {
+  const ta = dataJogoParaMs(a.data_jogo)
+  const tb = dataJogoParaMs(b.data_jogo)
+  const fa = Number.isFinite(ta)
+  const fb = Number.isFinite(tb)
+  if (!fa && !fb) return a.id - b.id
+  if (!fa) return 1
+  if (!fb) return -1
+  if (ta !== tb) return ta - tb
+  return a.id - b.id
+}
+
+/** Corta datas muito antigas do cálculo do 1º jogo quando há jogos mais recentes na mesma rodada/fase (evita linha lixo no BD bloquear tudo). */
+function menorHorarioRelevante(timestamps: number[]): number | null {
+  if (!timestamps.length) return null
+  const now = Date.now()
+  const cutoff = now - 400 * 24 * 3_600_000
+  const recentes = timestamps.filter((t) => t >= cutoff)
+  const usar = recentes.length ? recentes : timestamps
+  return Math.min(...usar)
 }
 
 export function primeiroInicioGrupoPorRodada(jogos: Jogo[], rodada: number): number | null {
   const ts = jogos
     .filter((j) => j.tipo_fase === 'grupos' && Number(j.rodada) === Number(rodada))
-    .map((j) => new Date(j.data_jogo).getTime())
+    .map((j) => dataJogoParaMs(j.data_jogo))
     .filter(Number.isFinite)
-  return ts.length ? Math.min(...ts) : null
+  return menorHorarioRelevante(ts)
 }
 
 export function primeiroInicioMataPorFase(jogos: Jogo[], slug: string): number | null {
   const ts = jogos
     .filter((j) => j.tipo_fase === 'mata_mata' && normalizeFaseSlug(j.fase) === slug)
-    .map((j) => new Date(j.data_jogo).getTime())
+    .map((j) => dataJogoParaMs(j.data_jogo))
     .filter(Number.isFinite)
-  return ts.length ? Math.min(...ts) : null
+  return menorHorarioRelevante(ts)
 }
 
 export function momentoFimEdicao(jogo: Jogo, todosJogos: Jogo[]): number {
@@ -109,7 +196,8 @@ export function momentoFimEdicao(jogo: Jogo, todosJogos: Jogo[]): number {
     }
   }
 
-  return new Date(jogo.data_jogo).getTime()
+  const inicio = dataJogoParaMs(jogo.data_jogo)
+  return Number.isFinite(inicio) ? inicio - MS_1H : inicio
 }
 
 export function jogoBloqueado(jogo: Jogo, todosJogos: Jogo[]): boolean {

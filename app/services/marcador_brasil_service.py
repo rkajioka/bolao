@@ -13,8 +13,9 @@ from sqlalchemy.orm import Session
 
 from app.models.jogo import Jogo
 from app.models.marcador_brasil import MarcadorBrasilPalpite, MarcadorBrasilResultado
+from app.models.palpite_jogo import PalpiteJogo
 from app.schemas.marcador_brasil import MarcadorBrasilPalpiteItem, MarcadoresBrasilResultadoSync
-from app.services import jogo_service, palpite_jogo_service
+from app.services import candidato_marcador_brasil_service, jogo_service, palpite_jogo_service
 
 
 def _agora_utc() -> datetime:
@@ -32,6 +33,21 @@ def _assert_jogo_editavel_marcadores_usuario(db: Session, jogo: Jogo) -> None:
         raise ValueError(
             "Os marcadores não podem ser alterados: prazo encerrado (mesma regra dos palpites por jogo)"
         )
+
+
+def _gols_brasil_no_palpite(palpite: PalpiteJogo, jogo: Jogo) -> int:
+    """Gols do Brasil no palpite (casa ou fora), conforme o lado do BR no jogo."""
+    casa = jogo.pais_casa
+    fora = jogo.pais_fora
+    if casa is not None and str(casa.sigla).upper() == "BR":
+        v = palpite.palpite_casa
+    elif fora is not None and str(fora.sigla).upper() == "BR":
+        v = palpite.palpite_fora
+    else:
+        raise ValueError("Jogo não envolve o Brasil")
+    if v is None:
+        raise ValueError("Palpite incompleto: informe o placar antes dos marcadores do Brasil")
+    return int(v)
 
 
 def obter_jogo_que_envolve_brasil(db: Session, jogo_id: int) -> Jogo:
@@ -67,13 +83,47 @@ def sincronizar_marcadores_palpite(
     if palpite is None:
         raise ValueError("É necessário salvar o palpite do jogo antes dos marcadores do Brasil")
 
-    db.execute(delete(MarcadorBrasilPalpite).where(MarcadorBrasilPalpite.palpite_jogo_id == palpite.id))
+    jogo_palpite = palpite.jogo
+    if jogo_palpite is None:
+        raise ValueError("Palpite sem jogo associado")
+    gols_brasil = _gols_brasil_no_palpite(palpite, jogo_palpite)
+
+    candidatos_ativos = candidato_marcador_brasil_service.listar_ativos(db)
+    nomes_canonicos = {c.nome.strip().casefold(): c.nome.strip() for c in candidatos_ativos}
+
+    linhas: list[tuple[str, int]] = []
     for m in marcadores:
+        q = int(m.quantidade_gols)
+        if q <= 0:
+            continue
+        nome_in = m.nome_jogador.strip()
+        if not nome_in:
+            continue
+        chave = nome_in.casefold()
+        if chave not in nomes_canonicos:
+            raise ValueError(
+                f'Jogador "{nome_in}" não está na lista de candidatos a marcador do Brasil (ativos)'
+            )
+        if q > gols_brasil:
+            raise ValueError(
+                f"Gols do marcador ({q}) não podem ultrapassar os gols do Brasil no palpite ({gols_brasil})"
+            )
+        linhas.append((nomes_canonicos[chave], q))
+
+    total_marc = sum(q for _, q in linhas)
+    if total_marc > gols_brasil:
+        raise ValueError(
+            f"A soma dos gols dos marcadores ({total_marc}) não pode ultrapassar os gols do Brasil "
+            f"no palpite ({gols_brasil})"
+        )
+
+    db.execute(delete(MarcadorBrasilPalpite).where(MarcadorBrasilPalpite.palpite_jogo_id == palpite.id))
+    for nome_jogador, quantidade_gols in linhas:
         db.add(
             MarcadorBrasilPalpite(
                 palpite_jogo_id=palpite.id,
-                nome_jogador=m.nome_jogador.strip(),
-                quantidade_gols=m.quantidade_gols,
+                nome_jogador=nome_jogador,
+                quantidade_gols=quantidade_gols,
             )
         )
     db.commit()

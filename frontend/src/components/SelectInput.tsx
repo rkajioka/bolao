@@ -66,10 +66,16 @@ export function SelectInput({
   const onTriggerKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (disabled) return
 
+    if (event.key === 'Tab' && open) {
+      setOpen(false)
+      return
+    }
+
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault()
       if (open) {
-        setOpen(false)
+        const option = enabledOptions[focusedIndex >= 0 ? focusedIndex : getInitialFocusedIndex()]
+        if (option) selectOption(option)
       } else {
         openDropdown()
       }
@@ -78,7 +84,25 @@ export function SelectInput({
 
     if (event.key === 'ArrowDown') {
       event.preventDefault()
-      openDropdown()
+      if (!enabledOptions.length) return
+      if (!open) {
+        openDropdown()
+      } else {
+        setFocusedIndex((prev) => {
+          const i = prev < 0 ? getInitialFocusedIndex() : prev
+          return i + 1 >= enabledOptions.length ? 0 : i + 1
+        })
+      }
+      return
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      if (!open || !enabledOptions.length) return
+      setFocusedIndex((prev) => {
+        const i = prev < 0 ? getInitialFocusedIndex() : prev
+        return i - 1 < 0 ? enabledOptions.length - 1 : i - 1
+      })
       return
     }
 
@@ -156,7 +180,7 @@ export function SelectInput({
           role="listbox"
           tabIndex={-1}
           onKeyDown={onListKeyDown}
-          className="absolute z-40 mt-2 w-full max-h-64 overflow-auto rounded-xl p-1"
+          className="absolute z-50 mt-2 w-full max-h-64 overflow-auto rounded-xl p-1"
           style={{
             background: 'var(--bg)',
             border: '1px solid var(--border)',
@@ -172,6 +196,7 @@ export function SelectInput({
                 key={option.value}
                 type="button"
                 role="option"
+                tabIndex={-1}
                 aria-selected={isSelected}
                 disabled={option.disabled}
                 onMouseEnter={() => {

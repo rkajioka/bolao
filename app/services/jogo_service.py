@@ -72,7 +72,22 @@ def list_jogos_brasil(db: Session) -> list[Jogo]:
 
 
 def primeiro_inicio_grupo_por_rodada(db: Session, rodada: int) -> datetime | None:
-    """Menor horário de início entre jogos de fase de grupos da mesma rodada."""
+    """Menor horário de início entre jogos de fase de grupos da mesma rodada.
+
+    Se houver jogos com data nos últimos ~400 dias, usa só esses para o mínimo; senão usa todos.
+    Evita uma linha com data errada/antiga bloquear palpites de toda a rodada.
+    """
+    now = datetime.now(UTC)
+    cutoff = now - timedelta(days=400)
+    primeiro_recente = db.scalar(
+        select(func.min(Jogo.data_jogo)).where(
+            Jogo.tipo_fase == "grupos",
+            Jogo.rodada == rodada,
+            Jogo.data_jogo >= cutoff,
+        )
+    )
+    if primeiro_recente is not None:
+        return primeiro_recente
     return db.scalar(
         select(func.min(Jogo.data_jogo)).where(
             Jogo.tipo_fase == "grupos",
@@ -88,6 +103,17 @@ def _fase_mata_mata_normalizada_sql():
 def primeiro_inicio_mata_mata_por_fase(db: Session, fase_slug: str) -> datetime | None:
     """Menor horário de início entre jogos de mata-mata com a mesma fase (slug)."""
     slug = fase_slug.strip().lower()
+    now = datetime.now(UTC)
+    cutoff = now - timedelta(days=400)
+    primeiro_recente = db.scalar(
+        select(func.min(Jogo.data_jogo)).where(
+            Jogo.tipo_fase == "mata_mata",
+            _fase_mata_mata_normalizada_sql() == slug,
+            Jogo.data_jogo >= cutoff,
+        )
+    )
+    if primeiro_recente is not None:
+        return primeiro_recente
     return db.scalar(
         select(func.min(Jogo.data_jogo)).where(
             Jogo.tipo_fase == "mata_mata",
@@ -115,7 +141,7 @@ def momento_fim_edicao_palpite(db: Session, jogo: Jogo) -> datetime:
     inicio = jogo.data_jogo
     if inicio.tzinfo is None:
         inicio = inicio.replace(tzinfo=UTC)
-    return inicio
+    return inicio - timedelta(hours=1)
 
 
 def list_jogos_por_grupo(db: Session) -> list[tuple[str, list[Jogo]]]:

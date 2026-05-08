@@ -1,6 +1,6 @@
 import { Clock } from 'lucide-react'
 import { MatchStatusBadge } from '@/components/MatchStatusBadge'
-import { faseLabel, formatDate, deadlineText } from '@/lib/utils'
+import { faseLabel, formatDate, deadlineText, jogoFaseJaMencionaRodada } from '@/lib/utils'
 import type { Jogo } from '@/types'
 
 type MatchStatus = 'done' | 'locked' | 'open'
@@ -13,7 +13,9 @@ interface MatchHeaderProps {
 
 export function MatchHeader({ jogo, todosJogos, status }: MatchHeaderProps) {
   const rodadaLabel =
-    jogo.tipo_fase === 'grupos' && jogo.rodada ? `Rodada ${jogo.rodada}` : null
+    jogo.tipo_fase === 'grupos' && jogo.rodada && !jogoFaseJaMencionaRodada(jogo)
+      ? `Rodada ${jogo.rodada}`
+      : null
   const deadline = status === 'open' ? deadlineText(jogo, todosJogos) : null
 
   return (

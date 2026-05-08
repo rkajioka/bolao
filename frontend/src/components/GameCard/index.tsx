@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { Save, CheckCircle } from 'lucide-react'
 import { MatchHeader } from './MatchHeader'
@@ -6,7 +7,8 @@ import { MatchTeams } from './MatchTeams'
 import { MatchResult } from './MatchResult'
 import { KnockoutSection } from './KnockoutSection'
 import { BrazilScorers } from './BrazilScorers'
-import type { Jogo, PalpiteJogo } from '@/types'
+import { api } from '@/lib/api'
+import type { Jogo, MarcadorCandidato, MarcadorPalpite, PalpiteJogo } from '@/types'
 import { jogoBloqueado, isBrasil } from '@/lib/utils'
 
 interface GameCardProps {
@@ -15,8 +17,7 @@ interface GameCardProps {
   todosJogos: Jogo[]
   onSave: (jogoId: number, casa: number, fora: number, classificado?: number | null) => Promise<void>
   onSaveMarcadores?: (jogoId: number, marcadores: { nome_jogador: string; quantidade_gols: number }[]) => Promise<void>
-  marcadores?: { nome_jogador: string; quantidade_gols: number }[]
-  candidatos?: string[]
+  candidatos?: MarcadorCandidato[]
 }
 
 export function GameCard({
@@ -25,11 +26,11 @@ export function GameCard({
   todosJogos,
   onSave,
   onSaveMarcadores,
-  marcadores = [],
   candidatos = [],
 }: GameCardProps) {
   const bloqueado = jogoBloqueado(jogo, todosJogos)
   const brasil = isBrasil(jogo)
+  const temPalpite = palpite !== null
 
   const [casa, setCasa] = useState<number | null>(palpite?.palpite_casa ?? null)
   const [fora, setFora] = useState<number | null>(palpite?.palpite_fora ?? null)
@@ -40,8 +41,23 @@ export function GameCard({
   const [justSaved, setJustSaved] = useState(false)
   const [savingMarcadores, setSavingMarcadores] = useState(false)
 
+  const { data: marcadoresSalvos = [] } = useQuery({
+    queryKey: ['marcadores-brasil', 'me', jogo.id],
+    queryFn: () => api.get<MarcadorPalpite[]>(`/marcadores-brasil/me/${jogo.id}`),
+    enabled: brasil && temPalpite,
+  })
+
+  const marcadoresParaUi = useMemo(
+    () => marcadoresSalvos.map((m) => ({ nome_jogador: m.nome_jogador, quantidade_gols: m.quantidade_gols })),
+    [marcadoresSalvos],
+  )
+
+  const golsBrasil =
+    jogo.pais_casa.sigla === 'BR'
+      ? (casa ?? palpite?.palpite_casa ?? 0)
+      : (fora ?? palpite?.palpite_fora ?? 0)
+
   const status = jogo.finalizado ? 'done' : bloqueado ? 'locked' : 'open'
-  const temPalpite = palpite !== null
   const palpiteBaseCasa = palpite?.palpite_casa ?? null
   const palpiteBaseFora = palpite?.palpite_fora ?? null
   const palpiteBaseClassificado = palpite?.palpite_classificado_id ?? null
@@ -187,8 +203,9 @@ export function GameCard({
         {/* Marcadores do Brasil */}
         {brasil && temPalpite && onSaveMarcadores && (
           <BrazilScorers
-            marcadores={marcadores}
+            marcadores={marcadoresParaUi}
             candidatos={candidatos}
+            golsBrasil={golsBrasil}
             bloqueado={bloqueado}
             saving={savingMarcadores}
             onSave={handleSaveMarcadores}

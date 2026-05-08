@@ -49,7 +49,7 @@ export function AdminGames({ success, error }: AdminGamesProps) {
   const [novoJogo, setNovoJogo] = useState({
     tipo_fase: 'grupos' as 'grupos' | 'mata_mata',
     grupo: 'A',
-    rodada: 1,
+    rodada: 3,
     fase_mata: 'oitavas',
     pais_casa_id: '',
     pais_fora_id: '',
@@ -181,8 +181,8 @@ export function AdminGames({ success, error }: AdminGamesProps) {
 
   return (
     <div className="space-y-3">
-      {/* Novo jogo */}
-      <div className="glass rounded-2xl p-4 space-y-3">
+      {/* Novo jogo — z-index acima do bloco seguinte para o dropdown dos selects não ficar coberto */}
+      <div className="glass rounded-2xl p-4 space-y-3 relative z-20 overflow-visible">
         <p className="text-sm font-semibold">Cadastro guiado de jogo</p>
         <div className="grid grid-cols-2 gap-2">
           <SelectInput
@@ -213,7 +213,7 @@ export function AdminGames({ success, error }: AdminGamesProps) {
           {novoJogo.tipo_fase === 'grupos' ? (
             <SelectInput
               value={String(novoJogo.rodada)}
-              onChange={(value) => setNovoJogo((old) => ({ ...old, rodada: Number(value) || 1 }))}
+              onChange={(value) => setNovoJogo((old) => ({ ...old, rodada: Number(value) || 3 }))}
               options={rodadaOptions}
               placeholder="Rodada"
             />
@@ -259,7 +259,7 @@ export function AdminGames({ success, error }: AdminGamesProps) {
       </div>
 
       {/* Candidatos a marcadores */}
-      <div className="glass rounded-2xl p-4 space-y-2">
+      <div className="glass rounded-2xl p-4 space-y-2 relative z-10">
         <p className="text-sm font-semibold">Candidatos a marcadores do Brasil</p>
         <div className="flex gap-2">
           <input
