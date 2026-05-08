@@ -15,6 +15,7 @@ import {
   ChevronDown,
   ChevronUp,
   Send,
+  User,
 } from 'lucide-react'
 import { equipeService } from '@/services/equipe.service'
 import type { MembroEquipe, ConviteResultado } from '@/types'
@@ -104,7 +105,7 @@ function MemberCard({
         {membro.avatar_url ? (
           <img src={imgUrl(membro.avatar_url)} alt={membro.nome ?? membro.email} className="w-full h-full object-cover" />
         ) : (
-          (membro.nome?.[0] ?? membro.email[0]).toUpperCase()
+          <User size={18} style={{ color: 'var(--text-muted)' }} aria-hidden />
         )}
       </div>
 

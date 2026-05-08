@@ -137,6 +137,13 @@ def atualizar_perfil(db: Session, usuario: Usuario, data: PerfilUpdate) -> Usuar
     return usuario
 
 
+def definir_avatar_url(db: Session, usuario: Usuario, avatar_url: str) -> Usuario:
+    usuario.avatar_url = avatar_url
+    db.commit()
+    db.refresh(usuario)
+    return usuario
+
+
 def alterar_senha(db: Session, usuario: Usuario, data: AlterarSenhaRequest) -> None:
     if usuario.primeiro_login:
         raise HTTPException(

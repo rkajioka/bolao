@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Users, Globe, Trophy, Star, Shield } from 'lucide-react'
+import { Users, Trophy, Star, Shield } from 'lucide-react'
 import { useToast } from '@/components/Toast'
 
 const AdminGames = lazy(() =>
@@ -9,19 +9,15 @@ const AdminGames = lazy(() =>
 const AdminUsers = lazy(() =>
   import('@/features/admin/users/AdminUsers').then((m) => ({ default: m.AdminUsers })),
 )
-const AdminCountries = lazy(() =>
-  import('@/features/admin/countries/AdminCountries').then((m) => ({ default: m.AdminCountries })),
-)
 const AdminSpecials = lazy(() =>
   import('@/features/admin/specials/AdminSpecials').then((m) => ({ default: m.AdminSpecials })),
 )
 
-type AdminTab = 'jogos' | 'usuarios' | 'paises' | 'especiais'
+type AdminTab = 'jogos' | 'usuarios' | 'especiais'
 
 const tabs: { key: AdminTab; label: string; icon: React.ReactNode }[] = [
   { key: 'jogos', label: 'Jogos', icon: <Trophy size={16} /> },
   { key: 'usuarios', label: 'Usuários', icon: <Users size={16} /> },
-  { key: 'paises', label: 'Países', icon: <Globe size={16} /> },
   { key: 'especiais', label: 'Especiais', icon: <Star size={16} /> },
 ]
 
@@ -95,7 +91,6 @@ export function AdminPage() {
           <Suspense fallback={<TabFallback />}>
             {activeTab === 'jogos' && <AdminGames success={success} error={error} />}
             {activeTab === 'usuarios' && <AdminUsers success={success} error={error} />}
-            {activeTab === 'paises' && <AdminCountries success={success} error={error} />}
             {activeTab === 'especiais' && <AdminSpecials success={success} error={error} />}
           </Suspense>
         </motion.div>

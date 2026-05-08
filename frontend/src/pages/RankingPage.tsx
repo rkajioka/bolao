@@ -1,12 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { Trophy, TrendingUp, Star } from 'lucide-react'
+import { Trophy, TrendingUp, Star, User } from 'lucide-react'
 import { useState } from 'react'
 import { RankingCardSkeleton, PodiumSkeleton } from '@/components/Skeleton'
 import { SegmentedControl } from '@/components/SegmentedControl'
 import { SectionHeader } from '@/components/SectionHeader'
 import { EmptyState } from '@/components/EmptyState'
-import { imgUrl, getInitials } from '@/lib/utils'
+import { imgUrl } from '@/lib/utils'
+import { UserAvatar } from '@/components/UserAvatar'
 import { CountryFlag } from '@/components/CountryFlag'
 import { rankingService } from '@/services/ranking.service'
 import type { Pais, RankingLinha } from '@/types'
@@ -39,19 +40,8 @@ function sortValue(linha: RankingLinha, sort: SortBy): number {
   return linha.pontos_totais
 }
 
-function Avatar({ src, alt, initials }: { src?: string | null; alt: string; initials: string }) {
-  return (
-    <div
-      className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold overflow-hidden shrink-0"
-      style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
-    >
-      {src ? (
-        <img src={imgUrl(src)} alt={alt} className="w-full h-full object-cover" />
-      ) : (
-        <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>{initials}</span>
-      )}
-    </div>
-  )
+function RankingRowAvatar({ src, alt }: { src?: string | null; alt: string }) {
+  return <UserAvatar src={src} alt={alt} size="md" />
 }
 
 export function RankingPage() {
@@ -125,11 +115,7 @@ export function RankingPage() {
               #{posicaoUsuario}
             </span>
           </div>
-          <Avatar
-            src={linhaUsuario.imagem_perfil}
-            alt={linhaUsuario.nome}
-            initials={getInitials(linhaUsuario.nome)}
-          />
+          <RankingRowAvatar src={linhaUsuario.imagem_perfil} alt={linhaUsuario.nome} />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold truncate">{linhaUsuario.nome}</p>
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
@@ -219,7 +205,7 @@ export function RankingPage() {
                         {linha.imagem_perfil ? (
                           <img src={imgUrl(linha.imagem_perfil)} alt={linha.nome} className="w-full h-full object-cover" />
                         ) : (
-                          <span style={{ color: p.color, fontSize: '11px' }}>{getInitials(linha.nome)}</span>
+                          <User size={18} style={{ color: p.color }} aria-hidden />
                         )}
                       </div>
                       <div>
@@ -278,11 +264,7 @@ export function RankingPage() {
                   >
                     {posicaoAtual}
                   </span>
-                  <Avatar
-                    src={linha.imagem_perfil}
-                    alt={linha.nome}
-                    initials={getInitials(linha.nome)}
-                  />
+                  <RankingRowAvatar src={linha.imagem_perfil} alt={linha.nome} />
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm truncate leading-tight">
                       {linha.nome}
@@ -324,11 +306,7 @@ export function RankingPage() {
                   <span className="w-6 text-center font-bold text-sm tabular-nums shrink-0" style={{ color: 'var(--accent)' }}>
                     {posicaoUsuario}
                   </span>
-                  <Avatar
-                    src={linhaUsuarioSorted.imagem_perfil}
-                    alt={linhaUsuarioSorted.nome}
-                    initials={getInitials(linhaUsuarioSorted.nome)}
-                  />
+                  <RankingRowAvatar src={linhaUsuarioSorted.imagem_perfil} alt={linhaUsuarioSorted.nome} />
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm truncate">
                       {linhaUsuarioSorted.nome} <span style={{ color: 'var(--accent)' }}>· Você</span>

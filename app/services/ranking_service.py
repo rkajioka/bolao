@@ -84,12 +84,14 @@ def listar_ranking(db: Session) -> list[LinhaRankingInterna]:
     pe = func.coalesce(PalpiteEspecial.pontuacao_total, 0)
     total_expr = pj + pb + pe
 
+    foto = func.coalesce(Usuario.avatar_url, Usuario.imagem_perfil).label("imagem_perfil")
+
     stmt = (
         select(
             Usuario.id.label("usuario_id"),
             Usuario.nome,
             Usuario.funcao,
-            Usuario.imagem_perfil,
+            foto,
             PalpiteEspecial.campeao_id,
             PalpiteEspecial.vice_campeao_id,
             PalpiteEspecial.terceiro_lugar_id,

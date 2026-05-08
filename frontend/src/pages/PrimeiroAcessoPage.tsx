@@ -1,21 +1,46 @@
-import { useState, type FormEvent } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { User, Briefcase, Image, Lock } from 'lucide-react'
-import { api } from '@/lib/api'
+import { useMutation } from '@tanstack/react-query'
+import { User, Briefcase, Lock, CheckCircle2 } from 'lucide-react'
+import { api, getToken } from '@/lib/api'
+import { ApiError } from '@/lib/api'
 import { useToast } from '@/components/Toast'
+import { useAuth } from '@/features/auth/AuthContext'
+import { perfilService, PERFIL_AVATAR_MAX_BYTES } from '@/services/perfil.service'
+import { UserAvatar } from '@/components/UserAvatar'
 
 export function PrimeiroAcessoPage() {
+  const { user, refreshUser } = useAuth()
+
+  useEffect(() => {
+    if (getToken()) void refreshUser()
+  }, [refreshUser])
+
   const [form, setForm] = useState({
     nome: '',
     funcao: '',
-    imagem_perfil: '',
     nova_senha: '',
     confirmar_senha: '',
   })
   const [loading, setLoading] = useState(false)
+  const [avatarError, setAvatarError] = useState<string | null>(null)
+  const [avatarOk, setAvatarOk] = useState(false)
   const { success, error } = useToast()
   const navigate = useNavigate()
+
+  const uploadMutation = useMutation({
+    mutationFn: (file: File) => perfilService.uploadAvatar(file),
+    onSuccess: async () => {
+      await refreshUser()
+      setAvatarError(null)
+      setAvatarOk(true)
+      setTimeout(() => setAvatarOk(false), 2000)
+    },
+    onError: (err) => {
+      setAvatarError(err instanceof ApiError ? err.message : 'Erro ao enviar foto')
+    },
+  })
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -28,7 +53,6 @@ export function PrimeiroAcessoPage() {
       await api.post('/auth/primeiro-acesso', {
         nome: form.nome,
         funcao: form.funcao,
-        imagem_perfil: form.imagem_perfil || null,
         nova_senha: form.nova_senha,
         confirmar_senha: form.confirmar_senha,
       })
@@ -46,6 +70,24 @@ export function PrimeiroAcessoPage() {
     onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
       setForm((prev) => ({ ...prev, [key]: e.target.value })),
   })
+
+  const onPickAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (!/^image\/(jpeg|png|webp)$/i.test(file.type)) {
+      setAvatarError('Use uma imagem JPEG, PNG ou WebP')
+      return
+    }
+    if (file.size > PERFIL_AVATAR_MAX_BYTES) {
+      setAvatarError('A foto deve ter no máximo 2 MB')
+      return
+    }
+    setAvatarError(null)
+    uploadMutation.mutate(file)
+  }
+
+  const avatarSrc = user?.avatar_url || user?.imagem_perfil
 
   const inputClass = "w-full pl-10 pr-4 py-3 rounded-xl text-sm transition-all duration-150 outline-none"
   const inputStyle = {
@@ -79,10 +121,41 @@ export function PrimeiroAcessoPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="glass rounded-2xl p-6 space-y-4">
+          <div className="flex flex-col items-center gap-3 pb-2">
+            <UserAvatar src={avatarSrc} alt="" size="xl" rounded="2xl" />
+            <div className="w-full text-center">
+              <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                Foto de perfil <span className="font-normal normal-case">(opcional)</span>
+              </label>
+              <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
+                JPEG, PNG ou WebP — máx. 2 MB
+              </p>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={onPickAvatar}
+                disabled={uploadMutation.isPending}
+                className="text-xs file:mr-2 file:py-1.5 file:px-2 file:rounded-lg file:border-0 file:text-xs file:font-medium mx-auto"
+                style={{ color: 'var(--text)' }}
+              />
+              {uploadMutation.isPending && (
+                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Enviando…</p>
+              )}
+              {avatarOk && (
+                <p className="text-xs mt-1 flex items-center justify-center gap-1" style={{ color: 'var(--accent)' }}>
+                  <CheckCircle2 size={14} />
+                  Foto salva
+                </p>
+              )}
+              {avatarError && (
+                <p className="text-xs mt-1" style={{ color: '#ef4444' }}>{avatarError}</p>
+              )}
+            </div>
+          </div>
+
           {[
             { label: 'Nome', key: 'nome' as const, type: 'text', icon: User, placeholder: 'Seu nome', required: true },
             { label: 'Função / cargo', key: 'funcao' as const, type: 'text', icon: Briefcase, placeholder: 'Ex: Analista', required: true },
-            { label: 'URL da foto (opcional)', key: 'imagem_perfil' as const, type: 'url', icon: Image, placeholder: 'https://...', required: false },
           ].map(({ label, key, type, icon: Icon, placeholder, required }) => (
             <div key={key}>
               <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>

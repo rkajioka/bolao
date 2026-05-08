@@ -78,6 +78,10 @@ export function AdminGames({ success, error }: AdminGamesProps) {
   const [filtroDataPendentes, setFiltroDataPendentes] = useState<string>('todas')
   const [marcadoresForm, setMarcadoresForm] = useState<Record<number, { nome_jogador: string; quantidade_gols: number }[]>>({})
   const [novoCandidato, setNovoCandidato] = useState('')
+  const [buscaCandidatos, setBuscaCandidatos] = useState('')
+  const [filtroCandidatos, setFiltroCandidatos] = useState<'todos' | 'ativos' | 'inativos'>('todos')
+  const [candidatoEditandoId, setCandidatoEditandoId] = useState<number | null>(null)
+  const [candidatoNomeDraft, setCandidatoNomeDraft] = useState('')
   const [novoJogo, setNovoJogo] = useState({
     tipo_fase: 'grupos' as 'grupos' | 'mata_mata',
     grupo: 'A',
@@ -111,6 +115,15 @@ export function AdminGames({ success, error }: AdminGamesProps) {
     () => paisesDisponiveis.map((p: Pais) => ({ value: String(p.id), label: p.nome })),
     [paisesDisponiveis],
   )
+
+  const candidatosFiltrados = useMemo(() => {
+    let list = candidatosAdmin
+    if (filtroCandidatos === 'ativos') list = list.filter((c) => c.ativo)
+    if (filtroCandidatos === 'inativos') list = list.filter((c) => !c.ativo)
+    const q = buscaCandidatos.trim().toLowerCase()
+    if (q) list = list.filter((c) => c.nome.toLowerCase().includes(q))
+    return list
+  }, [candidatosAdmin, filtroCandidatos, buscaCandidatos])
 
   const jogosOrdenados = useMemo(() => [...jogos].sort(compareJogosPorDataJogoAsc), [jogos])
 
@@ -220,7 +233,7 @@ export function AdminGames({ success, error }: AdminGamesProps) {
     }
   }
 
-  const atualizarCandidato = async (id: number, payload: { ativo?: boolean }) => {
+  const atualizarCandidato = async (id: number, payload: { nome?: string; ativo?: boolean }) => {
     try {
       await gamesService.updateCandidate(id, payload)
       await queryClient.invalidateQueries({ queryKey: ['marcadores', 'candidatos', 'admin'] })
@@ -228,6 +241,29 @@ export function AdminGames({ success, error }: AdminGamesProps) {
     } catch (err) {
       error(err instanceof Error ? err.message : 'Erro ao atualizar candidato')
     }
+  }
+
+  const salvarEdicaoNomeCandidato = async () => {
+    if (candidatoEditandoId == null) return
+    const nome = candidatoNomeDraft.trim()
+    if (!nome) {
+      error('Informe o nome do jogador')
+      return
+    }
+    try {
+      await gamesService.updateCandidate(candidatoEditandoId, { nome })
+      await queryClient.invalidateQueries({ queryKey: ['marcadores', 'candidatos', 'admin'] })
+      success('Nome do jogador atualizado')
+      setCandidatoEditandoId(null)
+      setCandidatoNomeDraft('')
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Erro ao atualizar nome')
+    }
+  }
+
+  const cancelarEdicaoCandidato = () => {
+    setCandidatoEditandoId(null)
+    setCandidatoNomeDraft('')
   }
 
   const handleSalvarResultado = async (jogo: Jogo) => {
@@ -361,41 +397,168 @@ export function AdminGames({ success, error }: AdminGamesProps) {
       </div>
 
       {/* Candidatos a marcadores */}
-      <div className="glass rounded-2xl p-4 space-y-2 relative z-10">
-        <p className="text-sm font-semibold">Candidatos a marcadores do Brasil</p>
-        <div className="flex gap-2">
+      <div className="glass rounded-2xl p-4 space-y-3 relative z-10">
+        <div>
+          <p className="text-sm font-semibold">Candidatos a marcadores do Brasil</p>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+            Busque, filtre e edite jogadores já cadastrados. Desativar remove o nome das listas dos usuários (não apaga o
+            registro).
+          </p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2">
           <input
             value={novoCandidato}
             onChange={(e) => setNovoCandidato(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && criarCandidato()}
-            placeholder="Nome do jogador"
+            placeholder="Novo jogador — nome completo"
             aria-label="Nome do candidato a marcador"
             className="flex-1 px-3 py-2 rounded-xl text-sm outline-none"
             style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
           />
           <button
+            type="button"
             onClick={criarCandidato}
-            className="px-4 py-2 rounded-xl text-sm font-semibold"
+            className="px-4 py-2 rounded-xl text-sm font-semibold shrink-0"
             style={{ background: 'rgba(53,208,127,0.16)', border: '1px solid rgba(53,208,127,0.35)', color: 'var(--accent)' }}
           >
             Adicionar
           </button>
         </div>
-        <div className="space-y-1.5">
-          {candidatosAdmin.map((c) => (
-            <div key={c.id} className="flex items-center gap-2">
-              <span className={`flex-1 text-sm ${!c.ativo ? 'opacity-40 line-through' : ''}`}>
-                {c.nome}
-              </span>
+
+        <div className="space-y-2">
+          <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+            Cadastrados ({candidatosAdmin.length})
+            {candidatosFiltrados.length !== candidatosAdmin.length && (
+              <span> — exibindo {candidatosFiltrados.length}</span>
+            )}
+          </p>
+          <input
+            type="search"
+            value={buscaCandidatos}
+            onChange={(e) => setBuscaCandidatos(e.target.value)}
+            placeholder="Buscar por nome…"
+            aria-label="Buscar candidatos"
+            className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
+          />
+          <div className="flex flex-wrap gap-1.5">
+            {(
+              [
+                { key: 'todos' as const, label: 'Todos' },
+                { key: 'ativos' as const, label: 'Só ativos' },
+                { key: 'inativos' as const, label: 'Só inativos' },
+              ]
+            ).map(({ key, label }) => (
               <button
-                onClick={() => atualizarCandidato(c.id, { ativo: !c.ativo })}
-                className="text-xs px-3 py-1.5 rounded-xl font-medium"
-                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text-muted)' }}
+                key={key}
+                type="button"
+                onClick={() => setFiltroCandidatos(key)}
+                className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors"
+                style={{
+                  background: filtroCandidatos === key ? 'var(--accent)' : 'rgba(255,255,255,0.06)',
+                  border: `1px solid ${filtroCandidatos === key ? 'var(--accent)' : 'rgba(255,255,255,0.10)'}`,
+                  color: filtroCandidatos === key ? '#070A12' : 'var(--text-muted)',
+                }}
               >
-                {c.ativo ? 'Desativar' : 'Ativar'}
+                {label}
               </button>
-            </div>
-          ))}
+            ))}
+          </div>
+        </div>
+
+        <div
+          className="rounded-xl overflow-y-auto max-h-[min(22rem,50vh)] space-y-2 pr-1"
+          style={{ border: '1px solid rgba(255,255,255,0.08)' }}
+        >
+          {candidatosFiltrados.length === 0 ? (
+            <p className="text-sm py-6 px-3 text-center" style={{ color: 'var(--text-muted)' }}>
+              {candidatosAdmin.length === 0
+                ? 'Nenhum candidato ainda. Use o campo acima para adicionar.'
+                : 'Nenhum resultado para essa busca ou filtro.'}
+            </p>
+          ) : (
+            candidatosFiltrados.map((c) => (
+              <div
+                key={c.id}
+                className="flex flex-col gap-2 p-3 border-b border-white/5 last:border-b-0"
+                style={{ background: 'rgba(255,255,255,0.02)' }}
+              >
+                {candidatoEditandoId === c.id ? (
+                  <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                    <input
+                      value={candidatoNomeDraft}
+                      onChange={(e) => setCandidatoNomeDraft(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && salvarEdicaoNomeCandidato()}
+                      aria-label={`Editar nome — id ${c.id}`}
+                      className="flex-1 min-w-0 px-3 py-2 rounded-xl text-sm outline-none"
+                      style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text)' }}
+                      autoFocus
+                    />
+                    <div className="flex gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => salvarEdicaoNomeCandidato()}
+                        className="px-3 py-2 rounded-xl text-xs font-semibold"
+                        style={{ background: 'var(--accent)', color: '#070A12' }}
+                      >
+                        Salvar nome
+                      </button>
+                      <button
+                        type="button"
+                        onClick={cancelarEdicaoCandidato}
+                        className="px-3 py-2 rounded-xl text-xs font-medium"
+                        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text-muted)' }}
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0 flex-1 flex items-start gap-2">
+                      <span
+                        className={`text-sm font-medium break-words ${!c.ativo ? 'opacity-60' : ''}`}
+                        style={{ color: 'var(--text)' }}
+                      >
+                        {c.nome}
+                      </span>
+                      <span
+                        className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full shrink-0"
+                        style={{
+                          background: c.ativo ? 'rgba(53,208,127,0.15)' : 'rgba(255,255,255,0.08)',
+                          color: c.ativo ? 'var(--accent)' : 'var(--text-muted)',
+                          border: `1px solid ${c.ativo ? 'rgba(53,208,127,0.35)' : 'rgba(255,255,255,0.10)'}`,
+                        }}
+                      >
+                        {c.ativo ? 'Ativo' : 'Inativo'}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCandidatoEditandoId(c.id)
+                          setCandidatoNomeDraft(c.nome)
+                        }}
+                        className="text-xs px-3 py-1.5 rounded-xl font-medium"
+                        style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'var(--text)' }}
+                      >
+                        Editar nome
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => atualizarCandidato(c.id, { ativo: !c.ativo })}
+                        className="text-xs px-3 py-1.5 rounded-xl font-medium"
+                        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text-muted)' }}
+                      >
+                        {c.ativo ? 'Desativar' : 'Ativar'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
         </div>
       </div>
 

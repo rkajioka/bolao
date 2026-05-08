@@ -3,16 +3,16 @@ import { motion } from 'framer-motion'
 import { User, Lock, Building2, Eye, EyeOff, CheckCircle2, Save } from 'lucide-react'
 import { useMutation } from '@tanstack/react-query'
 import { useAuth } from '@/features/auth/AuthContext'
-import { perfilService } from '@/services/perfil.service'
+import { perfilService, PERFIL_AVATAR_MAX_BYTES } from '@/services/perfil.service'
 import { ApiError } from '@/lib/api'
-import { imgUrl } from '@/lib/utils'
+import { UserAvatar } from '@/components/UserAvatar'
 
 export function PerfilPage() {
   const { user, refreshUser } = useAuth()
   const [nome, setNome] = useState(user?.nome ?? '')
   const [funcao, setFuncao] = useState(user?.funcao ?? '')
-  const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url ?? user?.imagem_perfil ?? '')
   const [perfilSaved, setPerfilSaved] = useState(false)
+  const [avatarSaved, setAvatarSaved] = useState(false)
   const [perfilError, setPerfilError] = useState<string | null>(null)
 
   const [senhaAtual, setSenhaAtual] = useState('')
@@ -23,7 +23,7 @@ export function PerfilPage() {
   const [senhaError, setSenhaError] = useState<string | null>(null)
 
   const updatePerfilMutation = useMutation({
-    mutationFn: () => perfilService.updatePerfil({ nome, funcao: funcao || undefined, avatar_url: avatarUrl || undefined }),
+    mutationFn: () => perfilService.updatePerfil({ nome, funcao: funcao || undefined }),
     onSuccess: async () => {
       await refreshUser()
       setPerfilSaved(true)
@@ -32,6 +32,19 @@ export function PerfilPage() {
     },
     onError: (err) => {
       setPerfilError(err instanceof ApiError ? err.message : 'Erro ao salvar perfil')
+    },
+  })
+
+  const uploadAvatarMutation = useMutation({
+    mutationFn: (file: File) => perfilService.uploadAvatar(file),
+    onSuccess: async () => {
+      await refreshUser()
+      setPerfilError(null)
+      setAvatarSaved(true)
+      setTimeout(() => setAvatarSaved(false), 2000)
+    },
+    onError: (err) => {
+      setPerfilError(err instanceof ApiError ? err.message : 'Erro ao enviar foto')
     },
   })
 
@@ -50,7 +63,23 @@ export function PerfilPage() {
     },
   })
 
-  const avatarSrc = avatarUrl || user?.avatar_url || user?.imagem_perfil
+  const avatarSrc = user?.avatar_url || user?.imagem_perfil
+
+  const onPickAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (!/^image\/(jpeg|png|webp)$/i.test(file.type)) {
+      setPerfilError('Use uma imagem JPEG, PNG ou WebP')
+      return
+    }
+    if (file.size > PERFIL_AVATAR_MAX_BYTES) {
+      setPerfilError('A foto deve ter no máximo 2 MB')
+      return
+    }
+    setPerfilError(null)
+    uploadAvatarMutation.mutate(file)
+  }
 
   return (
     <div className="pb-24 pt-2 flex flex-col gap-6">
@@ -65,16 +94,14 @@ export function PerfilPage() {
 
       {/* Avatar preview */}
       <div className="flex items-center gap-4">
-        <div
-          className="w-16 h-16 rounded-2xl overflow-hidden flex items-center justify-center text-2xl font-bold flex-shrink-0"
+        <UserAvatar
+          src={avatarSrc}
+          alt={user?.nome ?? ''}
+          size="xl"
+          rounded="2xl"
+          className="flex-shrink-0"
           style={{ background: 'var(--glass)', border: '2px solid var(--border)' }}
-        >
-          {avatarSrc ? (
-            <img src={imgUrl(avatarSrc)} alt={user?.nome} className="w-full h-full object-cover" />
-          ) : (
-            <User size={28} style={{ color: 'var(--text-muted)' }} />
-          )}
-        </div>
+        />
         <div>
           <p className="font-semibold" style={{ color: 'var(--text)' }}>
             {user?.nome}
@@ -144,16 +171,30 @@ export function PerfilPage() {
 
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
-              URL da foto de perfil
+              Foto de perfil
             </label>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              JPEG, PNG ou WebP — máximo 2 MB
+            </p>
             <input
-              type="url"
-              value={avatarUrl}
-              onChange={(e) => setAvatarUrl(e.target.value)}
-              placeholder="https://..."
-              className="px-3 py-2 rounded-xl text-sm bg-transparent outline-none"
-              style={{ border: '1px solid var(--border)', color: 'var(--text)' }}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={onPickAvatar}
+              disabled={uploadAvatarMutation.isPending}
+              className="text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium"
+              style={{ color: 'var(--text)' }}
             />
+            {uploadAvatarMutation.isPending && (
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                Enviando…
+              </p>
+            )}
+            {avatarSaved && (
+              <p className="text-xs flex items-center gap-1" style={{ color: 'var(--accent)' }}>
+                <CheckCircle2 size={14} />
+                Foto atualizada
+              </p>
+            )}
           </div>
         </div>
 

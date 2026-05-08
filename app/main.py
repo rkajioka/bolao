@@ -34,6 +34,7 @@ _root = Path(__file__).resolve().parent.parent
 _static_root = _root / "static"
 _static_root.mkdir(parents=True, exist_ok=True)
 (_static_root / "bandeiras").mkdir(parents=True, exist_ok=True)
+(_static_root / "uploads" / "avatars").mkdir(parents=True, exist_ok=True)
 
 _frontend_dist = _root / "frontend" / "dist"
 

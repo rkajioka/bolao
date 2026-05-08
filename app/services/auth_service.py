@@ -153,7 +153,6 @@ def complete_primeiro_acesso(db: Session, user: Usuario, data: PrimeiroAcessoReq
         )
     user.nome = data.nome
     user.funcao = data.funcao
-    user.imagem_perfil = data.imagem_perfil
     user.senha_hash = hash_password(data.nova_senha)
     user.primeiro_login = False
     db.commit()

@@ -33,13 +33,6 @@ export interface ResultadoEspecialPayload {
   finalizado: boolean
 }
 
-export interface UpdatePaisPayload {
-  nome: string
-  sigla: string
-  grupo: string
-  bandeira_url: string
-}
-
 export const adminService = {
   getUsers: () => api.get<User[]>('/usuarios'),
   toggleUserStatus: (id: number, ativo: boolean) =>
@@ -48,8 +41,6 @@ export const adminService = {
     api.patch<void>(`/usuarios/${id}/reset-password`, {}),
 
   getPaises: () => api.get<Pais[]>('/paises'),
-  updatePais: (id: number, data: UpdatePaisPayload) =>
-    api.put<Pais>(`/paises/${id}`, data),
 
   getConfig: () => api.get<ConfiguracaoBolao>('/configuracao-bolao'),
   updateConfig: (data: UpdateConfigPayload) =>

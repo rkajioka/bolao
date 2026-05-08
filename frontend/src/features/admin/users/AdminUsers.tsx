@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { imgUrl, getInitials } from '@/lib/utils'
+import { UserAvatar } from '@/components/UserAvatar'
 import { adminService } from '@/services/admin.service'
 
 interface AdminUsersProps {
@@ -49,17 +49,7 @@ export function AdminUsers({ success, error }: AdminUsersProps) {
           className="glass rounded-2xl p-4 flex items-center gap-3"
           role="listitem"
         >
-          <div
-            className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 overflow-hidden"
-            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
-            aria-hidden="true"
-          >
-            {u.imagem_perfil ? (
-              <img src={imgUrl(u.imagem_perfil)} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <span style={{ color: 'var(--text-muted)' }}>{getInitials(u.nome)}</span>
-            )}
-          </div>
+          <UserAvatar src={u.avatar_url || u.imagem_perfil} alt="" size="lg" className="shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-sm truncate">{u.nome}</p>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{u.email}</p>

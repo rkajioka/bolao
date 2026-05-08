@@ -8,14 +8,14 @@ import {
   Trophy,
   Settings,
   LogOut,
-  User,
   Moon,
   Sun,
   Users,
 } from 'lucide-react'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useTheme } from '@/hooks/useTheme'
-import { cn, imgUrl } from '@/lib/utils'
+import { cn } from '@/lib/utils'
+import { UserAvatar } from '@/components/UserAvatar'
 
 interface NavItem {
   to: string
@@ -88,20 +88,12 @@ export function AppLayout({ children }: AppLayoutProps) {
                 className="flex items-center gap-2 hover:opacity-80 transition-opacity"
                 aria-label="Meu perfil"
               >
-                <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold overflow-hidden"
+                <UserAvatar
+                  src={avatarSrc}
+                  alt={user.nome}
+                  size="sm"
                   style={{ background: 'var(--glass)', border: '1px solid var(--border)' }}
-                >
-                  {avatarSrc ? (
-                    <img
-                      src={imgUrl(avatarSrc)}
-                      alt={user.nome}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <User size={14} style={{ color: 'var(--text-muted)' }} />
-                  )}
-                </div>
+                />
                 <span
                   className="text-sm font-medium hidden sm:block truncate max-w-[120px]"
                   style={{ color: 'var(--text)' }}

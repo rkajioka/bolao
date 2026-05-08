@@ -98,7 +98,6 @@ class AccessTokenResponse(BaseModel):
 class PrimeiroAcessoRequest(BaseModel):
     nome: str = Field(min_length=1, max_length=255)
     funcao: str = Field(min_length=1, max_length=255)
-    imagem_perfil: str | None = Field(default=None, max_length=2048)
     nova_senha: str = Field(min_length=8, max_length=128)
     confirmar_senha: str = Field(min_length=8, max_length=128)
 
