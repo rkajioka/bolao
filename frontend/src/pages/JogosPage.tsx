@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { api } from '@/lib/api'
@@ -6,14 +6,24 @@ import { GameCard } from '@/components/GameCard'
 import { GameCardSkeleton } from '@/components/Skeleton'
 import { EmptyState } from '@/components/EmptyState'
 import { SectionHeader } from '@/components/SectionHeader'
+import { GroupStandingsTable } from '@/components/GroupStandingsTable'
 import { useToast } from '@/components/Toast'
-import type { Jogo, PalpiteJogo, Pais, MarcadorPalpite, MarcadorCandidato } from '@/types'
+import type {
+  Jogo,
+  PalpiteJogo,
+  Pais,
+  MarcadorCandidato,
+  GrupoTabela,
+  GruposListResponse,
+  TabelaGrupoResponse,
+} from '@/types'
 import { CalendarDays } from 'lucide-react'
 
 type Tab = 'cronologico' | 'grupos'
 
 export function JogosPage() {
   const [tab, setTab] = useState<Tab>('cronologico')
+  const [grupoSelecionado, setGrupoSelecionado] = useState<string>('A')
   const { success, error } = useToast()
   const queryClient = useQueryClient()
 
@@ -37,7 +47,31 @@ export function JogosPage() {
     queryFn: () => api.get<MarcadorCandidato[]>('/marcadores-brasil/candidatos'),
   })
 
+  const { data: gruposDisponiveis = [] } = useQuery({
+    queryKey: ['grupos'],
+    queryFn: async () => {
+      const resp = await api.get<GruposListResponse>('/grupos')
+      return resp.grupos ?? []
+    },
+  })
+
+  const { data: tabelaGrupo = [], isLoading: loadingTabelaGrupo } = useQuery({
+    queryKey: ['grupos', 'tabela', grupoSelecionado],
+    queryFn: async () => {
+      const resp = await api.get<TabelaGrupoResponse>(`/grupos/${grupoSelecionado}/tabela`)
+      return resp.linhas ?? []
+    },
+    enabled: tab === 'grupos' && !!grupoSelecionado,
+  })
+
   const palpiteMap = new Map(palpites.map((p) => [p.jogo_id, p]))
+
+  useEffect(() => {
+    if (!gruposDisponiveis.length) return
+    if (!gruposDisponiveis.includes(grupoSelecionado)) {
+      setGrupoSelecionado(gruposDisponiveis[0])
+    }
+  }, [gruposDisponiveis, grupoSelecionado])
 
   const handleSave = async (
     jogoId: number,
@@ -84,13 +118,9 @@ export function JogosPage() {
     }
   }
 
-  // Group by group for "por grupo" tab
-  const jogosPorGrupo = jogosCrono.reduce<Record<string, Jogo[]>>((acc, j) => {
-    const key = j.tipo_fase === 'grupos' ? (j.grupo || 'Sem grupo') : j.fase
-    if (!acc[key]) acc[key] = []
-    acc[key].push(j)
-    return acc
-  }, {})
+  const jogosDoGrupoSelecionado = jogosCrono.filter(
+    (jogo) => jogo.tipo_fase === 'grupos' && (jogo.grupo || '').toUpperCase() === grupoSelecionado,
+  )
 
   const candidatoNames = candidatos.map((c) => c.nome)
 
@@ -161,16 +191,48 @@ export function JogosPage() {
               transition={{ duration: 0.15 }}
               className="space-y-6"
             >
-              {Object.entries(jogosPorGrupo).map(([grupo, jogos]) => (
-                <div key={grupo}>
-                  <h3
-                    className="text-xs font-bold uppercase tracking-wider mb-3 px-1"
-                    style={{ color: 'var(--accent)' }}
+              <div className="flex gap-2 flex-wrap">
+                {gruposDisponiveis.map((grupo) => (
+                  <button
+                    key={grupo}
+                    onClick={() => setGrupoSelecionado(grupo)}
+                    className="px-3 py-1.5 rounded-xl text-sm font-bold transition-all duration-150"
+                    style={{
+                      background: grupoSelecionado === grupo ? 'var(--accent)' : 'rgba(255,255,255,0.06)',
+                      border: `1px solid ${grupoSelecionado === grupo ? 'var(--accent)' : 'rgba(255,255,255,0.10)'}`,
+                      color: grupoSelecionado === grupo ? '#070A12' : 'var(--text-muted)',
+                    }}
                   >
-                    {jogos[0].tipo_fase === 'grupos' ? `Grupo ${grupo}` : grupo}
-                  </h3>
+                    {grupo}
+                  </button>
+                ))}
+              </div>
+
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider mb-3 px-1" style={{ color: 'var(--accent)' }}>
+                  Grupo {grupoSelecionado}
+                </h3>
+                <GroupStandingsTable
+                  grupoSelecionado={grupoSelecionado}
+                  tabela={tabelaGrupo}
+                  isLoading={loadingTabelaGrupo}
+                />
+              </div>
+
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider mb-3 px-1" style={{ color: 'var(--accent)' }}>
+                  Jogos do Grupo {grupoSelecionado}
+                </h3>
+
+                {jogosDoGrupoSelecionado.length === 0 ? (
+                  <div className="glass rounded-2xl p-8 text-center">
+                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                      Nenhum jogo encontrado para o grupo {grupoSelecionado}.
+                    </p>
+                  </div>
+                ) : (
                   <div className="space-y-3">
-                    {jogos.map((jogo) => (
+                    {jogosDoGrupoSelecionado.map((jogo) => (
                       <GameCard
                         key={jogo.id}
                         jogo={jogo}
@@ -183,8 +245,8 @@ export function JogosPage() {
                       />
                     ))}
                   </div>
-                </div>
-              ))}
+                )}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

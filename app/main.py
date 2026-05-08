@@ -3,7 +3,7 @@ import app.models  # noqa: F401 — garante registro dos models no metadata
 from pathlib import Path
 
 from fastapi import FastAPI
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.routes import (
@@ -60,8 +60,8 @@ if _frontend_dist.exists():
         index = _frontend_dist / "index.html"
         if index.exists():
             return FileResponse(str(index))
-        return FileResponse(str(_static_root / "app" / "index.html"))
+        return JSONResponse({"detail": "Frontend build not found"}, status_code=404)
 else:
     @app.get("/", include_in_schema=False)
-    def root_redirect() -> RedirectResponse:
-        return RedirectResponse(url="/static/app/index.html")
+    def root_unavailable() -> JSONResponse:
+        return JSONResponse({"detail": "Frontend not served by backend in dev. Use Vite dev server."}, status_code=404)

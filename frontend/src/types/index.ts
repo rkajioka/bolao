@@ -98,7 +98,10 @@ export interface MarcadorCandidato {
 
 export interface GrupoTabela {
   posicao: number
-  pais: Pais
+  pais_id: number
+  nome: string
+  sigla: string
+  bandeira_url: string
   pontos: number
   jogos: number
   vitorias: number
@@ -106,7 +109,16 @@ export interface GrupoTabela {
   derrotas: number
   gols_pro: number
   gols_contra: number
-  saldo: number
+  saldo_gols: number
+}
+
+export interface GruposListResponse {
+  grupos: string[]
+}
+
+export interface TabelaGrupoResponse {
+  grupo: string
+  linhas: GrupoTabela[]
 }
 
 export interface ConfiguracaoBolao {
