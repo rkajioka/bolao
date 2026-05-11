@@ -1,5 +1,4 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { SlidersHorizontal, Palette } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useToast } from '@/components/Toast'
@@ -97,30 +96,21 @@ export function AdminConfigPage() {
             ))}
           </div>
 
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              role="tabpanel"
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.15 }}
-            >
-              <Suspense fallback={<TabFallback />}>
-                {activeTab === 'pontuacao' && (
-                  <AdminSpecials
-                    variant="scoring"
-                    empresaId={effectiveEmpresaId}
-                    success={success}
-                    error={error}
-                  />
-                )}
-                {activeTab === 'aparencia' && (
-                  <AdminAppearance empresaId={effectiveEmpresaId} />
-                )}
-              </Suspense>
-            </motion.div>
-          </AnimatePresence>
+          <div id={`tabpanel-${activeTab}`} role="tabpanel">
+            <Suspense fallback={<TabFallback />}>
+              {activeTab === 'pontuacao' && (
+                <AdminSpecials
+                  variant="scoring"
+                  empresaId={effectiveEmpresaId}
+                  success={success}
+                  error={error}
+                />
+              )}
+              {activeTab === 'aparencia' && (
+                <AdminAppearance empresaId={effectiveEmpresaId} />
+              )}
+            </Suspense>
+          </div>
         </>
       )}
     </div>

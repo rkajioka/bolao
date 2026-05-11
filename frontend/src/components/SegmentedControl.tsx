@@ -1,5 +1,3 @@
-import { motion } from 'framer-motion'
-
 interface Segment<T extends string> {
   key: T
   label: string
@@ -24,6 +22,7 @@ export function SegmentedControl<T extends string>({
   return (
     <div
       role="tablist"
+      aria-label={controlId}
       style={{
         display: 'flex',
         padding: '3px',
@@ -38,46 +37,34 @@ export function SegmentedControl<T extends string>({
         WebkitOverflowScrolling: scrollable ? 'touch' : undefined,
       }}
     >
-      {segments.map((seg) => (
-        <button
-          key={seg.key}
-          role="tab"
-          type="button"
-          aria-selected={value === seg.key}
-          onClick={() => onChange(seg.key)}
-          style={{
-            flex: scrollable ? '0 0 auto' : 1,
-            position: 'relative',
-            padding: '6px 12px',
-            borderRadius: '9px',
-            fontSize: '13px',
-            fontWeight: 600,
-            border: 'none',
-            background: 'transparent',
-            cursor: 'pointer',
-            color: value === seg.key ? 'var(--text)' : 'var(--text-muted)',
-            transition: 'color 150ms ease',
-            minHeight: '32px',
-            letterSpacing: '-0.01em',
-          }}
-        >
-          {value === seg.key && (
-            <motion.span
-              layoutId={controlId}
-              style={{
-                position: 'absolute',
-                inset: 0,
-                borderRadius: '9px',
-                background: 'var(--segmented-active-bg)',
-                border: '1px solid var(--segmented-active-border)',
-                zIndex: -1,
-              }}
-              transition={{ type: 'spring', stiffness: 520, damping: 38, mass: 0.8 }}
-            />
-          )}
-          {seg.label}
-        </button>
-      ))}
+      {segments.map((seg) => {
+        const isActive = value === seg.key
+        return (
+          <button
+            key={seg.key}
+            role="tab"
+            type="button"
+            aria-selected={isActive}
+            onClick={() => onChange(seg.key)}
+            style={{
+              flex: scrollable ? '0 0 auto' : 1,
+              padding: '6px 12px',
+              borderRadius: '9px',
+              fontSize: '13px',
+              fontWeight: 600,
+              border: isActive ? '1px solid var(--segmented-active-border)' : '1px solid transparent',
+              background: isActive ? 'var(--segmented-active-bg)' : 'transparent',
+              cursor: 'pointer',
+              color: isActive ? 'var(--text)' : 'var(--text-muted)',
+              transition: 'color 150ms ease, background 150ms ease, border-color 150ms ease',
+              minHeight: '32px',
+              letterSpacing: '-0.01em',
+            }}
+          >
+            {seg.label}
+          </button>
+        )
+      })}
     </div>
   )
 }
