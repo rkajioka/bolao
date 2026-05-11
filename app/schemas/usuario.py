@@ -41,6 +41,21 @@ class UsuarioRead(UsuarioBase):
     updated_at: datetime
 
 
+class UsuarioEmailEntrega(BaseModel):
+    email_enviado: bool | None = None
+    email_erro: str | None = None
+    email_tentativas: int | None = None
+    alerta_admins_enviado: bool = False
+
+
+class UsuarioCreateRead(UsuarioRead, UsuarioEmailEntrega):
+    pass
+
+
+class UsuarioResetPasswordRead(UsuarioEmailEntrega):
+    pass
+
+
 class UsuarioUpdate(BaseModel):
     """Campos editáveis pelo admin (PUT /usuarios/{id})."""
 

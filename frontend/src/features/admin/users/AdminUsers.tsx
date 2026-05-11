@@ -5,7 +5,7 @@ import { ChevronDown } from 'lucide-react'
 import { UserAvatar } from '@/components/UserAvatar'
 import { adminService } from '@/services/admin.service'
 import { empresaService } from '@/services/empresa.service'
-import type { User } from '@/types'
+import type { User, UsuarioEmailEntrega } from '@/types'
 
 interface AdminUsersProps {
   success: (msg: string) => void
@@ -60,6 +60,17 @@ const inputStyle = {
   color: 'var(--text)',
 } as const
 
+function mensagemEntregaEmail(entrega: UsuarioEmailEntrega | undefined, sucessoPadrao: string): string {
+  if (entrega?.email_enviado) {
+    return sucessoPadrao
+  }
+  if (entrega?.email_enviado === false) {
+    const alerta = entrega.alerta_admins_enviado ? ' Os administradores da empresa foram alertados por e-mail.' : ''
+    return `Operação concluída, mas o e-mail não foi entregue.${alerta}`
+  }
+  return sucessoPadrao
+}
+
 export function AdminUsers({ success, error }: AdminUsersProps) {
   const queryClient = useQueryClient()
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -71,6 +82,7 @@ export function AdminUsers({ success, error }: AdminUsersProps) {
   const [empresaId, setEmpresaId] = useState<number | ''>('')
   const [listaUsuariosAberta, setListaUsuariosAberta] = useState(false)
   const [buscaUsuarios, setBuscaUsuarios] = useState('')
+  const [formVersion, setFormVersion] = useState(0)
 
   const { data: usuarios = [], isLoading } = useQuery({
     queryKey: ['usuarios'],
@@ -105,6 +117,7 @@ export function AdminUsers({ success, error }: AdminUsersProps) {
     setFuncao('')
     setTipoUsuario('admin')
     setEmpresaId('')
+    setFormVersion((version) => version + 1)
   }
 
   const createUser = useMutation({
@@ -119,9 +132,17 @@ export function AdminUsers({ success, error }: AdminUsersProps) {
         ativo: true,
         primeiro_login: true,
       }),
-    onSuccess: async () => {
+    onSuccess: async (created) => {
       await queryClient.invalidateQueries({ queryKey: ['usuarios'] })
-      success('Usuário criado')
+      const message = mensagemEntregaEmail(
+        created,
+        'Usuário criado. Enviamos as instruções de acesso por e-mail.',
+      )
+      if (created.email_enviado === false) {
+        error(message)
+      } else {
+        success(message)
+      }
       resetForm()
     },
     onError: (err) => {
@@ -192,10 +213,16 @@ export function AdminUsers({ success, error }: AdminUsersProps) {
 
   const resetPassword = async (id: number, nomeUsuario: string) => {
     try {
-      await adminService.resetUserPassword(id)
-      success(
+      const entrega = await adminService.resetUserPassword(id)
+      const message = mensagemEntregaEmail(
+        entrega,
         `Senha de ${nomeUsuario} redefinida para a padrão. Enviamos as instruções por e-mail.`,
       )
+      if (entrega.email_enviado === false) {
+        error(message)
+      } else {
+        success(message)
+      }
     } catch (err) {
       error(err instanceof Error ? err.message : 'Erro ao redefinir senha')
     }
@@ -211,7 +238,12 @@ export function AdminUsers({ success, error }: AdminUsersProps) {
 
   return (
     <div className="space-y-4">
-      <form onSubmit={handleSubmit} className="glass rounded-2xl p-4 space-y-3">
+      <form
+        key={formVersion}
+        onSubmit={handleSubmit}
+        autoComplete="off"
+        className="glass rounded-2xl p-4 space-y-3"
+      >
         <p className="text-sm font-semibold">
           {editingId == null ? 'Novo usuário' : 'Editar usuário'}
         </p>
@@ -221,6 +253,7 @@ export function AdminUsers({ success, error }: AdminUsersProps) {
             <input
               value={nome}
               onChange={(e) => setNome(e.target.value)}
+              autoComplete="off"
               className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
               style={inputStyle}
               required
@@ -232,6 +265,7 @@ export function AdminUsers({ success, error }: AdminUsersProps) {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              autoComplete="off"
               className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
               style={inputStyle}
               required
@@ -244,6 +278,7 @@ export function AdminUsers({ success, error }: AdminUsersProps) {
                 type="password"
                 value={senha}
                 onChange={(e) => setSenha(e.target.value)}
+                autoComplete="new-password"
                 className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
                 style={inputStyle}
                 minLength={8}

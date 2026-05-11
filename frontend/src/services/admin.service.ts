@@ -1,6 +1,7 @@
 import { api } from '@/lib/api'
 import type {
   User,
+  UsuarioEmailEntrega,
   Pais,
   ConfiguracaoBolao,
   PontuacaoFase,
@@ -72,11 +73,11 @@ export interface UpdateUserPayload {
 
 export const adminService = {
   getUsers: () => api.get<User[]>('/usuarios'),
-  createUser: (data: CreateUserPayload) => api.post<User>('/usuarios', data),
+  createUser: (data: CreateUserPayload) => api.post<User & UsuarioEmailEntrega>('/usuarios', data),
   updateUser: (id: number, data: UpdateUserPayload) => api.put<User>(`/usuarios/${id}`, data),
   toggleUserStatus: (id: number, ativo: boolean) =>
     api.patch<void>(`/usuarios/${id}/status`, { ativo }),
-  resetUserPassword: (id: number) => api.patch<void>(`/usuarios/${id}/reset-password`),
+  resetUserPassword: (id: number) => api.patch<UsuarioEmailEntrega>(`/usuarios/${id}/reset-password`),
 
   getPaises: () => api.get<Pais[]>('/paises'),
 

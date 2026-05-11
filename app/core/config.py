@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     outlook_sender: str | None = None
     graph_api_url: str = "https://graph.microsoft.com/v1.0"
     graph_api_scope: str = "https://graph.microsoft.com/.default"
+    email_max_attempts: int = 3
+    email_retry_backoff_seconds: float = 2.0
+    email_bulk_interval_seconds: float = 1.0
 
 
 @lru_cache

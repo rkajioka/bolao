@@ -7,7 +7,9 @@ from app.database import get_db
 from app.models.usuario import Usuario
 from app.schemas.usuario import (
     UsuarioCreate,
+    UsuarioCreateRead,
     UsuarioRead,
+    UsuarioResetPasswordRead,
     UsuarioStatusUpdate,
     UsuarioUpdate,
 )
@@ -31,18 +33,24 @@ def list_usuarios(
     return usuario_service.list_usuarios(db)
 
 
-@router.post("", response_model=UsuarioRead, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=UsuarioCreateRead, status_code=status.HTTP_201_CREATED)
 def create_usuario(
     data: UsuarioCreate,
     db: Session = Depends(get_db),
     admin: Usuario = Depends(require_owner),
-) -> Usuario:
+) -> UsuarioCreateRead:
     try:
-        row = usuario_service.create_usuario(db, data)
+        row, entrega = usuario_service.create_usuario(db, data)
         auditoria_admin_service.registrar_evento(
             db, admin, acao="usuarios.post", entidade="usuario", entidade_id=row.id, status="success"
         )
-        return row
+        payload = UsuarioCreateRead.model_validate(row)
+        if entrega is not None:
+            payload.email_enviado = entrega.email_enviado
+            payload.email_erro = entrega.email_erro
+            payload.email_tentativas = entrega.email_tentativas
+            payload.alerta_admins_enviado = entrega.alerta_admins_enviado
+        return payload
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except IntegrityError as exc:
@@ -118,16 +126,22 @@ def patch_usuario_status(
     return row
 
 
-@router.patch("/{usuario_id}/reset-password", status_code=status.HTTP_204_NO_CONTENT)
+@router.patch("/{usuario_id}/reset-password", response_model=UsuarioResetPasswordRead)
 def patch_reset_password(
     usuario_id: int,
     db: Session = Depends(get_db),
     admin: Usuario = Depends(require_owner),
-) -> None:
+) -> UsuarioResetPasswordRead:
     u = usuario_service.get_by_id(db, usuario_id)
     if u is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado")
-    usuario_service.reset_password(db, u)
+    entrega = usuario_service.reset_password(db, u)
     auditoria_admin_service.registrar_evento(
         db, admin, acao="usuarios.patch_reset_password", entidade="usuario", entidade_id=usuario_id, status="success"
+    )
+    return UsuarioResetPasswordRead(
+        email_enviado=entrega.email_enviado,
+        email_erro=entrega.email_erro,
+        email_tentativas=entrega.email_tentativas,
+        alerta_admins_enviado=entrega.alerta_admins_enviado,
     )

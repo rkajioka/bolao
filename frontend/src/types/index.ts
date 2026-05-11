@@ -28,6 +28,27 @@ export interface ConviteResultado {
   expiracao?: string
   /** Quando true, o link foi enviado por e-mail (token omitido na API). */
   convite_enviado_por_email?: boolean
+  email_tentativas?: number
+  email_erro?: string | null
+}
+
+export interface ConviteResumoEnvio {
+  total: number
+  enviados: number
+  falhas: number
+  alerta_admins_enviado: boolean
+}
+
+export interface BulkConviteResponse {
+  itens: ConviteResultado[]
+  resumo_envio: ConviteResumoEnvio
+}
+
+export interface UsuarioEmailEntrega {
+  email_enviado?: boolean | null
+  email_erro?: string | null
+  email_tentativas?: number | null
+  alerta_admins_enviado?: boolean
 }
 
 export interface MembroEquipe {

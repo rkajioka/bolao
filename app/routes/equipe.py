@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.auth.dependencies import get_resolved_empresa_id, is_owner, require_admin
 from app.database import get_db
 from app.models.usuario import Usuario
-from app.schemas.convite import BulkConviteRequest
+from app.schemas.convite import BulkConviteRequest, BulkConviteResponse
 from app.services import convite_service, equipe_service, usuario_service
 
 router = APIRouter(prefix="/equipe", tags=["equipe"])
@@ -19,14 +19,19 @@ def listar_equipe(
     return equipe_service.listar_equipe(db, empresa_id)
 
 
-@router.post("/convites", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/convites",
+    response_model=BulkConviteResponse,
+    response_model_exclude_none=True,
+    status_code=status.HTTP_201_CREATED,
+)
 def criar_convites(
     data: BulkConviteRequest,
     request: Request,
     db: Session = Depends(get_db),
     admin: Usuario = Depends(require_admin),
     empresa_id: int = Depends(get_resolved_empresa_id),
-) -> list:
+) -> BulkConviteResponse:
     ip = request.client.host if request.client else None
     return convite_service.criar_bulk_convites(db, empresa_id, data, admin.id, ip)
 

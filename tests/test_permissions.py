@@ -215,7 +215,7 @@ def test_owner_reset_senha_define_padrao_e_exige_primeiro_acesso(client) -> None
     owner_token = _login(client, "owner-etapa13@example.com", "senhaowner1")
     h_owner = {"Authorization": f"Bearer {owner_token}"}
     r = client.patch(f"/usuarios/{user_id}/reset-password", headers=h_owner)
-    assert r.status_code == 204, r.text
+    assert r.status_code == 200, r.text
 
     login = client.post(
         "/auth/login",
@@ -234,7 +234,7 @@ def test_owner_reset_senha_define_padrao_e_exige_primeiro_acesso(client) -> None
     assert bloqueado.status_code == 403
 
 
-@patch("app.services.email_service._enviar_email_outlook")
+@patch("app.services.email_service.enviar_email_outlook")
 def test_admin_redefine_senha_apenas_da_propria_empresa(mock_send, client) -> None:
     db = SessionLocal()
     try:
@@ -257,7 +257,7 @@ def test_admin_redefine_senha_apenas_da_propria_empresa(mock_send, client) -> No
     assert r2.status_code in {403, 404}
 
 
-@patch("app.services.email_service._enviar_email_outlook")
+@patch("app.services.email_service.enviar_email_outlook")
 def test_primeiro_acesso_rejeita_senha_padrao(mock_send, client) -> None:
     db = SessionLocal()
     try:
@@ -268,7 +268,7 @@ def test_primeiro_acesso_rejeita_senha_padrao(mock_send, client) -> None:
     owner_token = _login(client, "owner-etapa13@example.com", "senhaowner1")
     h_owner = {"Authorization": f"Bearer {owner_token}"}
     r = client.patch(f"/usuarios/{user_id}/reset-password", headers=h_owner)
-    assert r.status_code == 204, r.text
+    assert r.status_code == 200, r.text
 
     user_token = _login(client, "user-etapa13@example.com", "Bolao123")
     h_user = {"Authorization": f"Bearer {user_token}"}

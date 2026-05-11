@@ -54,7 +54,7 @@ def seed_config(db: Session, empresa_id: int) -> ConfiguracaoBolao:
 
 def seed_owner_admin_e_usuario(db: Session) -> tuple[int, int, int]:
     empresa = seed_empresa(db)
-    owner = usuario_service.create_usuario(
+    owner, _ = usuario_service.create_usuario(
         db,
         UsuarioCreate(
             nome="Owner Teste",
@@ -66,7 +66,7 @@ def seed_owner_admin_e_usuario(db: Session) -> tuple[int, int, int]:
             primeiro_login=False,
         ),
     )
-    admin = usuario_service.create_usuario(
+    admin, _ = usuario_service.create_usuario(
         db,
         UsuarioCreate(
             nome="Admin Teste",
@@ -79,7 +79,7 @@ def seed_owner_admin_e_usuario(db: Session) -> tuple[int, int, int]:
             empresa_id=empresa.id,
         ),
     )
-    user = usuario_service.create_usuario(
+    user, _ = usuario_service.create_usuario(
         db,
         UsuarioCreate(
             nome="Usuário Teste",

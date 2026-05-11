@@ -51,6 +51,28 @@ class ConviteReadPublic(BaseModel):
     created_at: datetime
 
 
+class ConviteResultadoItem(BaseModel):
+    email: str
+    status: str
+    token: str | None = None
+    expiracao: str | None = None
+    convite_enviado_por_email: bool | None = None
+    email_tentativas: int | None = None
+    email_erro: str | None = None
+
+
+class ConviteResumoEnvio(BaseModel):
+    total: int
+    enviados: int
+    falhas: int
+    alerta_admins_enviado: bool
+
+
+class BulkConviteResponse(BaseModel):
+    itens: list[ConviteResultadoItem]
+    resumo_envio: ConviteResumoEnvio
+
+
 class BulkConviteRequest(BaseModel):
     emails: list[EmailStr] = Field(min_length=1, max_length=50)
 

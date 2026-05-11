@@ -8,19 +8,9 @@ import httpx
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.services import email_dispatch_service
 
 logger = logging.getLogger(__name__)
-
-# --- Resend (desativado) ---
-# import resend
-# from app.services import configuracao_email_service
-#
-# def _enviar_via_resend(...):
-#     creds = configuracao_email_service.obter_ou_padrao(db)
-#     if not creds.resend_api_key or not creds.email_from:
-#         return False
-#     resend.api_key = creds.resend_api_key
-#     resend.Emails.send({...})
 
 
 def _public_base_url() -> str:
@@ -57,7 +47,7 @@ def _obter_token_graph() -> str:
     return response.json()["access_token"]
 
 
-def _enviar_email_outlook(
+def enviar_email_outlook(
     *,
     destinatario: str,
     assunto: str,
@@ -86,12 +76,40 @@ def _enviar_email_outlook(
     response.raise_for_status()
 
 
+def _enviar_com_log(
+    *,
+    destinatario: str,
+    assunto: str,
+    corpo_html: str,
+    nome_remetente: str,
+    rotulo: str,
+) -> email_dispatch_service.ResultadoEnvio:
+    resultado = email_dispatch_service.enviar_com_retentativas(
+        lambda: enviar_email_outlook(
+            destinatario=destinatario,
+            assunto=assunto,
+            corpo_html=corpo_html,
+            nome_remetente=nome_remetente,
+        )
+    )
+    if resultado.sucesso:
+        logger.info("E-mail %s enviado para %s", rotulo, destinatario)
+        print(f"[bolao:email] {rotulo} -> {destinatario}: enviado OK", flush=True)
+    else:
+        logger.error("Falha ao enviar e-mail %s para %s: %s", rotulo, destinatario, resultado.erro)
+        print(
+            f"[bolao:email] {rotulo} -> {destinatario}: FALHA — {resultado.erro}",
+            flush=True,
+        )
+    return resultado
+
+
 def tentar_enviar_convite(
     db: Session,
     destinatario: str,
     token: str,
     empresa_nome: str,
-) -> bool:
+) -> email_dispatch_service.ResultadoEnvio:
     del db
     link = f"{_public_base_url()}/ativar-conta?token={token}"
     assunto = f"Convite para o Bolão — {empresa_nome}"
@@ -100,23 +118,38 @@ def tentar_enviar_convite(
         f'<p><a href="{link}">Ativar minha conta</a></p>'
         "<p>Se você não esperava este convite, ignore este e-mail.</p>"
     )
-    try:
-        _enviar_email_outlook(
-            destinatario=destinatario,
-            assunto=assunto,
-            corpo_html=corpo_html,
-            nome_remetente=empresa_nome,
-        )
-        logger.info("E-mail de convite enviado para %s (empresa=%s)", destinatario, empresa_nome)
-        print(
-            f"[bolao:email] convite -> {destinatario}: enviado OK (Outlook, empresa={empresa_nome})",
-            flush=True,
-        )
-        return True
-    except Exception as e:
-        logger.exception("Falha ao enviar e-mail de convite")
-        print(f"[bolao:email] convite -> {destinatario}: FALHA Outlook — {e!s}", flush=True)
-        return False
+    return _enviar_com_log(
+        destinatario=destinatario,
+        assunto=assunto,
+        corpo_html=corpo_html,
+        nome_remetente=empresa_nome,
+        rotulo="convite",
+    )
+
+
+def tentar_enviar_conta_criada_pelo_gestor(
+    db: Session,
+    destinatario: str,
+    empresa_nome: str,
+    senha_inicial: str,
+) -> email_dispatch_service.ResultadoEnvio:
+    del db
+    login_url = f"{_public_base_url()}/login"
+    assunto = f"Sua conta no bolão foi criada — {empresa_nome}"
+    corpo_html = (
+        f"<p>Foi criada uma conta para você no bolão <strong>{empresa_nome}</strong>.</p>"
+        f"<p>Use seu e-mail <strong>{destinatario}</strong> e a senha inicial "
+        f"<strong>{senha_inicial}</strong> para entrar.</p>"
+        f'<p><a href="{login_url}">Acessar o bolão</a></p>'
+        "<p>No primeiro acesso, você precisará definir uma nova senha antes de continuar.</p>"
+    )
+    return _enviar_com_log(
+        destinatario=destinatario,
+        assunto=assunto,
+        corpo_html=corpo_html,
+        nome_remetente=empresa_nome,
+        rotulo="conta-criada",
+    )
 
 
 def tentar_enviar_senha_resetada_pelo_gestor(
@@ -124,7 +157,7 @@ def tentar_enviar_senha_resetada_pelo_gestor(
     destinatario: str,
     empresa_nome: str,
     senha_temporaria: str,
-) -> bool:
+) -> email_dispatch_service.ResultadoEnvio:
     del db
     login_url = f"{_public_base_url()}/login"
     assunto = f"Sua senha foi redefinida — {empresa_nome}"
@@ -137,30 +170,13 @@ def tentar_enviar_senha_resetada_pelo_gestor(
         "<p>No primeiro acesso com essa senha, você precisará definir uma nova senha antes "
         "de continuar.</p>"
     )
-    try:
-        _enviar_email_outlook(
-            destinatario=destinatario,
-            assunto=assunto,
-            corpo_html=corpo_html,
-            nome_remetente=empresa_nome,
-        )
-        logger.info(
-            "E-mail de senha temporária enviado para %s (empresa=%s)",
-            destinatario,
-            empresa_nome,
-        )
-        print(
-            f"[bolao:email] senha-temporaria -> {destinatario}: enviado OK (Outlook, empresa={empresa_nome})",
-            flush=True,
-        )
-        return True
-    except Exception as e:
-        logger.exception("Falha ao enviar e-mail de senha temporária")
-        print(
-            f"[bolao:email] senha-temporaria -> {destinatario}: FALHA Outlook — {e!s}",
-            flush=True,
-        )
-        return False
+    return _enviar_com_log(
+        destinatario=destinatario,
+        assunto=assunto,
+        corpo_html=corpo_html,
+        nome_remetente=empresa_nome,
+        rotulo="senha-temporaria",
+    )
 
 
 def tentar_enviar_reset_senha(
@@ -168,7 +184,7 @@ def tentar_enviar_reset_senha(
     destinatario: str,
     token: str,
     empresa_nome: str,
-) -> bool:
+) -> email_dispatch_service.ResultadoEnvio:
     del db
     link = f"{_public_base_url()}/redefinir-senha?token={token}"
     assunto = f"Redefinição de senha — {empresa_nome}"
@@ -178,20 +194,10 @@ def tentar_enviar_reset_senha(
         f'<p><a href="{link}">Redefinir senha</a></p>'
         "<p>O link expira em breve. Se não foi você, ignore este e-mail.</p>"
     )
-    try:
-        _enviar_email_outlook(
-            destinatario=destinatario,
-            assunto=assunto,
-            corpo_html=corpo_html,
-            nome_remetente=empresa_nome,
-        )
-        logger.info("E-mail de reset de senha enviado para %s (empresa=%s)", destinatario, empresa_nome)
-        print(
-            f"[bolao:email] reset-senha -> {destinatario}: enviado OK (Outlook, empresa={empresa_nome})",
-            flush=True,
-        )
-        return True
-    except Exception as e:
-        logger.exception("Falha ao enviar e-mail de redefinição de senha")
-        print(f"[bolao:email] reset-senha -> {destinatario}: FALHA Outlook — {e!s}", flush=True)
-        return False
+    return _enviar_com_log(
+        destinatario=destinatario,
+        assunto=assunto,
+        corpo_html=corpo_html,
+        nome_remetente=empresa_nome,
+        rotulo="reset-senha",
+    )

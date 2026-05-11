@@ -16,7 +16,7 @@ def _seed_admin_com_empresa(db) -> tuple[Usuario, Empresa]:
     db.add(emp)
     db.commit()
     db.refresh(emp)
-    admin = usuario_service.create_usuario(
+    admin, _ = usuario_service.create_usuario(
         db,
         UsuarioCreate(
             nome="Admin E-mail",
@@ -32,7 +32,7 @@ def _seed_admin_com_empresa(db) -> tuple[Usuario, Empresa]:
     return admin, emp
 
 
-@patch("app.services.email_service._enviar_email_outlook")
+@patch("app.services.email_service.enviar_email_outlook")
 def test_convite_inclui_token_quando_outlook_falha(mock_send, client) -> None:
     mock_send.side_effect = RuntimeError("API error")
     db = SessionLocal()
@@ -56,13 +56,14 @@ def test_convite_inclui_token_quando_outlook_falha(mock_send, client) -> None:
     )
     assert r2.status_code == 201
     body = r2.json()
-    assert len(body) == 1
-    assert body[0]["status"] == "convite_criado"
-    assert "token" in body[0]
-    assert body[0].get("convite_enviado_por_email") is not True
+    assert len(body["itens"]) == 1
+    assert body["itens"][0]["status"] == "convite_criado"
+    assert "token" in body["itens"][0]
+    assert body["itens"][0].get("convite_enviado_por_email") is False
+    assert body["resumo_envio"]["falhas"] == 1
 
 
-@patch("app.services.email_service._enviar_email_outlook")
+@patch("app.services.email_service.enviar_email_outlook")
 def test_convite_omite_token_quando_outlook_envia(mock_send, client) -> None:
     db = SessionLocal()
     try:
@@ -85,17 +86,170 @@ def test_convite_omite_token_quando_outlook_envia(mock_send, client) -> None:
     )
     assert r2.status_code == 201
     body = r2.json()
-    assert len(body) == 1
-    assert body[0]["status"] == "convite_criado"
-    assert "token" not in body[0]
-    assert body[0].get("convite_enviado_por_email") is True
+    assert len(body["itens"]) == 1
+    assert body["itens"][0]["status"] == "convite_criado"
+    assert "token" not in body["itens"][0]
+    assert body["itens"][0].get("convite_enviado_por_email") is True
     mock_send.assert_called_once()
     kwargs = mock_send.call_args.kwargs
     assert kwargs["nome_remetente"] == "Empresa Teste"
     assert "Empresa Teste" in kwargs["assunto"]
 
 
-@patch("app.services.email_service._enviar_email_outlook")
+@patch("app.services.email_service.enviar_email_outlook")
+def test_convite_falha_parcial_nao_interrompe_outros(mock_send, client) -> None:
+    db = SessionLocal()
+    try:
+        _seed_admin_com_empresa(db)
+    finally:
+        db.close()
+
+    mock_send.side_effect = [
+        RuntimeError("falha 1"),
+        RuntimeError("falha 1"),
+        RuntimeError("falha 1"),
+        None,
+        None,
+        None,
+    ]
+
+    r = client.post(
+        "/auth/login",
+        json={"email": "admin-email@example.com", "senha": "senha12345"},
+    )
+    assert r.status_code == 200
+    h = {"Authorization": f"Bearer {r.json()['access_token']}"}
+
+    r2 = client.post(
+        "/equipe/convites",
+        headers=h,
+        json={"emails": ["falha@example.com", "ok@example.com"]},
+    )
+    assert r2.status_code == 201
+    body = r2.json()
+    assert len(body["itens"]) == 2
+    assert body["itens"][0]["email"] == "falha@example.com"
+    assert body["itens"][0]["convite_enviado_por_email"] is False
+    assert body["itens"][1]["email"] == "ok@example.com"
+    assert body["itens"][1]["convite_enviado_por_email"] is True
+    assert body["resumo_envio"]["enviados"] == 1
+    assert body["resumo_envio"]["falhas"] == 1
+
+
+@patch("app.services.email_service.enviar_email_outlook")
+def test_convite_falha_alerta_todos_admins_da_empresa(mock_send, client) -> None:
+    db = SessionLocal()
+    try:
+        emp = Empresa(nome="Empresa Alerta", codigo_empresa="emp-alerta-1", ativo=True)
+        db.add(emp)
+        db.commit()
+        db.refresh(emp)
+        usuario_service.create_usuario(
+            db,
+            UsuarioCreate(
+                nome="Admin 1",
+                email="admin1@example.com",
+                senha_plana="senha12345",
+                tipo_usuario="admin",
+                ativo=True,
+                primeiro_login=False,
+                empresa_id=emp.id,
+            ),
+        )
+        usuario_service.create_usuario(
+            db,
+            UsuarioCreate(
+                nome="Admin 2",
+                email="admin2@example.com",
+                senha_plana="senha12345",
+                tipo_usuario="admin",
+                ativo=True,
+                primeiro_login=False,
+                empresa_id=emp.id,
+            ),
+        )
+    finally:
+        db.close()
+
+    def side_effect(**kwargs):
+        if kwargs["destinatario"] == "convidado@example.com":
+            raise RuntimeError("falha convite")
+        return None
+
+    mock_send.side_effect = side_effect
+
+    r = client.post("/auth/login", json={"email": "admin1@example.com", "senha": "senha12345"})
+    assert r.status_code == 200
+    h = {"Authorization": f"Bearer {r.json()['access_token']}"}
+
+    r2 = client.post(
+        "/equipe/convites",
+        headers=h,
+        json={"emails": ["convidado@example.com"]},
+    )
+    assert r2.status_code == 201
+    assert r2.json()["resumo_envio"]["alerta_admins_enviado"] is True
+    destinatarios = {call.kwargs["destinatario"] for call in mock_send.call_args_list}
+    assert "admin1@example.com" in destinatarios
+    assert "admin2@example.com" in destinatarios
+
+
+@patch("app.services.email_service.enviar_email_outlook")
+def test_criar_usuario_envia_email_de_acesso(mock_send, client) -> None:
+    db = SessionLocal()
+    try:
+        emp = Empresa(nome="Empresa Criacao", codigo_empresa="emp-create-1", ativo=True)
+        db.add(emp)
+        db.commit()
+        db.refresh(emp)
+        empresa_id = emp.id
+        owner, _ = usuario_service.create_usuario(
+            db,
+            UsuarioCreate(
+                nome="Owner Criacao",
+                email="owner-create@example.com",
+                senha_plana="senhaowner1",
+                tipo_usuario="owner",
+                ativo=True,
+                primeiro_login=False,
+            ),
+        )
+        owner_email = owner.email
+    finally:
+        db.close()
+
+    r = client.post(
+        "/auth/login",
+        json={"email": owner_email, "senha": "senhaowner1"},
+    )
+    assert r.status_code == 200
+    token = r.json()["access_token"]
+    h = {"Authorization": f"Bearer {token}"}
+
+    r2 = client.post(
+        "/usuarios",
+        headers=h,
+        json={
+            "nome": "Novo Admin",
+            "email": "novo-admin@example.com",
+            "senha_plana": "senhaadmin1",
+            "tipo_usuario": "admin",
+            "ativo": True,
+            "primeiro_login": True,
+            "empresa_id": empresa_id,
+        },
+    )
+    assert r2.status_code == 201
+    assert r2.json()["email_enviado"] is True
+    mock_send.assert_called_once()
+    kwargs = mock_send.call_args.kwargs
+    assert kwargs["destinatario"] == "novo-admin@example.com"
+    assert kwargs["nome_remetente"] == "Empresa Criacao"
+    assert "senhaadmin1" in kwargs["corpo_html"]
+    assert "/login" in kwargs["corpo_html"]
+
+
+@patch("app.services.email_service.enviar_email_outlook")
 def test_forgot_password_chama_outlook_com_nome_empresa(mock_send, client) -> None:
     db = SessionLocal()
     try:

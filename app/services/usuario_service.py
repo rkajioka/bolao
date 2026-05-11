@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -6,7 +8,7 @@ from app.auth.password import hash_password
 from app.core.password_defaults import SENHA_PADRAO_TEMPORARIA
 from app.models.usuario import Usuario
 from app.schemas.usuario import UsuarioCreate, UsuarioUpdate
-from app.services import email_service, empresa_service
+from app.services import email_dispatch_service, email_service, empresa_service
 
 
 def _validar_vinculo_empresa(tipo_usuario: str, empresa_id: int | None) -> None:
@@ -16,6 +18,14 @@ def _validar_vinculo_empresa(tipo_usuario: str, empresa_id: int | None) -> None:
 
 def _email_filter(email_normalized: str):
     return func.lower(Usuario.email) == email_normalized
+
+
+@dataclass(frozen=True)
+class EmailEntregaResultado:
+    email_enviado: bool | None = None
+    email_erro: str | None = None
+    email_tentativas: int | None = None
+    alerta_admins_enviado: bool = False
 
 
 def get_by_id(db: Session, usuario_id: int) -> Usuario | None:
@@ -31,7 +41,66 @@ def list_usuarios(db: Session) -> list[Usuario]:
     return list(db.scalars(select(Usuario).order_by(Usuario.id.asc())).all())
 
 
-def create_usuario(db: Session, data: UsuarioCreate) -> Usuario:
+def _empresa_nome(db: Session, empresa_id: int | None) -> str:
+    empresa_nome = "Bolão da Copa"
+    if empresa_id is not None:
+        empresa = empresa_service.get_by_id(db, empresa_id)
+        if empresa is not None:
+            empresa_nome = empresa.nome
+    return empresa_nome
+
+
+def _registrar_falha_email(
+    db: Session,
+    *,
+    usuario: Usuario,
+    operacao: str,
+    resultado: email_dispatch_service.ResultadoEnvio,
+) -> EmailEntregaResultado:
+    alerta_admins_enviado = False
+    if usuario.empresa_id is not None:
+        alerta_admins_enviado = email_dispatch_service.notificar_admins_falha_envio(
+            db,
+            empresa_id=usuario.empresa_id,
+            empresa_nome=_empresa_nome(db, usuario.empresa_id),
+            operacao=operacao,
+            falhas=[
+                email_dispatch_service.FalhaEnvioItem(
+                    destinatario=usuario.email,
+                    operacao=operacao,
+                    erro=resultado.erro or "Falha desconhecida",
+                )
+            ],
+        )
+    return EmailEntregaResultado(
+        email_enviado=False,
+        email_erro=resultado.erro,
+        email_tentativas=resultado.tentativas,
+        alerta_admins_enviado=alerta_admins_enviado,
+    )
+
+
+def _notificar_acesso_inicial(db: Session, usuario: Usuario, senha_plana: str) -> EmailEntregaResultado:
+    resultado = email_service.tentar_enviar_conta_criada_pelo_gestor(
+        db,
+        destinatario=usuario.email,
+        empresa_nome=_empresa_nome(db, usuario.empresa_id),
+        senha_inicial=senha_plana,
+    )
+    if resultado.sucesso:
+        return EmailEntregaResultado(
+            email_enviado=True,
+            email_tentativas=resultado.tentativas,
+        )
+    return _registrar_falha_email(
+        db,
+        usuario=usuario,
+        operacao="criação de usuário",
+        resultado=resultado,
+    )
+
+
+def create_usuario(db: Session, data: UsuarioCreate) -> tuple[Usuario, EmailEntregaResultado | None]:
     _validar_vinculo_empresa(data.tipo_usuario, data.empresa_id)
     u = Usuario(
         nome=data.nome,
@@ -51,7 +120,11 @@ def create_usuario(db: Session, data: UsuarioCreate) -> Usuario:
         db.rollback()
         raise
     db.refresh(u)
-    return u
+
+    entrega: EmailEntregaResultado | None = None
+    if u.ativo and u.primeiro_login:
+        entrega = _notificar_acesso_inicial(db, u, data.senha_plana)
+    return u, entrega
 
 
 def update_usuario(db: Session, usuario: Usuario, data: UsuarioUpdate) -> Usuario:
@@ -86,20 +159,25 @@ def set_ativo(db: Session, usuario: Usuario, ativo: bool) -> Usuario:
     return usuario
 
 
-def reset_password(db: Session, usuario: Usuario) -> None:
+def reset_password(db: Session, usuario: Usuario) -> EmailEntregaResultado:
     usuario.senha_hash = hash_password(SENHA_PADRAO_TEMPORARIA)
     usuario.primeiro_login = True
     db.commit()
 
-    empresa_nome = "Bolão da Copa"
-    if usuario.empresa_id is not None:
-        empresa = empresa_service.get_by_id(db, usuario.empresa_id)
-        if empresa is not None:
-            empresa_nome = empresa.nome
-
-    email_service.tentar_enviar_senha_resetada_pelo_gestor(
+    resultado = email_service.tentar_enviar_senha_resetada_pelo_gestor(
         db,
         destinatario=usuario.email,
-        empresa_nome=empresa_nome,
+        empresa_nome=_empresa_nome(db, usuario.empresa_id),
         senha_temporaria=SENHA_PADRAO_TEMPORARIA,
+    )
+    if resultado.sucesso:
+        return EmailEntregaResultado(
+            email_enviado=True,
+            email_tentativas=resultado.tentativas,
+        )
+    return _registrar_falha_email(
+        db,
+        usuario=usuario,
+        operacao="reset de senha",
+        resultado=resultado,
     )

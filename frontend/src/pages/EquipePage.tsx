@@ -18,7 +18,7 @@ import {
   User,
 } from 'lucide-react'
 import { equipeService } from '@/services/equipe.service'
-import type { MembroEquipe, ConviteResultado } from '@/types'
+import type { BulkConviteResponse, ConviteResultado, ConviteResumoEnvio, MembroEquipe } from '@/types'
 import { ApiError } from '@/lib/api'
 import { imgUrl } from '@/lib/utils'
 import { OwnerEmpresaPicker } from '@/components/OwnerEmpresaPicker'
@@ -224,18 +224,25 @@ function InviteForm({
   onSuccess,
 }: {
   empresaId: number | undefined
-  onSuccess: (results: ConviteResultado[]) => void
+  onSuccess: (payload: BulkConviteResponse) => void
 }) {
+  const { success, error: toastError } = useToast()
   const [text, setText] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [progress, setProgress] = useState<{ processed: number; total: number } | null>(null)
+  const [liveResults, setLiveResults] = useState<ConviteResultado[]>([])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const emails = text
-      .split(/[\n,;]/)
-      .map((e) => e.trim().toLowerCase())
-      .filter((e) => e.includes('@'))
+    const emails = Array.from(
+      new Set(
+        text
+          .split(/[\n,;]/)
+          .map((value) => value.trim().toLowerCase())
+          .filter((value) => value.includes('@')),
+      ),
+    )
 
     if (emails.length === 0) {
       setError('Informe ao menos um e-mail válido')
@@ -243,14 +250,30 @@ function InviteForm({
     }
     setLoading(true)
     setError(null)
+    setLiveResults([])
+    setProgress({ processed: 0, total: emails.length })
     try {
-      const results = await equipeService.enviarConvites(emails, empresaId)
-      onSuccess(results)
+      const payload = await equipeService.enviarConvitesEmLotes(emails, empresaId, (processed, total, partial) => {
+        setProgress({ processed, total })
+        setLiveResults((current) => [...current, ...partial])
+      })
+      onSuccess(payload)
       setText('')
+      if (payload.resumo_envio.falhas > 0) {
+        const alerta = payload.resumo_envio.alerta_admins_enviado
+          ? ' Os administradores da empresa foram alertados por e-mail.'
+          : ''
+        toastError(
+          `${payload.resumo_envio.falhas} convite(s) não foram entregues por e-mail.${alerta}`,
+        )
+      } else {
+        success(`${payload.resumo_envio.enviados} convite(s) enviados por e-mail.`)
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Erro ao enviar convites')
     } finally {
       setLoading(false)
+      setProgress(null)
     }
   }
 
@@ -277,6 +300,52 @@ function InviteForm({
         </p>
       </div>
 
+      {progress && (
+        <motion.div className="space-y-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <motion.div className="flex items-center justify-between text-xs" style={{ color: 'var(--text-muted)' }}>
+            <span>Enviando convites</span>
+            <span>
+              {progress.processed}/{progress.total}
+            </span>
+          </motion.div>
+          <motion.div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
+            <motion.div
+              className="h-full rounded-full"
+              style={{ background: 'var(--accent)', width: `${(progress.processed / progress.total) * 100}%` }}
+            />
+          </motion.div>
+        </motion.div>
+      )}
+
+      {liveResults.length > 0 && (
+        <motion.div className="space-y-2 max-h-48 overflow-y-auto">
+          {liveResults.map((result) => (
+            <motion.div
+              key={result.email}
+              className="px-3 py-2 rounded-xl text-xs"
+              style={{ background: 'var(--glass)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}
+            >
+              <p className="font-medium truncate" style={{ color: 'var(--text)' }}>
+                {result.email}
+              </p>
+              <p className="mt-0.5">
+                {result.convite_enviado_por_email
+                  ? 'E-mail enviado'
+                  : result.email_erro
+                    ? `Falha: ${result.email_erro}`
+                    : result.status === 'ja_cadastrado'
+                      ? 'Já cadastrado'
+                      : result.status === 'convite_pendente'
+                        ? 'Convite pendente'
+                        : result.token
+                          ? 'Convite criado — copie o link'
+                          : 'Processado'}
+              </p>
+            </motion.div>
+          ))}
+        </motion.div>
+      )}
+
       {error && (
         <p className="text-xs px-3 py-2 rounded-lg" style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444' }}>
           {error}
@@ -297,7 +366,15 @@ function InviteForm({
   )
 }
 
-function InviteResults({ results, onClose }: { results: ConviteResultado[]; onClose: () => void }) {
+function InviteResults({
+  results,
+  resumo,
+  onClose,
+}: {
+  results: ConviteResultado[]
+  resumo: ConviteResumoEnvio | null
+  onClose: () => void
+}) {
   const [copied, setCopied] = useState<string | null>(null)
 
   const copy = (token: string) => {
@@ -312,6 +389,12 @@ function InviteResults({ results, onClose }: { results: ConviteResultado[]; onCl
       <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>
         Resultado do envio
       </p>
+      {resumo && (
+        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+          {resumo.enviados} enviados · {resumo.falhas} falha(s)
+          {resumo.alerta_admins_enviado ? ' · admins alertados por e-mail' : ''}
+        </p>
+      )}
       {results.map((r) => (
         <div
           key={r.email}
@@ -331,6 +414,7 @@ function InviteResults({ results, onClose }: { results: ConviteResultado[]; onCl
                     : 'Convite criado')}
               {r.status === 'convite_pendente' && 'Convite pendente (já existe)'}
               {r.status === 'ja_cadastrado' && 'Usuário já cadastrado'}
+              {r.email_erro ? ` · ${r.email_erro}` : ''}
             </p>
           </div>
           {r.token && (
@@ -358,6 +442,7 @@ export function EquipePage() {
   const { resolvedEmpresaId, setOwnerEmpresaId, needsOwnerEmpresaPick } = useResolvedEmpresaForAdmin()
   const [showInvite, setShowInvite] = useState(false)
   const [inviteResults, setInviteResults] = useState<ConviteResultado[] | null>(null)
+  const [inviteResumo, setInviteResumo] = useState<ConviteResumoEnvio | null>(null)
 
   const { data: empresas = [] } = useQuery({
     queryKey: ['empresas', 'owner'],
@@ -405,8 +490,9 @@ export function EquipePage() {
     resetSenhaMutation.mutate(id)
   }
 
-  const handleInviteSuccess = (results: ConviteResultado[]) => {
-    setInviteResults(results)
+  const handleInviteSuccess = (payload: BulkConviteResponse) => {
+    setInviteResults(payload.itens)
+    setInviteResumo(payload.resumo_envio)
     void queryClient.invalidateQueries({ queryKey: ['equipe'] })
   }
 
@@ -439,7 +525,11 @@ export function EquipePage() {
             </div>
             <motion.button
               type="button"
-              onClick={() => { setShowInvite((v) => !v); setInviteResults(null) }}
+              onClick={() => {
+                setShowInvite((value) => !value)
+                setInviteResults(null)
+                setInviteResumo(null)
+              }}
               whileTap={{ scale: 0.95 }}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-semibold text-sm"
               style={{ background: 'var(--accent)', color: '#fff' }}
@@ -469,7 +559,14 @@ export function EquipePage() {
                     </h2>
                   </div>
                   {inviteResults ? (
-                    <InviteResults results={inviteResults} onClose={() => setInviteResults(null)} />
+                    <InviteResults
+                      results={inviteResults}
+                      resumo={inviteResumo}
+                      onClose={() => {
+                        setInviteResults(null)
+                        setInviteResumo(null)
+                      }}
+                    />
                   ) : (
                     <InviteForm empresaId={effectiveEmpresaId} onSuccess={handleInviteSuccess} />
                   )}
