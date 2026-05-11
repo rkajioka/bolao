@@ -2,7 +2,7 @@ import app.models  # noqa: F401 — garante registro dos models no metadata
 
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -26,11 +26,6 @@ from app.routes import (
     usuarios,
 )
 
-app = FastAPI(
-    title="Bolão da Copa do Mundo — MVP",
-    version="0.2.0",
-)
-
 _root = Path(__file__).resolve().parent.parent
 _static_root = _root / "static"
 _static_root.mkdir(parents=True, exist_ok=True)
@@ -38,6 +33,43 @@ _static_root.mkdir(parents=True, exist_ok=True)
 (_static_root / "uploads" / "avatars").mkdir(parents=True, exist_ok=True)
 
 _frontend_dist = _root / "frontend" / "dist"
+_SPA_HTML_PATHS = frozenset(
+    {
+        "/",
+        "/login",
+        "/primeiro-acesso",
+        "/ativar-conta",
+        "/esqueci-senha",
+        "/redefinir-senha",
+        "/jogos",
+        "/especiais",
+        "/regras",
+        "/grupos",
+        "/ranking",
+        "/perfil",
+        "/admin",
+        "/admin/config",
+        "/equipe",
+    }
+)
+
+app = FastAPI(
+    title="Bolão da Copa do Mundo — MVP",
+    version="0.2.0",
+)
+
+
+@app.middleware("http")
+async def serve_spa_on_html_navigation(request: Request, call_next):
+    if _frontend_dist.exists() and request.method == "GET":
+        accept = request.headers.get("accept", "")
+        if "text/html" in accept:
+            path = request.url.path.rstrip("/") or "/"
+            if path in _SPA_HTML_PATHS:
+                index = _frontend_dist / "index.html"
+                if index.exists():
+                    return FileResponse(str(index))
+    return await call_next(request)
 
 app.include_router(health.router, tags=["health"])
 app.include_router(auth.router)

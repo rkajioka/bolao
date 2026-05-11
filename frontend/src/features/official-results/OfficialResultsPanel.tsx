@@ -4,9 +4,11 @@ import type { Jogo } from '@/types'
 import { OfficialGameResultCard } from '@/features/official-results/OfficialGameResultCard'
 import {
   agruparJogosPorGrupo,
+  chaveGrupoSecao,
   dataChaveLocal,
   labelDataCabecalho,
   labelDataFiltro,
+  ordenarChavesGrupo,
   tituloSecaoGrupo,
 } from '@/features/official-results/officialResultUtils'
 
@@ -15,6 +17,7 @@ interface OfficialResultsPanelProps {
   readOnly?: boolean
   showFlags?: boolean
   showDateFilter?: boolean
+  showGrupoFilter?: boolean
   groupByGrupo?: boolean
   title?: string
   emptyMessage?: string
@@ -27,6 +30,7 @@ export function OfficialResultsPanel({
   readOnly = false,
   showFlags = false,
   showDateFilter = true,
+  showGrupoFilter = false,
   groupByGrupo = false,
   title,
   emptyMessage = 'Nenhum jogo nesta lista.',
@@ -34,6 +38,7 @@ export function OfficialResultsPanel({
   onError,
 }: OfficialResultsPanelProps) {
   const [filtroData, setFiltroData] = useState<string>('todas')
+  const [filtroGrupo, setFiltroGrupo] = useState<string>('todos')
 
   const datas = useMemo(() => {
     const s = new Set<string>()
@@ -47,10 +52,29 @@ export function OfficialResultsPanel({
     }
   }, [filtroData, datas])
 
+  const grupos = useMemo(
+    () => ordenarChavesGrupo([...new Set(jogos.map((jogo) => chaveGrupoSecao(jogo)))]),
+    [jogos],
+  )
+
+  useEffect(() => {
+    if (filtroGrupo !== 'todos' && !grupos.includes(filtroGrupo)) {
+      setFiltroGrupo('todos')
+    }
+  }, [filtroGrupo, grupos])
+
   const jogosFiltrados = useMemo(() => {
-    if (!showDateFilter || filtroData === 'todas') return jogos
-    return jogos.filter((jogo) => dataChaveLocal(jogo.data_jogo) === filtroData)
-  }, [jogos, filtroData, showDateFilter])
+    let lista = jogos
+    if (showGrupoFilter && filtroGrupo !== 'todos') {
+      lista = lista.filter((jogo) => chaveGrupoSecao(jogo) === filtroGrupo)
+    }
+    if (showDateFilter && filtroData !== 'todas') {
+      lista = lista.filter((jogo) => dataChaveLocal(jogo.data_jogo) === filtroData)
+    }
+    return lista
+  }, [jogos, filtroData, filtroGrupo, showDateFilter, showGrupoFilter])
+
+  const exibirSecoesGrupo = groupByGrupo && (!showGrupoFilter || filtroGrupo === 'todos')
 
   const jogosPorData = useMemo(() => {
     const grupos = new Map<string, Jogo[]>()
@@ -71,23 +95,48 @@ export function OfficialResultsPanel({
     [datas],
   )
 
+  const opcoesFiltroGrupo = useMemo(
+    () => [
+      { value: 'todos', label: 'Todos os grupos' },
+      ...grupos.map((grupo) => ({ value: grupo, label: tituloSecaoGrupo(grupo) })),
+    ],
+    [grupos],
+  )
+
+  const exibirFiltros =
+    (showDateFilter && datas.length > 0) || (showGrupoFilter && grupos.length > 0)
+
   return (
     <div className="glass rounded-2xl p-4 space-y-3">
-      {(title || (showDateFilter && datas.length > 0)) && (
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      {(title || exibirFiltros) && (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           {title ? (
             <p className="text-sm font-semibold">{title}</p>
           ) : (
             <div />
           )}
-          {showDateFilter && datas.length > 0 && (
-            <div className="w-full sm:w-56">
-              <SelectInput
-                value={filtroData}
-                onChange={(value) => setFiltroData(value)}
-                options={opcoesFiltroData}
-                placeholder="Data"
-              />
+          {exibirFiltros && (
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:justify-end">
+              {showDateFilter && datas.length > 0 && (
+                <div className="w-full sm:w-48">
+                  <SelectInput
+                    value={filtroData}
+                    onChange={(value) => setFiltroData(value)}
+                    options={opcoesFiltroData}
+                    placeholder="Data"
+                  />
+                </div>
+              )}
+              {showGrupoFilter && grupos.length > 0 && (
+                <div className="w-full sm:w-48">
+                  <SelectInput
+                    value={filtroGrupo}
+                    onChange={(value) => setFiltroGrupo(value)}
+                    options={opcoesFiltroGrupo}
+                    placeholder="Grupo"
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -107,7 +156,7 @@ export function OfficialResultsPanel({
               >
                 {labelDataCabecalho(lista[0].data_jogo)}
               </h3>
-              {groupByGrupo ? (
+              {exibirSecoesGrupo ? (
                 <div className="space-y-4">
                   {agruparJogosPorGrupo(lista).map(([grupo, jogosGrupo]) => (
                     <div key={`${dataKey}-${grupo}`} className="space-y-2">
