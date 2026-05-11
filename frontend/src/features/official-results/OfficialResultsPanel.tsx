@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { SelectInput } from '@/components/SelectInput'
 import type { Jogo } from '@/types'
+import { adminService } from '@/services/admin.service'
 import { OfficialGameResultCard } from '@/features/official-results/OfficialGameResultCard'
 import {
   agruparJogosPorGrupo,
@@ -22,9 +24,11 @@ interface OfficialResultsPanelProps {
   showFaseFilter?: boolean
   showGrupoFilter?: boolean
   groupByGrupo?: boolean
+  allowEditMetadata?: boolean
   title?: string
   emptyMessage?: string
   onSaved?: () => void | Promise<void>
+  onMetadataSaved?: () => void | Promise<void>
   onError?: (message: string) => void
 }
 
@@ -36,11 +40,18 @@ export function OfficialResultsPanel({
   showFaseFilter = false,
   showGrupoFilter = false,
   groupByGrupo = false,
+  allowEditMetadata = false,
   title,
   emptyMessage = 'Nenhum jogo nesta lista.',
   onSaved,
+  onMetadataSaved,
   onError,
 }: OfficialResultsPanelProps) {
+  const { data: paises = [] } = useQuery({
+    queryKey: ['paises'],
+    queryFn: () => adminService.getPaises(),
+    enabled: allowEditMetadata,
+  })
   const [filtroData, setFiltroData] = useState<string>('todas')
   const [filtroFase, setFiltroFase] = useState<string>('todas')
   const [filtroGrupo, setFiltroGrupo] = useState<string>('todos')
@@ -230,7 +241,10 @@ export function OfficialResultsPanel({
                             jogo={jogo}
                             readOnly={readOnly || jogo.finalizado}
                             showFlags={showFlags}
+                            allowEditMetadata={allowEditMetadata}
+                            paises={paises}
                             onSaved={onSaved}
+                            onMetadataSaved={onMetadataSaved ?? onSaved}
                             onError={onError}
                           />
                         ))}
@@ -246,7 +260,10 @@ export function OfficialResultsPanel({
                       jogo={jogo}
                       readOnly={readOnly || jogo.finalizado}
                       showFlags={showFlags}
+                      allowEditMetadata={allowEditMetadata}
+                      paises={paises}
                       onSaved={onSaved}
+                      onMetadataSaved={onMetadataSaved ?? onSaved}
                       onError={onError}
                     />
                   ))}

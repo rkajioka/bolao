@@ -11,6 +11,15 @@ export interface CreateJogoPayload {
   data_jogo: string
 }
 
+export interface UpdateJogoPayload {
+  fase?: string
+  grupo?: string | null
+  rodada?: number | null
+  pais_casa_id?: number
+  pais_fora_id?: number
+  data_jogo?: string
+}
+
 export interface UpdateResultadoPayload {
   placar_casa: number
   placar_fora: number
@@ -30,6 +39,8 @@ export const gamesService = {
   getAll: (signal?: AbortSignal) => api.get<Jogo[]>('/jogos/cronologico', signal),
 
   create: (data: CreateJogoPayload) => api.post<Jogo>('/jogos', data),
+
+  update: (id: number, data: UpdateJogoPayload) => api.put<Jogo>(`/jogos/${id}`, data),
 
   updateResult: (id: number, data: UpdateResultadoPayload) =>
     api.patch<void>(`/jogos/${id}/resultado`, data),

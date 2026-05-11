@@ -95,7 +95,7 @@ export function EspeciaisPage() {
         >
           <Lock size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            O proprietário da plataforma não participa do bolão. Resultados oficiais do torneio ficam em Torneio → Resultados.
+            O proprietário da plataforma não participa do bolão. Resultados oficiais das partidas ficam em Palpites; os especiais do torneio, em Torneio → Resultados.
           </p>
         </div>
       )}

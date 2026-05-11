@@ -51,7 +51,7 @@ export function AdminPage() {
         </div>
         <div>
           <h1 className="text-lg font-bold">Gestão do torneio</h1>
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Cadastro de jogos, usuários globais e resultado oficial</p>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Cadastro de jogos, usuários globais e resultados especiais</p>
         </div>
       </div>
 

@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown } from 'lucide-react'
 import { AutocompleteInput } from '@/components/AutocompleteInput'
 import { SelectInput } from '@/components/SelectInput'
-import { OfficialResultsPanel } from '@/features/official-results/OfficialResultsPanel'
 import {
   dataChaveLocal,
   labelDataFiltro,
@@ -98,11 +97,6 @@ export function AdminGames({ success, error }: AdminGamesProps) {
   }, [candidatosAdmin, filtroCandidatos, buscaCandidatos])
 
   const jogosOrdenados = useMemo(() => [...jogos].sort(compareJogosPorDataJogoAsc), [jogos])
-
-  const jogosPendentes = useMemo(
-    () => jogosOrdenados.filter((j) => !j.finalizado),
-    [jogosOrdenados],
-  )
 
   const jogosFinalizados = useMemo(
     () => jogosOrdenados.filter((j) => j.finalizado),
@@ -457,22 +451,6 @@ export function AdminGames({ success, error }: AdminGamesProps) {
           )}
         </div>
       </div>
-
-      <OfficialResultsPanel
-        jogos={jogosPendentes}
-        title={`Lançar resultados (${jogosPendentes.length} em aberto)`}
-        showFlags={false}
-        emptyMessage={
-          jogosPendentes.length === 0
-            ? 'Nenhum jogo pendente de finalização.'
-            : 'Nenhum jogo nesta data.'
-        }
-        onSaved={async () => {
-          await queryClient.invalidateQueries({ queryKey: ['jogos'] })
-          success('Jogo finalizado e pontos calculados.')
-        }}
-        onError={(msg) => error(msg)}
-      />
 
       {/* Finalizados — colapsado */}
       {jogosFinalizados.length > 0 && (

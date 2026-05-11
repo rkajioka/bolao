@@ -129,6 +129,11 @@ export function JogosPage() {
     success('Resultado oficial salvo e jogo finalizado.')
   }
 
+  const handleJogoAtualizado = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['jogos'] })
+    success('Jogo atualizado.')
+  }
+
   const handleSaveMarcadores = async (
     jogoId: number,
     marcadores: { nome_jogador: string; quantidade_gols: number }[],
@@ -262,12 +267,14 @@ export function JogosPage() {
             showFaseFilter={filtroStatus === 'abertos'}
             showGrupoFilter={filtroStatus === 'abertos'}
             groupByGrupo={filtroStatus === 'abertos'}
+            allowEditMetadata={filtroStatus === 'abertos'}
             emptyMessage={
               filtroStatus === 'abertos'
                 ? 'Nenhum jogo pendente de finalização.'
                 : 'Nenhum jogo finalizado ainda.'
             }
             onSaved={handleResultadoOficialSaved}
+            onMetadataSaved={handleJogoAtualizado}
             onError={(msg) => error(msg)}
           />
         )}
