@@ -41,7 +41,7 @@ export function useEmpresaTheme() {
   const { theme } = useTheme()
 
   const { data } = useQuery({
-    queryKey: ['tema-ui', user?.empresa_id ?? 'plataforma', theme],
+    queryKey: ['tema-ui', user?.empresa_id ?? 'plataforma'],
     enabled: isAuthenticated,
     queryFn: async (): Promise<TemaTokensResponse> => {
       if (user?.empresa_id) {
@@ -56,9 +56,13 @@ export function useEmpresaTheme() {
       clearAppliedTokens()
       return
     }
-    if (!data) return
+    if (!data) {
+      clearAppliedTokens()
+      return
+    }
 
     const tokens = theme === 'light' ? data.tokens_light : data.tokens_dark
+    clearAppliedTokens()
     const root = document.documentElement
     for (const [key, value] of Object.entries(tokens)) {
       root.style.setProperty(`--${key}`, value)

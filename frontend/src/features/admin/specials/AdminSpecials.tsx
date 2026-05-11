@@ -22,6 +22,18 @@ const PONTUACAO_CONFIG_FIELDS: { key: keyof Pick<ConfiguracaoBolao,
   { key: 'pontos_artilheiro_pais', label: 'País do artilheiro' },
 ]
 
+const scoringFieldStyle = {
+  background: 'var(--segmented-active-bg)',
+  border: '1px solid var(--border-hover)',
+  color: 'var(--text)',
+} as const
+
+const scoringInputClassName =
+  'w-full min-h-10 rounded-xl px-3 py-2 text-sm font-semibold tabular-nums outline-none transition-[border-color,box-shadow] focus:border-[var(--accent)]'
+
+const phaseInputClassName =
+  'w-full min-h-9 rounded-lg px-2 py-1.5 text-sm font-semibold tabular-nums text-center outline-none transition-[border-color,box-shadow] focus:border-[var(--accent)]'
+
 export function AdminSpecials({ success, error, variant, empresaId }: AdminSpecialsProps) {
   const queryClient = useQueryClient()
   const [form, setForm] = useState<ConfiguracaoBolao | null>(null)
@@ -279,40 +291,60 @@ export function AdminSpecials({ success, error, variant, empresaId }: AdminSpeci
                   : old,
               )
             }
-            className="w-full px-3 py-3 rounded-xl text-sm outline-none"
-            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
+            className={`${scoringInputClassName} text-left`}
+            style={scoringFieldStyle}
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          {PONTUACAO_CONFIG_FIELDS.map(({ key, label }) => (
-            <div key={key}>
-              <label
-                htmlFor={`config-${key}`}
-                className="block text-xs mb-1"
-                style={{ color: 'var(--text-muted)' }}
+        <div className="space-y-2">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+              Palpites especiais
+            </p>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+              Informe quantos pontos cada acerto nos palpites especiais vale para a sua empresa.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {PONTUACAO_CONFIG_FIELDS.map(({ key, label }) => (
+              <div
+                key={key}
+                className="rounded-xl p-3 space-y-2"
+                style={{ background: 'var(--segmented-bg)', border: '1px solid var(--border)' }}
               >
-                {label}
-              </label>
-              <input
-                id={`config-${key}`}
-                type="number"
-                min={0}
-                value={form ? form[key] : 0}
-                onChange={(e) =>
-                  setForm((old) => (old ? { ...old, [key]: parseInt(e.target.value) || 0 } : old))
-                }
-                className="w-full px-3 py-2 rounded-xl text-sm outline-none"
-                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
-              />
-            </div>
-          ))}
+                <label
+                  htmlFor={`config-${key}`}
+                  className="block text-xs font-semibold"
+                  style={{ color: 'var(--text)' }}
+                >
+                  {label}
+                </label>
+                <input
+                  id={`config-${key}`}
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  value={form ? form[key] : 0}
+                  onChange={(e) =>
+                    setForm((old) => (old ? { ...old, [key]: parseInt(e.target.value) || 0 } : old))
+                  }
+                  className={`${scoringInputClassName} text-center`}
+                  style={scoringFieldStyle}
+                />
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="space-y-2">
-          <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-            Pontuação por fase
-          </p>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+              Pontuação por fase
+            </p>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+              Ajuste os pontos de placar exato, resultado e classificado em cada fase do torneio.
+            </p>
+          </div>
           {(loadFases || fetchingFases) && (
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
               Carregando pontuação por fase…
@@ -328,56 +360,84 @@ export function AdminSpecials({ success, error, variant, empresaId }: AdminSpeci
               Nenhuma fase configurada para esta empresa.
             </p>
           )}
-          <div className="grid grid-cols-12 gap-1 mb-1">
-            <span className="col-span-5 text-xs" style={{ color: 'var(--text-muted)' }} />
-            <span className="col-span-2 text-xs text-center" style={{ color: 'var(--text-muted)' }}>Exato</span>
-            <span className="col-span-2 text-xs text-center" style={{ color: 'var(--text-muted)' }}>Res.</span>
-            <span className="col-span-3 text-xs text-center" style={{ color: 'var(--text-muted)' }}>Class.</span>
-          </div>
-          {fases.map((f) => (
-            <div key={f.fase_key} className="grid grid-cols-12 gap-1 items-center">
-              <p className="col-span-5 text-xs truncate" style={{ color: 'var(--text-muted)' }}>{f.label}</p>
-              <input
-                type="number"
-                min={0}
-                aria-label={`${f.label} - placar exato`}
-                value={f.pontos_placar_exato}
-                onChange={(e) =>
-                  setFases((old) =>
-                    old.map((x) => x.fase_key === f.fase_key ? { ...x, pontos_placar_exato: parseInt(e.target.value) || 0 } : x),
-                  )
-                }
-                className="col-span-2 px-2 py-1.5 rounded-lg text-xs outline-none"
-                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
-              />
-              <input
-                type="number"
-                min={0}
-                aria-label={`${f.label} - resultado correto`}
-                value={f.pontos_resultado_correto}
-                onChange={(e) =>
-                  setFases((old) =>
-                    old.map((x) => x.fase_key === f.fase_key ? { ...x, pontos_resultado_correto: parseInt(e.target.value) || 0 } : x),
-                  )
-                }
-                className="col-span-2 px-2 py-1.5 rounded-lg text-xs outline-none"
-                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
-              />
-              <input
-                type="number"
-                min={0}
-                aria-label={`${f.label} - classificado mata-mata`}
-                value={f.pontos_classificado_mata_mata}
-                onChange={(e) =>
-                  setFases((old) =>
-                    old.map((x) => x.fase_key === f.fase_key ? { ...x, pontos_classificado_mata_mata: parseInt(e.target.value) || 0 } : x),
-                  )
-                }
-                className="col-span-3 px-2 py-1.5 rounded-lg text-xs outline-none"
-                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
-              />
+          <div
+            className="rounded-xl overflow-hidden"
+            style={{ border: '1px solid var(--border-hover)' }}
+          >
+            <div
+              className="grid grid-cols-12 gap-2 px-3 py-2.5"
+              style={{ background: 'var(--segmented-bg)', borderBottom: '1px solid var(--border)' }}
+            >
+              <span className="col-span-5 text-[10px] font-bold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
+                Fase
+              </span>
+              <span className="col-span-2 text-[10px] font-bold uppercase tracking-wide text-center" style={{ color: 'var(--highlight)' }}>
+                Exato
+              </span>
+              <span className="col-span-2 text-[10px] font-bold uppercase tracking-wide text-center" style={{ color: 'var(--accent)' }}>
+                Res.
+              </span>
+              <span className="col-span-3 text-[10px] font-bold uppercase tracking-wide text-center" style={{ color: 'var(--text-muted)' }}>
+                Class.
+              </span>
             </div>
-          ))}
+            {fases.map((f, index) => (
+              <div
+                key={f.fase_key}
+                className="grid grid-cols-12 gap-2 items-center px-3 py-2.5"
+                style={{
+                  borderBottom: index < fases.length - 1 ? '1px solid var(--border)' : 'none',
+                  background: index % 2 === 0 ? 'var(--segmented-active-bg)' : 'var(--segmented-bg)',
+                }}
+              >
+                <p className="col-span-5 text-xs font-medium truncate pr-1" style={{ color: 'var(--text)' }}>
+                  {f.label}
+                </p>
+                <input
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  aria-label={`${f.label} - placar exato`}
+                  value={f.pontos_placar_exato}
+                  onChange={(e) =>
+                    setFases((old) =>
+                      old.map((x) => x.fase_key === f.fase_key ? { ...x, pontos_placar_exato: parseInt(e.target.value) || 0 } : x),
+                    )
+                  }
+                  className={`col-span-2 ${phaseInputClassName}`}
+                  style={scoringFieldStyle}
+                />
+                <input
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  aria-label={`${f.label} - resultado correto`}
+                  value={f.pontos_resultado_correto}
+                  onChange={(e) =>
+                    setFases((old) =>
+                      old.map((x) => x.fase_key === f.fase_key ? { ...x, pontos_resultado_correto: parseInt(e.target.value) || 0 } : x),
+                    )
+                  }
+                  className={`col-span-2 ${phaseInputClassName}`}
+                  style={scoringFieldStyle}
+                />
+                <input
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  aria-label={`${f.label} - classificado mata-mata`}
+                  value={f.pontos_classificado_mata_mata}
+                  onChange={(e) =>
+                    setFases((old) =>
+                      old.map((x) => x.fase_key === f.fase_key ? { ...x, pontos_classificado_mata_mata: parseInt(e.target.value) || 0 } : x),
+                    )
+                  }
+                  className={`col-span-3 ${phaseInputClassName}`}
+                  style={scoringFieldStyle}
+                />
+              </div>
+            ))}
+          </div>
         </div>
 
         <button

@@ -1,8 +1,16 @@
-import { useEffect, useState } from 'react'
+import { createContext, createElement, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 
 type Theme = 'dark' | 'light'
 
 const LS_KEY = 'bolao_theme'
+
+interface ThemeContextValue {
+  theme: Theme
+  toggle: () => void
+  isDark: boolean
+}
+
+const ThemeContext = createContext<ThemeContextValue | null>(null)
 
 function getInitialTheme(): Theme {
   const saved = localStorage.getItem(LS_KEY) as Theme | null
@@ -10,7 +18,7 @@ function getInitialTheme(): Theme {
   return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
 }
 
-export function useTheme() {
+export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(getInitialTheme)
 
   useEffect(() => {
@@ -23,7 +31,22 @@ export function useTheme() {
     localStorage.setItem(LS_KEY, theme)
   }, [theme])
 
-  const toggle = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))
+  const value = useMemo<ThemeContextValue>(
+    () => ({
+      theme,
+      toggle: () => setTheme((current) => (current === 'dark' ? 'light' : 'dark')),
+      isDark: theme === 'dark',
+    }),
+    [theme],
+  )
 
-  return { theme, toggle, isDark: theme === 'dark' }
+  return createElement(ThemeContext.Provider, { value }, children)
+}
+
+export function useTheme(): ThemeContextValue {
+  const context = useContext(ThemeContext)
+  if (!context) {
+    throw new Error('useTheme deve ser usado dentro de ThemeProvider')
+  }
+  return context
 }
