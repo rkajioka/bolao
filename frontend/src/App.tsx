@@ -48,6 +48,17 @@ function LoadingScreen() {
   )
 }
 
+function RouteFallback() {
+  return (
+    <div className="flex items-center justify-center py-16">
+      <div
+        className="w-8 h-8 rounded-full border-2 animate-spin"
+        style={{ borderColor: 'rgba(53,208,127,0.2)', borderTopColor: 'var(--accent)' }}
+      />
+    </div>
+  )
+}
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading, user } = useAuth()
   if (isLoading) return <LoadingScreen />
@@ -126,17 +137,54 @@ export default function App() {
       {/* Protegidas */}
       <Route element={<AppShell />}>
         <Route path="/" element={<Navigate to="/jogos" replace />} />
-        <Route path="/jogos" element={<JogosPage />} />
-        <Route path="/especiais" element={<EspeciaisPage />} />
-        <Route path="/regras" element={<RegrasPage />} />
+        <Route
+          path="/jogos"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <JogosPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/especiais"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <EspeciaisPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/regras"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <RegrasPage />
+            </Suspense>
+          }
+        />
         <Route path="/grupos" element={<Navigate to="/jogos" replace />} />
-        <Route path="/ranking" element={<RankingPage />} />
-        <Route path="/perfil" element={<PerfilPage />} />
+        <Route
+          path="/ranking"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <RankingPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/perfil"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <PerfilPage />
+            </Suspense>
+          }
+        />
         <Route
           path="/admin"
           element={
             <OwnerRoute>
-              <AdminPage />
+              <Suspense fallback={<RouteFallback />}>
+                <AdminPage />
+              </Suspense>
             </OwnerRoute>
           }
         />
@@ -144,7 +192,9 @@ export default function App() {
           path="/admin/config"
           element={
             <AdminRoute>
-              <AdminConfigPage />
+              <Suspense fallback={<RouteFallback />}>
+                <AdminConfigPage />
+              </Suspense>
             </AdminRoute>
           }
         />
@@ -152,7 +202,9 @@ export default function App() {
           path="/equipe"
           element={
             <AdminRoute>
-              <EquipePage />
+              <Suspense fallback={<RouteFallback />}>
+                <EquipePage />
+              </Suspense>
             </AdminRoute>
           }
         />

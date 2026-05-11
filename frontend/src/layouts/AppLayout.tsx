@@ -1,5 +1,5 @@
 import { Suspense, type ReactNode } from 'react'
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate, useOutlet } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   CalendarDays,
@@ -44,6 +44,7 @@ export function AppLayout() {
   useEmpresaTheme()
   const navigate = useNavigate()
   const location = useLocation()
+  const outlet = useOutlet({ key: location.pathname })
 
   const handleLogout = async () => {
     await logout()
@@ -166,10 +167,8 @@ export function AppLayout() {
 
       {/* Main content */}
       <main className="flex-1 max-w-2xl w-full mx-auto px-4 pt-4 safe-bottom">
-        <Suspense fallback={<PageFallback />}>
-          <div key={location.pathname}>
-            <Outlet />
-          </div>
+        <Suspense key={location.pathname} fallback={<PageFallback />}>
+          {outlet}
         </Suspense>
       </main>
 
