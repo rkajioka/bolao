@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Building2 } from 'lucide-react'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { empresaService } from '@/services/empresa.service'
 import type { Empresa } from '@/types'
 
@@ -125,11 +126,17 @@ function EmpresasList({
   error: (msg: string) => void
 }) {
   const queryClient = useQueryClient()
+  const [marcadoresPendente, setMarcadoresPendente] = useState<{
+    id: number
+    nome: string
+    habilitado: boolean
+  } | null>(null)
 
   const atualizarMarcadores = useMutation({
     mutationFn: ({ id, habilitado }: { id: number; habilitado: boolean }) =>
       empresaService.atualizar(id, { marcadores_brasil_habilitado: habilitado }),
     onSuccess: async (_empresa, { habilitado }) => {
+      setMarcadoresPendente(null)
       await queryClient.invalidateQueries({ queryKey: ['empresas', 'owner'] })
       await queryClient.invalidateQueries({ queryKey: ['configuracao-bolao'] })
       success(
@@ -151,7 +158,34 @@ function EmpresasList({
     )
   }
 
+  const pendenteAtivar = marcadoresPendente?.habilitado === true
+
   return (
+    <>
+      <ConfirmDialog
+        open={marcadoresPendente !== null}
+        title={pendenteAtivar ? 'Ativar bônus de marcadores?' : 'Desativar bônus de marcadores?'}
+        description={
+          marcadoresPendente
+            ? pendenteAtivar
+              ? `Em ${marcadoresPendente.nome}, participantes poderão palpitar marcadores do Brasil. A lista de jogadores é global; o admin da empresa define os pontos na configuração de pontuação.`
+              : `Em ${marcadoresPendente.nome}, o ranking será recalculado sem pontos de marcadores do Brasil. Palpites antigos permanecem salvos, mas deixam de valer até você reativar o bônus.`
+            : ''
+        }
+        confirmLabel={pendenteAtivar ? 'Ativar bônus' : 'Desativar bônus'}
+        tone={pendenteAtivar ? 'default' : 'warning'}
+        confirming={atualizarMarcadores.isPending}
+        onCancel={() => {
+          if (!atualizarMarcadores.isPending) setMarcadoresPendente(null)
+        }}
+        onConfirm={() => {
+          if (!marcadoresPendente) return
+          atualizarMarcadores.mutate({
+            id: marcadoresPendente.id,
+            habilitado: marcadoresPendente.habilitado,
+          })
+        }}
+      />
     <div className="space-y-2" role="list" aria-label="Empresas cadastradas">
       {empresas.map((emp) => (
         <div
@@ -190,12 +224,11 @@ function EmpresasList({
               type="button"
               disabled={atualizarMarcadores.isPending}
               onClick={() => {
-                const proximo = !emp.marcadores_brasil_habilitado
-                const msg = proximo
-                  ? 'Ativar o bônus de marcadores do Brasil para esta empresa?'
-                  : 'Desativar o bônus? O ranking será recalculado e os pontos de marcadores deixarão de contar.'
-                if (!window.confirm(msg)) return
-                atualizarMarcadores.mutate({ id: emp.id, habilitado: proximo })
+                setMarcadoresPendente({
+                  id: emp.id,
+                  nome: emp.nome,
+                  habilitado: !emp.marcadores_brasil_habilitado,
+                })
               }}
               className="text-xs px-2.5 py-1 rounded-lg font-semibold"
               style={{
@@ -210,5 +243,6 @@ function EmpresasList({
         </div>
       ))}
     </div>
+    </>
   )
 }

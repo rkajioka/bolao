@@ -25,6 +25,7 @@ import { OwnerEmpresaPicker } from '@/components/OwnerEmpresaPicker'
 import { useResolvedEmpresaForAdmin } from '@/hooks/useResolvedEmpresaForAdmin'
 import { useAuth } from '@/features/auth/AuthContext'
 import { empresaService } from '@/services/empresa.service'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { useToast } from '@/components/Toast'
 
 function StatusBadge({ membro }: { membro: MembroEquipe }) {
@@ -443,6 +444,7 @@ export function EquipePage() {
   const [showInvite, setShowInvite] = useState(false)
   const [inviteResults, setInviteResults] = useState<ConviteResultado[] | null>(null)
   const [inviteResumo, setInviteResumo] = useState<ConviteResumoEnvio | null>(null)
+  const [usuarioRemoverId, setUsuarioRemoverId] = useState<number | null>(null)
 
   const { data: empresas = [] } = useQuery({
     queryKey: ['empresas', 'owner'],
@@ -471,7 +473,10 @@ export function EquipePage() {
 
   const removerMutation = useMutation({
     mutationFn: (id: number) => equipeService.removerUsuario(id, effectiveEmpresaId ?? undefined),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['equipe'] }),
+    onSuccess: () => {
+      setUsuarioRemoverId(null)
+      void queryClient.invalidateQueries({ queryKey: ['equipe'] })
+    },
   })
 
   const resetSenhaMutation = useMutation({
@@ -501,6 +506,21 @@ export function EquipePage() {
 
   return (
     <div className="pb-24 pt-2 flex flex-col gap-6">
+      <ConfirmDialog
+        open={usuarioRemoverId !== null}
+        title="Remover membro da empresa?"
+        description="O usuário deixa de participar do bolão desta empresa. Para voltar, será necessário um novo convite."
+        confirmLabel="Remover"
+        tone="danger"
+        confirming={removerMutation.isPending}
+        onCancel={() => {
+          if (!removerMutation.isPending) setUsuarioRemoverId(null)
+        }}
+        onConfirm={() => {
+          if (usuarioRemoverId == null) return
+          removerMutation.mutate(usuarioRemoverId)
+        }}
+      />
       {needsOwnerEmpresaPick && (
         <OwnerEmpresaPicker value={resolvedEmpresaId} onChange={setOwnerEmpresaId} />
       )}
@@ -605,11 +625,7 @@ export function EquipePage() {
                         key={membro.tipo === 'usuario' ? `u-${membro.id}` : `c-${membro.convite_id}`}
                         membro={membro}
                         onBloquear={(id, bloqueado) => bloquearMutation.mutate({ id, bloqueado })}
-                        onRemover={(id) => {
-                          if (confirm('Remover este usuário da empresa?')) {
-                            removerMutation.mutate(id)
-                          }
-                        }}
+                        onRemover={(id) => setUsuarioRemoverId(id)}
                         onResetSenha={handleResetSenha}
                       />
                     ))}
