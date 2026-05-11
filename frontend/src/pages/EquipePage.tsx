@@ -25,6 +25,7 @@ import { OwnerEmpresaPicker } from '@/components/OwnerEmpresaPicker'
 import { useResolvedEmpresaForAdmin } from '@/hooks/useResolvedEmpresaForAdmin'
 import { useAuth } from '@/features/auth/AuthContext'
 import { empresaService } from '@/services/empresa.service'
+import { useToast } from '@/components/Toast'
 
 function StatusBadge({ membro }: { membro: MembroEquipe }) {
   if (membro.tipo === 'convite') {
@@ -352,6 +353,7 @@ function InviteResults({ results, onClose }: { results: ConviteResultado[]; onCl
 
 export function EquipePage() {
   const queryClient = useQueryClient()
+  const { success, error } = useToast()
   const { empresaId: authEmpresaId } = useAuth()
   const { resolvedEmpresaId, setOwnerEmpresaId, needsOwnerEmpresaPick } = useResolvedEmpresaForAdmin()
   const [showInvite, setShowInvite] = useState(false)
@@ -388,22 +390,19 @@ export function EquipePage() {
   })
 
   const resetSenhaMutation = useMutation({
-    mutationFn: ({ id, senha }: { id: number; senha: string }) =>
-      equipeService.resetSenhaMembro(id, senha, effectiveEmpresaId ?? undefined),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['equipe'] }),
+    mutationFn: (id: number) =>
+      equipeService.resetSenhaMembro(id, effectiveEmpresaId ?? undefined),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['equipe'] })
+      success('Senha redefinida para a padrão. Enviamos as instruções por e-mail.')
+    },
+    onError: (err) => {
+      error(err instanceof Error ? err.message : 'Erro ao redefinir senha')
+    },
   })
 
-  const handleResetSenha = (id: number, nome: string) => {
-    const senha = window.prompt(
-      `Nova senha para ${nome} (mínimo 8 caracteres):`,
-      '',
-    )
-    if (senha == null) return
-    if (senha.length < 8) {
-      window.alert('A senha deve ter pelo menos 8 caracteres.')
-      return
-    }
-    resetSenhaMutation.mutate({ id, senha })
+  const handleResetSenha = (id: number) => {
+    resetSenhaMutation.mutate(id)
   }
 
   const handleInviteSuccess = (results: ConviteResultado[]) => {

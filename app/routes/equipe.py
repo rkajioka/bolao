@@ -1,11 +1,10 @@
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import get_resolved_empresa_id, require_admin
+from app.auth.dependencies import get_resolved_empresa_id, is_owner, require_admin
 from app.database import get_db
 from app.models.usuario import Usuario
 from app.schemas.convite import BulkConviteRequest
-from app.schemas.usuario import UsuarioResetPasswordBody
 from app.services import convite_service, equipe_service, usuario_service
 
 router = APIRouter(prefix="/equipe", tags=["equipe"])
@@ -70,13 +69,17 @@ def bloquear_usuario(
 @router.patch("/{usuario_id}/reset-password", status_code=status.HTTP_204_NO_CONTENT)
 def reset_password_membro(
     usuario_id: int,
-    data: UsuarioResetPasswordBody,
     db: Session = Depends(get_db),
     admin: Usuario = Depends(require_admin),
     empresa_id: int = Depends(get_resolved_empresa_id),
 ) -> None:
     usuario = equipe_service.get_usuario_empresa(db, empresa_id, usuario_id)
-    usuario_service.reset_password(db, usuario, data)
+    if not is_owner(admin) and usuario.tipo_usuario != "usuario":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Administradores só podem redefinir senha de participantes da própria empresa",
+        )
+    usuario_service.reset_password(db, usuario)
 
 
 @router.delete("/{usuario_id}", status_code=status.HTTP_204_NO_CONTENT)

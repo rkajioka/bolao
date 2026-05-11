@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.auth.jwt import create_access_token, create_refresh_token, decode_refresh_token_safe
 from app.auth.password import hash_password, verify_password
+from app.core.password_defaults import SENHA_PADRAO_TEMPORARIA
 from app.core.config import get_settings
 from app.models.refresh_token import RefreshToken
 from app.models.usuario import Usuario
@@ -150,6 +151,11 @@ def complete_primeiro_acesso(db: Session, user: Usuario, data: PrimeiroAcessoReq
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Usuário inativo",
+        )
+    if data.nova_senha == SENHA_PADRAO_TEMPORARIA:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Escolha uma senha diferente da senha temporária padrão",
         )
     user.nome = data.nome
     user.funcao = data.funcao

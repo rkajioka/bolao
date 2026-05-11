@@ -30,8 +30,8 @@ export const equipeService = {
     await api.delete(`/equipe/${usuarioId}${empresaQs(empresaId)}`)
   },
 
-  async resetSenhaMembro(usuarioId: number, senha_plana: string, empresaId?: number | null): Promise<void> {
-    await api.patch(`/equipe/${usuarioId}/reset-password${empresaQs(empresaId)}`, { senha_plana })
+  async resetSenhaMembro(usuarioId: number, empresaId?: number | null): Promise<void> {
+    await api.patch(`/equipe/${usuarioId}/reset-password${empresaQs(empresaId)}`)
   },
 
   async ativarConta(token: string, nome: string, senha: string, confirmar_senha: string, avatar_url?: string) {

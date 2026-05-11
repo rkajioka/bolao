@@ -3,8 +3,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth.password import hash_password
+from app.core.password_defaults import SENHA_PADRAO_TEMPORARIA
 from app.models.usuario import Usuario
-from app.schemas.usuario import UsuarioCreate, UsuarioResetPasswordBody, UsuarioUpdate
+from app.schemas.usuario import UsuarioCreate, UsuarioUpdate
+from app.services import email_service, empresa_service
 
 
 def _validar_vinculo_empresa(tipo_usuario: str, empresa_id: int | None) -> None:
@@ -84,7 +86,20 @@ def set_ativo(db: Session, usuario: Usuario, ativo: bool) -> Usuario:
     return usuario
 
 
-def reset_password(db: Session, usuario: Usuario, body: UsuarioResetPasswordBody) -> None:
-    usuario.senha_hash = hash_password(body.senha_plana)
+def reset_password(db: Session, usuario: Usuario) -> None:
+    usuario.senha_hash = hash_password(SENHA_PADRAO_TEMPORARIA)
     usuario.primeiro_login = True
     db.commit()
+
+    empresa_nome = "Bolão da Copa"
+    if usuario.empresa_id is not None:
+        empresa = empresa_service.get_by_id(db, usuario.empresa_id)
+        if empresa is not None:
+            empresa_nome = empresa.nome
+
+    email_service.tentar_enviar_senha_resetada_pelo_gestor(
+        db,
+        destinatario=usuario.email,
+        empresa_nome=empresa_nome,
+        senha_temporaria=SENHA_PADRAO_TEMPORARIA,
+    )

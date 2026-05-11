@@ -88,10 +88,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const res = await api.post<LoginResponse>('/auth/login', { email, senha })
     setToken(res.access_token)
     setTokenState(res.access_token)
-    if (!res.primeiro_login) {
-      const u = await api.get<User>('/auth/me')
-      setUser(u)
-    }
+    const u = await api.get<User>('/auth/me')
+    setUser(u)
     return { primeiro_login: res.primeiro_login }
   }, [])
 

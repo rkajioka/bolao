@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { AnimatePresence, motion } from 'framer-motion'
+import { ChevronDown } from 'lucide-react'
 import { UserAvatar } from '@/components/UserAvatar'
 import { adminService } from '@/services/admin.service'
 import { empresaService } from '@/services/empresa.service'
@@ -18,6 +20,40 @@ const TIPO_OPCOES: { value: TipoUsuario; label: string }[] = [
   { value: 'owner', label: 'Proprietário' },
 ]
 
+const TIPO_LABEL: Record<TipoUsuario, string> = {
+  usuario: 'Usuário',
+  admin: 'Admin',
+  owner: 'Proprietário',
+}
+
+function normalizarBusca(texto: string): string {
+  return texto.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
+}
+
+function usuarioAtendeBusca(
+  usuario: User,
+  query: string,
+  empresaNome: string,
+): boolean {
+  const tokens = normalizarBusca(query).split(/\s+/).filter(Boolean)
+  if (tokens.length === 0) return true
+
+  const corpus = normalizarBusca(
+    [
+      usuario.nome,
+      usuario.email,
+      usuario.funcao ?? '',
+      TIPO_LABEL[usuario.tipo_usuario],
+      empresaNome,
+      usuario.ativo ? 'ativo' : 'inativo',
+      String(usuario.empresa_id ?? ''),
+      String(usuario.id),
+    ].join(' '),
+  )
+
+  return tokens.every((token) => corpus.includes(token))
+}
+
 const inputStyle = {
   background: 'rgba(255,255,255,0.06)',
   border: '1px solid rgba(255,255,255,0.10)',
@@ -33,6 +69,8 @@ export function AdminUsers({ success, error }: AdminUsersProps) {
   const [funcao, setFuncao] = useState('')
   const [tipoUsuario, setTipoUsuario] = useState<TipoUsuario>('admin')
   const [empresaId, setEmpresaId] = useState<number | ''>('')
+  const [listaUsuariosAberta, setListaUsuariosAberta] = useState(false)
+  const [buscaUsuarios, setBuscaUsuarios] = useState('')
 
   const { data: usuarios = [], isLoading } = useQuery({
     queryKey: ['usuarios'],
@@ -43,6 +81,21 @@ export function AdminUsers({ success, error }: AdminUsersProps) {
     queryKey: ['empresas', 'owner'],
     queryFn: () => empresaService.listar(),
   })
+
+  const empresasPorId = useMemo(
+    () => new Map(empresas.map((empresa) => [empresa.id, empresa.nome])),
+    [empresas],
+  )
+
+  const usuariosFiltrados = useMemo(() => {
+    return usuarios.filter((usuario) =>
+      usuarioAtendeBusca(
+        usuario,
+        buscaUsuarios,
+        usuario.empresa_id != null ? empresasPorId.get(usuario.empresa_id) ?? '' : '',
+      ),
+    )
+  }, [usuarios, buscaUsuarios, empresasPorId])
 
   const resetForm = () => {
     setEditingId(null)
@@ -96,6 +149,7 @@ export function AdminUsers({ success, error }: AdminUsersProps) {
   })
 
   const startEdit = (u: User) => {
+    setListaUsuariosAberta(true)
     setEditingId(u.id)
     setNome(u.nome)
     setEmail(u.email)
@@ -137,21 +191,13 @@ export function AdminUsers({ success, error }: AdminUsersProps) {
   }
 
   const resetPassword = async (id: number, nomeUsuario: string) => {
-    const senha_plana = window.prompt(
-      `Nova senha para ${nomeUsuario} (mínimo 8 caracteres):`,
-      '',
-    )
-    if (senha_plana == null) return
-    if (senha_plana.length < 8) {
-      error('A senha deve ter pelo menos 8 caracteres.')
-      return
-    }
-    if (!confirm(`Confirmar redefinição de senha para ${nomeUsuario}?`)) return
     try {
-      await adminService.resetUserPassword(id, senha_plana)
-      success('Senha atualizada')
+      await adminService.resetUserPassword(id)
+      success(
+        `Senha de ${nomeUsuario} redefinida para a padrão. Enviamos as instruções por e-mail.`,
+      )
     } catch (err) {
-      error(err instanceof Error ? err.message : 'Erro')
+      error(err instanceof Error ? err.message : 'Erro ao redefinir senha')
     }
   }
 
@@ -256,82 +302,213 @@ export function AdminUsers({ success, error }: AdminUsersProps) {
         />
       </form>
 
-      <div className="space-y-2" role="list" aria-label="Lista de usuários">
-        {usuarios.map((u) => (
-          <div
-            key={u.id}
-            className="glass rounded-2xl p-4 flex items-center gap-3"
-            role="listitem"
-          >
-            <UserAvatar src={u.avatar_url || u.imagem_perfil} alt="" size="lg" className="shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-sm truncate">{u.nome}</p>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{u.email}</p>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{u.funcao}</p>
-              {u.empresa_id != null && (
-                <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                  Empresa #{u.empresa_id}
-                </p>
-              )}
-              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                <span
-                  className="text-xs px-2 py-0.5 rounded-full font-medium"
-                  style={{
-                    background: u.ativo ? 'var(--accent-dim)' : 'var(--danger-dim)',
-                    color: u.ativo ? 'var(--accent)' : 'var(--danger)',
-                    border: `1px solid ${u.ativo ? 'rgba(53,208,127,0.3)' : 'rgba(255,92,122,0.3)'}`,
-                  }}
+      <div className="glass rounded-2xl overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setListaUsuariosAberta((aberta) => !aberta)}
+          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left"
+          style={{ background: 'rgba(255,255,255,0.03)', border: 'none', color: 'var(--text)' }}
+          aria-expanded={listaUsuariosAberta}
+        >
+          <span className="text-sm font-semibold">
+            Usuários cadastrados ({usuarios.length})
+          </span>
+          <ChevronDown
+            size={18}
+            className="shrink-0 transition-transform duration-200"
+            style={{
+              transform: listaUsuariosAberta ? 'rotate(180deg)' : 'rotate(0deg)',
+              color: 'var(--text-muted)',
+            }}
+          />
+        </button>
+
+        <AnimatePresence initial={false}>
+          {listaUsuariosAberta && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <div
+                className="px-4 pb-4 pt-3 space-y-3"
+                style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+              >
+                <div className="space-y-2">
+                  <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+                    Cadastrados ({usuarios.length})
+                    {usuariosFiltrados.length !== usuarios.length && (
+                      <span> — exibindo {usuariosFiltrados.length}</span>
+                    )}
+                  </p>
+                  <input
+                    type="search"
+                    value={buscaUsuarios}
+                    onChange={(e) => setBuscaUsuarios(e.target.value)}
+                    placeholder="Buscar por nome, e-mail, função, papel, empresa ou status…"
+                    aria-label="Buscar usuários"
+                    className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                    style={inputStyle}
+                  />
+                </div>
+
+                <div
+                  className="rounded-xl overflow-x-auto overflow-y-auto max-h-[min(28rem,60vh)]"
+                  style={{ border: '1px solid rgba(255,255,255,0.08)' }}
                 >
-                  {u.ativo ? 'Ativo' : 'Inativo'}
-                </span>
-                {u.tipo_usuario === 'owner' && (
-                  <span
-                    className="text-xs px-2 py-0.5 rounded-full font-medium"
-                    style={{ background: 'rgba(168,85,247,0.15)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.35)' }}
-                  >
-                    Proprietário
-                  </span>
-                )}
-                {u.tipo_usuario === 'admin' && (
-                  <span
-                    className="text-xs px-2 py-0.5 rounded-full font-medium"
-                    style={{ background: 'var(--danger-dim)', color: 'var(--danger)', border: '1px solid rgba(255,92,122,0.3)' }}
-                  >
-                    Admin
-                  </span>
-                )}
+                  {usuariosFiltrados.length === 0 ? (
+                    <p className="text-sm py-6 px-3 text-center" style={{ color: 'var(--text-muted)' }}>
+                      {usuarios.length === 0
+                        ? 'Nenhum usuário cadastrado ainda.'
+                        : 'Nenhum resultado para essa busca.'}
+                    </p>
+                  ) : (
+                    <table className="w-full min-w-[44rem] text-sm">
+                      <thead>
+                        <tr
+                          className="text-left text-xs uppercase tracking-wide"
+                          style={{ color: 'var(--text-muted)', background: 'rgba(255,255,255,0.03)' }}
+                        >
+                          <th className="px-3 py-2 font-semibold">Usuário</th>
+                          <th className="px-3 py-2 font-semibold">Papel</th>
+                          <th className="px-3 py-2 font-semibold">Empresa</th>
+                          <th className="px-3 py-2 font-semibold">Status</th>
+                          <th className="px-3 py-2 font-semibold text-right">Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {usuariosFiltrados.map((u) => {
+                          const empresaNome =
+                            u.empresa_id != null
+                              ? empresasPorId.get(u.empresa_id) ?? `Empresa #${u.empresa_id}`
+                              : '—'
+
+                          return (
+                            <tr
+                              key={u.id}
+                              className="border-t border-white/5"
+                              style={{
+                                background: editingId === u.id ? 'rgba(53,208,127,0.06)' : 'transparent',
+                              }}
+                            >
+                              <td className="px-3 py-3 align-top">
+                                <div className="flex items-start gap-2 min-w-0">
+                                  <UserAvatar
+                                    src={u.avatar_url || u.imagem_perfil}
+                                    alt=""
+                                    size="sm"
+                                    className="shrink-0 mt-0.5"
+                                  />
+                                  <div className="min-w-0">
+                                    <p className="font-semibold truncate">{u.nome}</p>
+                                    <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
+                                      {u.email}
+                                    </p>
+                                    {u.funcao && (
+                                      <p className="text-xs truncate mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                                        {u.funcao}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-3 py-3 align-top">
+                                <span
+                                  className="inline-flex text-xs px-2 py-0.5 rounded-full font-medium"
+                                  style={
+                                    u.tipo_usuario === 'owner'
+                                      ? {
+                                          background: 'rgba(168,85,247,0.15)',
+                                          color: '#c084fc',
+                                          border: '1px solid rgba(168,85,247,0.35)',
+                                        }
+                                      : u.tipo_usuario === 'admin'
+                                        ? {
+                                            background: 'var(--danger-dim)',
+                                            color: 'var(--danger)',
+                                            border: '1px solid rgba(255,92,122,0.3)',
+                                          }
+                                        : {
+                                            background: 'rgba(255,255,255,0.06)',
+                                            color: 'var(--text-muted)',
+                                            border: '1px solid rgba(255,255,255,0.10)',
+                                          }
+                                  }
+                                >
+                                  {TIPO_LABEL[u.tipo_usuario]}
+                                </span>
+                              </td>
+                              <td className="px-3 py-3 align-top">
+                                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                                  {empresaNome}
+                                </p>
+                              </td>
+                              <td className="px-3 py-3 align-top">
+                                <span
+                                  className="inline-flex text-xs px-2 py-0.5 rounded-full font-medium"
+                                  style={{
+                                    background: u.ativo ? 'var(--accent-dim)' : 'var(--danger-dim)',
+                                    color: u.ativo ? 'var(--accent)' : 'var(--danger)',
+                                    border: `1px solid ${u.ativo ? 'rgba(53,208,127,0.3)' : 'rgba(255,92,122,0.3)'}`,
+                                  }}
+                                >
+                                  {u.ativo ? 'Ativo' : 'Inativo'}
+                                </span>
+                              </td>
+                              <td className="px-3 py-3 align-top">
+                                <div className="flex flex-wrap justify-end gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => startEdit(u)}
+                                    className="text-xs px-2 py-1 rounded-lg font-medium transition-all"
+                                    style={{
+                                      background: 'rgba(255,255,255,0.06)',
+                                      border: '1px solid rgba(255,255,255,0.10)',
+                                      color: 'var(--text-muted)',
+                                    }}
+                                  >
+                                    Editar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleStatus(u.id, u.ativo)}
+                                    aria-label={`${u.ativo ? 'Desativar' : 'Ativar'} usuário ${u.nome}`}
+                                    className="text-xs px-2 py-1 rounded-lg font-medium transition-all"
+                                    style={{
+                                      background: 'rgba(255,255,255,0.06)',
+                                      border: '1px solid rgba(255,255,255,0.10)',
+                                      color: 'var(--text-muted)',
+                                    }}
+                                  >
+                                    {u.ativo ? 'Desativar' : 'Ativar'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => resetPassword(u.id, u.nome)}
+                                    aria-label={`Resetar senha de ${u.nome}`}
+                                    className="text-xs px-2 py-1 rounded-lg font-medium transition-all"
+                                    style={{
+                                      background: 'rgba(255,255,255,0.06)',
+                                      border: '1px solid rgba(255,255,255,0.10)',
+                                      color: 'var(--text-muted)',
+                                    }}
+                                  >
+                                    Reset senha
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
               </div>
-            </div>
-            <div className="flex flex-col gap-1.5 shrink-0">
-              <button
-                type="button"
-                onClick={() => startEdit(u)}
-                className="text-xs px-2 py-1 rounded-lg font-medium transition-all"
-                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text-muted)' }}
-              >
-                Editar
-              </button>
-              <button
-                type="button"
-                onClick={() => toggleStatus(u.id, u.ativo)}
-                aria-label={`${u.ativo ? 'Desativar' : 'Ativar'} usuário ${u.nome}`}
-                className="text-xs px-2 py-1 rounded-lg font-medium transition-all"
-                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text-muted)' }}
-              >
-                {u.ativo ? 'Desativar' : 'Ativar'}
-              </button>
-              <button
-                type="button"
-                onClick={() => resetPassword(u.id, u.nome)}
-                aria-label={`Resetar senha de ${u.nome}`}
-                className="text-xs px-2 py-1 rounded-lg font-medium transition-all"
-                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text-muted)' }}
-              >
-                Reset senha
-              </button>
-            </div>
-          </div>
-        ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   )

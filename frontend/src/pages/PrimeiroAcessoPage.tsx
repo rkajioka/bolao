@@ -5,17 +5,27 @@ import { useMutation } from '@tanstack/react-query'
 import { User, Briefcase, Lock, CheckCircle2 } from 'lucide-react'
 import { api, getToken } from '@/lib/api'
 import { ApiError } from '@/lib/api'
+import { SENHA_PADRAO_TEMPORARIA } from '@/lib/passwordDefaults'
 import { useToast } from '@/components/Toast'
 import { useAuth } from '@/features/auth/AuthContext'
 import { perfilService, PERFIL_AVATAR_MAX_BYTES } from '@/services/perfil.service'
 import { UserAvatar } from '@/components/UserAvatar'
 
 export function PrimeiroAcessoPage() {
-  const { user, refreshUser } = useAuth()
+  const { user, refreshUser, logout } = useAuth()
 
   useEffect(() => {
     if (getToken()) void refreshUser()
   }, [refreshUser])
+
+  useEffect(() => {
+    if (!user) return
+    setForm((prev) => ({
+      ...prev,
+      nome: prev.nome || user.nome || '',
+      funcao: prev.funcao || user.funcao || '',
+    }))
+  }, [user])
 
   const [form, setForm] = useState({
     nome: '',
@@ -48,6 +58,10 @@ export function PrimeiroAcessoPage() {
       error('As senhas não coincidem.')
       return
     }
+    if (form.nova_senha === SENHA_PADRAO_TEMPORARIA) {
+      error('Escolha uma senha diferente da senha temporária padrão.')
+      return
+    }
     setLoading(true)
     try {
       await api.post('/auth/primeiro-acesso', {
@@ -56,7 +70,8 @@ export function PrimeiroAcessoPage() {
         nova_senha: form.nova_senha,
         confirmar_senha: form.confirmar_senha,
       })
-      success('Perfil criado! Entre com sua nova senha.')
+      await logout()
+      success('Senha atualizada! Entre com sua nova senha.')
       navigate('/login')
     } catch (err) {
       error(err instanceof Error ? err.message : 'Erro ao salvar perfil')

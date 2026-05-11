@@ -8,7 +8,6 @@ from app.models.usuario import Usuario
 from app.schemas.usuario import (
     UsuarioCreate,
     UsuarioRead,
-    UsuarioResetPasswordBody,
     UsuarioStatusUpdate,
     UsuarioUpdate,
 )
@@ -122,14 +121,13 @@ def patch_usuario_status(
 @router.patch("/{usuario_id}/reset-password", status_code=status.HTTP_204_NO_CONTENT)
 def patch_reset_password(
     usuario_id: int,
-    data: UsuarioResetPasswordBody,
     db: Session = Depends(get_db),
     admin: Usuario = Depends(require_owner),
 ) -> None:
     u = usuario_service.get_by_id(db, usuario_id)
     if u is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado")
-    usuario_service.reset_password(db, u, data)
+    usuario_service.reset_password(db, u)
     auditoria_admin_service.registrar_evento(
         db, admin, acao="usuarios.patch_reset_password", entidade="usuario", entidade_id=usuario_id, status="success"
     )

@@ -76,8 +76,7 @@ export const adminService = {
   updateUser: (id: number, data: UpdateUserPayload) => api.put<User>(`/usuarios/${id}`, data),
   toggleUserStatus: (id: number, ativo: boolean) =>
     api.patch<void>(`/usuarios/${id}/status`, { ativo }),
-  resetUserPassword: (id: number, senha_plana: string) =>
-    api.patch<void>(`/usuarios/${id}/reset-password`, { senha_plana }),
+  resetUserPassword: (id: number) => api.patch<void>(`/usuarios/${id}/reset-password`),
 
   getPaises: () => api.get<Pais[]>('/paises'),
 

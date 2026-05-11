@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 from app.database import SessionLocal
 from tests.factories import (
     seed_admin_e_usuario,
@@ -201,3 +203,83 @@ def test_owner_nao_pode_salvar_palpite_especial(client) -> None:
         },
     )
     assert r.status_code == 403
+
+
+def test_owner_reset_senha_define_padrao_e_exige_primeiro_acesso(client) -> None:
+    db = SessionLocal()
+    try:
+        _, _, user_id = seed_owner_admin_e_usuario(db)
+    finally:
+        db.close()
+
+    owner_token = _login(client, "owner-etapa13@example.com", "senhaowner1")
+    h_owner = {"Authorization": f"Bearer {owner_token}"}
+    r = client.patch(f"/usuarios/{user_id}/reset-password", headers=h_owner)
+    assert r.status_code == 204, r.text
+
+    login = client.post(
+        "/auth/login",
+        json={"email": "user-etapa13@example.com", "senha": "Bolao123"},
+    )
+    assert login.status_code == 200, login.text
+    assert login.json()["primeiro_login"] is True
+
+    user_token = login.json()["access_token"]
+    h_user = {"Authorization": f"Bearer {user_token}"}
+    bloqueado = client.post(
+        "/palpites-jogos",
+        headers=h_user,
+        json={"jogo_id": 1, "palpite_casa": 1, "palpite_fora": 0},
+    )
+    assert bloqueado.status_code == 403
+
+
+@patch("app.services.email_service._enviar_email_outlook")
+def test_admin_redefine_senha_apenas_da_propria_empresa(mock_send, client) -> None:
+    db = SessionLocal()
+    try:
+        _, _, user_id = seed_owner_admin_e_usuario(db)
+    finally:
+        db.close()
+
+    admin_token = _login(client, "admin-etapa13@example.com", "senhaadmin1")
+    h_admin = {"Authorization": f"Bearer {admin_token}"}
+    r = client.patch(f"/equipe/{user_id}/reset-password", headers=h_admin)
+    assert r.status_code == 204, r.text
+    mock_send.assert_called_once()
+
+    outro_token = _login(client, "owner-etapa13@example.com", "senhaowner1")
+    h_owner = {"Authorization": f"Bearer {outro_token}"}
+    r2 = client.patch(
+        f"/equipe/{user_id}/reset-password?empresa_id=99999",
+        headers=h_owner,
+    )
+    assert r2.status_code in {403, 404}
+
+
+@patch("app.services.email_service._enviar_email_outlook")
+def test_primeiro_acesso_rejeita_senha_padrao(mock_send, client) -> None:
+    db = SessionLocal()
+    try:
+        _, _, user_id = seed_owner_admin_e_usuario(db)
+    finally:
+        db.close()
+
+    owner_token = _login(client, "owner-etapa13@example.com", "senhaowner1")
+    h_owner = {"Authorization": f"Bearer {owner_token}"}
+    r = client.patch(f"/usuarios/{user_id}/reset-password", headers=h_owner)
+    assert r.status_code == 204, r.text
+
+    user_token = _login(client, "user-etapa13@example.com", "Bolao123")
+    h_user = {"Authorization": f"Bearer {user_token}"}
+    r = client.post(
+        "/auth/primeiro-acesso",
+        headers=h_user,
+        json={
+            "nome": "Usuário Teste",
+            "funcao": "Jogador",
+            "nova_senha": "Bolao123",
+            "confirmar_senha": "Bolao123",
+        },
+    )
+    assert r.status_code == 422, r.text

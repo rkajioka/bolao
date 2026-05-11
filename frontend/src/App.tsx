@@ -49,9 +49,10 @@ function LoadingScreen() {
 }
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth()
+  const { isAuthenticated, isLoading, user } = useAuth()
   if (isLoading) return <LoadingScreen />
   if (!isAuthenticated) return <Navigate to="/login" replace />
+  if (user?.primeiro_login) return <Navigate to="/primeiro-acesso" replace />
   return <>{children}</>
 }
 
