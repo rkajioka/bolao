@@ -256,7 +256,7 @@ export function OfficialGameResultCard({
 
   return (
     <div
-      className="rounded-xl p-3 space-y-3"
+      className={`rounded-xl space-y-3 ${showFlags ? 'p-4' : 'p-3'}`}
       style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
     >
       <div className="flex items-start justify-between gap-2">
@@ -264,9 +264,11 @@ export function OfficialGameResultCard({
           <p className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
             {faseLabel(jogo)} · {formatDate(jogo.data_jogo)}
           </p>
-          <p className="font-semibold text-sm mt-0.5 truncate">
-            {jogo.pais_casa.nome} vs {jogo.pais_fora.nome}
-          </p>
+          {!showFlags && (
+            <p className="font-semibold text-sm mt-0.5 truncate">
+              {jogo.pais_casa.nome} vs {jogo.pais_fora.nome}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-1 shrink-0">
           {podeEditarMetadados && (
@@ -388,63 +390,97 @@ export function OfficialGameResultCard({
         </div>
       )}
 
-      <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
-        <div className="space-y-1 min-w-0">
-          <p className="text-[11px] font-medium truncate" style={{ color: 'var(--text-muted)' }}>
-            {showFlags ? (
-              <span className="inline-flex items-center gap-1.5">
-                <CountryFlag pais={jogo.pais_casa} size="sm" />
-                {jogo.pais_casa.nome}
-              </span>
+      {showFlags ? (
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+          <div className="flex flex-col items-center gap-2 min-w-0">
+            <CountryFlag pais={jogo.pais_casa} size="md" />
+            <p className="text-sm font-semibold text-center leading-tight px-1 w-full">
+              {jogo.pais_casa.nome}
+            </p>
+            {readOnly || jogo.finalizado ? (
+              <p className="text-3xl font-bold tabular-nums">{placarCasa}</p>
             ) : (
-              jogo.pais_casa.nome
+              <input
+                type="number"
+                min={0}
+                aria-label={`Placar ${jogo.pais_casa.nome}`}
+                value={placarCasa}
+                onChange={(e) => setPlacarCasa(parseInt(e.target.value, 10) || 0)}
+                className="w-full max-w-[4.5rem] text-center text-3xl font-bold py-2 rounded-xl outline-none tabular-nums"
+                style={inputStyle}
+              />
             )}
-          </p>
-          {readOnly || jogo.finalizado ? (
-            <p className="text-2xl font-bold">{placarCasa}</p>
-          ) : (
-            <input
-              type="number"
-              min={0}
-              aria-label={`Placar ${jogo.pais_casa.nome}`}
-              value={placarCasa}
-              onChange={(e) => setPlacarCasa(parseInt(e.target.value, 10) || 0)}
-              className="w-full text-center text-2xl font-bold py-2 rounded-xl outline-none"
-              style={inputStyle}
-            />
-          )}
-        </div>
+          </div>
 
-        <span className="pb-2 text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>
-          ×
-        </span>
+          <span className="text-base font-semibold" style={{ color: 'var(--text-muted)' }}>
+            ×
+          </span>
 
-        <div className="space-y-1 min-w-0 text-right">
-          <p className="text-[11px] font-medium truncate" style={{ color: 'var(--text-muted)' }}>
-            {showFlags ? (
-              <span className="inline-flex items-center gap-1.5 justify-end">
-                {jogo.pais_fora.nome}
-                <CountryFlag pais={jogo.pais_fora} size="sm" />
-              </span>
+          <div className="flex flex-col items-center gap-2 min-w-0">
+            <CountryFlag pais={jogo.pais_fora} size="md" />
+            <p className="text-sm font-semibold text-center leading-tight px-1 w-full">
+              {jogo.pais_fora.nome}
+            </p>
+            {readOnly || jogo.finalizado ? (
+              <p className="text-3xl font-bold tabular-nums">{placarFora}</p>
             ) : (
-              jogo.pais_fora.nome
+              <input
+                type="number"
+                min={0}
+                aria-label={`Placar ${jogo.pais_fora.nome}`}
+                value={placarFora}
+                onChange={(e) => setPlacarFora(parseInt(e.target.value, 10) || 0)}
+                className="w-full max-w-[4.5rem] text-center text-3xl font-bold py-2 rounded-xl outline-none tabular-nums"
+                style={inputStyle}
+              />
             )}
-          </p>
-          {readOnly || jogo.finalizado ? (
-            <p className="text-2xl font-bold">{placarFora}</p>
-          ) : (
-            <input
-              type="number"
-              min={0}
-              aria-label={`Placar ${jogo.pais_fora.nome}`}
-              value={placarFora}
-              onChange={(e) => setPlacarFora(parseInt(e.target.value, 10) || 0)}
-              className="w-full text-center text-2xl font-bold py-2 rounded-xl outline-none"
-              style={inputStyle}
-            />
-          )}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
+          <div className="space-y-1 min-w-0">
+            <p className="text-[11px] font-medium truncate" style={{ color: 'var(--text-muted)' }}>
+              {jogo.pais_casa.nome}
+            </p>
+            {readOnly || jogo.finalizado ? (
+              <p className="text-2xl font-bold">{placarCasa}</p>
+            ) : (
+              <input
+                type="number"
+                min={0}
+                aria-label={`Placar ${jogo.pais_casa.nome}`}
+                value={placarCasa}
+                onChange={(e) => setPlacarCasa(parseInt(e.target.value, 10) || 0)}
+                className="w-full text-center text-2xl font-bold py-2 rounded-xl outline-none"
+                style={inputStyle}
+              />
+            )}
+          </div>
+
+          <span className="pb-2 text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>
+            ×
+          </span>
+
+          <div className="space-y-1 min-w-0 text-right">
+            <p className="text-[11px] font-medium truncate" style={{ color: 'var(--text-muted)' }}>
+              {jogo.pais_fora.nome}
+            </p>
+            {readOnly || jogo.finalizado ? (
+              <p className="text-2xl font-bold">{placarFora}</p>
+            ) : (
+              <input
+                type="number"
+                min={0}
+                aria-label={`Placar ${jogo.pais_fora.nome}`}
+                value={placarFora}
+                onChange={(e) => setPlacarFora(parseInt(e.target.value, 10) || 0)}
+                className="w-full text-center text-2xl font-bold py-2 rounded-xl outline-none"
+                style={inputStyle}
+              />
+            )}
+          </div>
+        </div>
+      )}
 
       {isMataMata && empatado && !readOnly && !jogo.finalizado && (
         <label className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
