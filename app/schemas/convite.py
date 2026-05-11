@@ -67,7 +67,9 @@ class ConviteResumoEnvio(BaseModel):
     total: int
     enviados: int
     falhas: int
+    bloqueados_limite: int = 0
     alerta_admins_enviado: bool
+    alerta_owners_limite_enviado: bool = False
 
 
 class BulkConviteResponse(BaseModel):

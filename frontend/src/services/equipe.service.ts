@@ -31,7 +31,10 @@ function mergeResumo(current: ConviteResumoEnvio | null, next: ConviteResumoEnvi
     total: current.total + next.total,
     enviados: current.enviados + next.enviados,
     falhas: current.falhas + next.falhas,
+    bloqueados_limite: current.bloqueados_limite + next.bloqueados_limite,
     alerta_admins_enviado: current.alerta_admins_enviado || next.alerta_admins_enviado,
+    alerta_owners_limite_enviado:
+      current.alerta_owners_limite_enviado || next.alerta_owners_limite_enviado,
   }
 }
 
@@ -75,7 +78,9 @@ export const equipeService = {
             total: failedItems.length,
             enviados: 0,
             falhas: failedItems.length,
+            bloqueados_limite: 0,
             alerta_admins_enviado: false,
+            alerta_owners_limite_enviado: false,
           },
         )
         onProgress?.(itens.length, emails.length, failedItems)
@@ -92,7 +97,9 @@ export const equipeService = {
         total: 0,
         enviados: 0,
         falhas: 0,
+        bloqueados_limite: 0,
         alerta_admins_enviado: false,
+        alerta_owners_limite_enviado: false,
       },
     }
   },

@@ -3,6 +3,7 @@ import type { Empresa } from '@/types'
 
 export interface EmpresaCreatePayload {
   nome: string
+  max_usuarios: number
   marcadores_brasil_habilitado?: boolean
 }
 
@@ -10,6 +11,7 @@ export interface EmpresaUpdatePayload {
   marcadores_brasil_habilitado?: boolean
   nome?: string
   ativo?: boolean
+  max_usuarios?: number
 }
 
 export const empresaService = {

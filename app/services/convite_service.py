@@ -11,7 +11,7 @@ from app.models.convite import Convite
 from app.models.empresa import Empresa
 from app.models.usuario import Usuario
 from app.schemas.convite import BulkConviteRequest, BulkConviteResponse, ConviteResumoEnvio, ConviteResultadoItem
-from app.services import audit_log_service, email_dispatch_service, email_service
+from app.services import audit_log_service, email_dispatch_service, email_service, empresa_quota_service
 
 
 _TOKEN_BYTES = 48
@@ -48,12 +48,17 @@ def criar_bulk_convites(
 ) -> BulkConviteResponse:
     resultados: list[ConviteResultadoItem] = []
     falhas_envio: list[email_dispatch_service.FalhaEnvioItem] = []
+    emails_bloqueados_limite: list[str] = []
     enviados = 0
     falhas = 0
+    bloqueados_limite = 0
+    reservas_lote = 0
     intervalo = get_settings().email_bulk_interval_seconds
 
     empresa = db.get(Empresa, empresa_id)
-    empresa_nome = empresa.nome if empresa is not None else "Bolão"
+    if empresa is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empresa não encontrada")
+    empresa_nome = empresa.nome
 
     for indice, email in enumerate(data.emails):
         usuario_existente = db.scalar(
@@ -90,6 +95,22 @@ def criar_bulk_convites(
             )
             continue
 
+        if not empresa_quota_service.pode_adicionar_usuario(
+            db,
+            empresa,
+            reservas_extras=reservas_lote,
+        ):
+            bloqueados_limite += 1
+            emails_bloqueados_limite.append(email)
+            resultados.append(
+                ConviteResultadoItem(
+                    email=email,
+                    status="limite_usuarios",
+                    email_erro="A empresa atingiu o limite de usuários.",
+                )
+            )
+            continue
+
         token = _gerar_token()
         convite = Convite(
             empresa_id=empresa_id,
@@ -100,6 +121,7 @@ def criar_bulk_convites(
         )
         db.add(convite)
         db.flush()
+        reservas_lote += 1
 
         audit_log_service.log(
             db,
@@ -152,6 +174,19 @@ def criar_bulk_convites(
             falhas=falhas_envio,
         )
 
+    alerta_owners_limite_enviado = False
+    if emails_bloqueados_limite:
+        ocupacao = empresa_quota_service.ocupacao_atual(db, empresa_id)
+        alerta_owners_limite_enviado = email_dispatch_service.notificar_owners_limite_usuarios(
+            db,
+            empresa_id=empresa_id,
+            empresa_nome=empresa_nome,
+            max_usuarios=empresa.max_usuarios,
+            ocupacao_atual=ocupacao,
+            operacao="convites da equipe",
+            emails_bloqueados=emails_bloqueados_limite,
+        )
+
     db.commit()
     return BulkConviteResponse(
         itens=resultados,
@@ -159,7 +194,9 @@ def criar_bulk_convites(
             total=len(resultados),
             enviados=enviados,
             falhas=falhas,
+            bloqueados_limite=bloqueados_limite,
             alerta_admins_enviado=alerta_admins_enviado,
+            alerta_owners_limite_enviado=alerta_owners_limite_enviado,
         ),
     )
 

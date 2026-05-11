@@ -1,6 +1,7 @@
 import secrets
 from dataclasses import dataclass
 
+from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -9,7 +10,7 @@ from app.auth.password import hash_password
 from app.core.password_defaults import SENHA_PADRAO_TEMPORARIA
 from app.models.usuario import Usuario
 from app.schemas.usuario import UsuarioCreate, UsuarioRead, UsuarioUpdate
-from app.services import email_dispatch_service, email_service, empresa_service, password_reset_service
+from app.services import email_dispatch_service, email_service, empresa_quota_service, empresa_service, password_reset_service
 
 
 def _validar_vinculo_empresa(tipo_usuario: str, empresa_id: int | None) -> None:
@@ -104,6 +105,25 @@ def _enviar_link_acesso_inicial(db: Session, usuario: Usuario) -> EmailEntregaRe
 
 def create_usuario(db: Session, data: UsuarioCreate) -> tuple[Usuario, EmailEntregaResultado | None]:
     _validar_vinculo_empresa(data.tipo_usuario, data.empresa_id)
+    if data.empresa_id is not None:
+        empresa = empresa_service.get_by_id(db, data.empresa_id)
+        if empresa is not None and not empresa_quota_service.pode_adicionar_usuario(db, empresa):
+            email_dispatch_service.notificar_owners_limite_usuarios(
+                db,
+                empresa_id=empresa.id,
+                empresa_nome=empresa.nome,
+                max_usuarios=empresa.max_usuarios,
+                ocupacao_atual=empresa_quota_service.ocupacao_atual(db, empresa.id),
+                operacao="criação de usuário",
+                emails_bloqueados=[str(data.email).strip().lower()],
+            )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"A empresa atingiu o limite de {empresa.max_usuarios} usuários. "
+                    "Solicite ao proprietário da plataforma o aumento da cota."
+                ),
+            )
     senha_inicial = data.senha_plana or secrets.token_urlsafe(48)
     u = Usuario(
         nome=data.nome,
@@ -145,6 +165,16 @@ def update_usuario(db: Session, usuario: Usuario, data: UsuarioUpdate) -> Usuari
     if data.tipo_usuario is not None:
         usuario.tipo_usuario = data.tipo_usuario
     if "empresa_id" in data.model_fields_set:
+        if data.empresa_id is not None and data.empresa_id != usuario.empresa_id:
+            empresa = empresa_service.get_by_id(db, data.empresa_id)
+            if empresa is not None and not empresa_quota_service.pode_adicionar_usuario(db, empresa):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=(
+                        f"A empresa atingiu o limite de {empresa.max_usuarios} usuários. "
+                        "Solicite ao proprietário da plataforma o aumento da cota."
+                    ),
+                )
         usuario.empresa_id = data.empresa_id
     try:
         db.commit()

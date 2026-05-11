@@ -16,7 +16,7 @@ def list_empresas(
     db: Session = Depends(get_db),
     _admin: Usuario = Depends(require_owner),
 ) -> list:
-    return empresa_service.list_empresas(db)
+    return empresa_service.list_empresas_read(db)
 
 
 @router.post("/", response_model=EmpresaRead, status_code=status.HTTP_201_CREATED)
@@ -43,7 +43,7 @@ def get_empresa(
     empresa = empresa_service.get_by_id(db, empresa_id)
     if empresa is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empresa não encontrada")
-    return empresa
+    return empresa_service.empresa_para_read(db, empresa)
 
 
 @router.patch("/{empresa_id}", response_model=EmpresaRead)

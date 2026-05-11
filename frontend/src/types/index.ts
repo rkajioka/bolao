@@ -19,13 +19,17 @@ export interface Empresa {
   codigo_empresa: string
   ativo: boolean
   marcadores_brasil_habilitado: boolean
+  max_usuarios: number
+  total_usuarios: number
+  convites_pendentes: number
+  vagas_restantes: number
   created_at: string
   updated_at: string
 }
 
 export interface ConviteResultado {
   email: string
-  status: 'convite_criado' | 'convite_pendente' | 'ja_cadastrado'
+  status: 'convite_criado' | 'convite_pendente' | 'ja_cadastrado' | 'limite_usuarios'
   token?: string
   expiracao?: string
   /** Quando true, o link foi enviado por e-mail (token omitido na API). */
@@ -38,7 +42,9 @@ export interface ConviteResumoEnvio {
   total: number
   enviados: number
   falhas: number
+  bloqueados_limite: number
   alerta_admins_enviado: boolean
+  alerta_owners_limite_enviado: boolean
 }
 
 export interface BulkConviteResponse {

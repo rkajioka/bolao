@@ -47,6 +47,16 @@ def enviar_com_retentativas(enviar: Callable[[], None]) -> ResultadoEnvio:
     return ResultadoEnvio(sucesso=False, tentativas=max_attempts, erro=ultimo_erro)
 
 
+def listar_emails_owners(db: Session) -> list[str]:
+    owners = db.scalars(
+        select(Usuario.email).where(
+            Usuario.tipo_usuario == "owner",
+            Usuario.ativo.is_(True),
+        )
+    ).all()
+    return [email.strip().lower() for email in owners if email]
+
+
 def listar_emails_admins_empresa(db: Session, empresa_id: int) -> list[str]:
     admins = db.scalars(
         select(Usuario.email).where(
@@ -98,5 +108,48 @@ def notificar_admins_falha_envio(
             enviados += 1
         except Exception:
             logger.exception("Falha ao alertar admin %s sobre envio de e-mail", destinatario)
+
+    return enviados > 0
+
+
+def notificar_owners_limite_usuarios(
+    db: Session,
+    *,
+    empresa_id: int,
+    empresa_nome: str,
+    max_usuarios: int,
+    ocupacao_atual: int,
+    operacao: str,
+    emails_bloqueados: list[str],
+) -> bool:
+    if not emails_bloqueados:
+        return False
+
+    destinatarios = listar_emails_owners(db)
+    if not destinatarios:
+        return False
+
+    linhas = "".join(f"<li>{email}</li>" for email in emails_bloqueados)
+    assunto = f"Limite de usuários atingido — {empresa_nome}"
+    corpo_html = (
+        f"<p>A empresa <strong>{empresa_nome}</strong> atingiu o limite de "
+        f"<strong>{max_usuarios}</strong> usuários (ocupação atual: <strong>{ocupacao_atual}</strong>).</p>"
+        f"<p>Operação bloqueada: <strong>{operacao}</strong>.</p>"
+        f"<p>E-mails não convidados/criados:</p><ul>{linhas}</ul>"
+        "<p>Ajuste a cota da empresa em Administração → Empresas para liberar novos cadastros.</p>"
+    )
+
+    enviados = 0
+    for destinatario in destinatarios:
+        try:
+            email_service.enviar_email_outlook(
+                destinatario=destinatario,
+                assunto=assunto,
+                corpo_html=corpo_html,
+                nome_remetente=empresa_nome,
+            )
+            enviados += 1
+        except Exception:
+            logger.exception("Falha ao alertar owner %s sobre limite de usuários", destinatario)
 
     return enviados > 0

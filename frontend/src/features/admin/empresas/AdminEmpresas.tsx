@@ -13,6 +13,7 @@ interface AdminEmpresasProps {
 export function AdminEmpresas({ success, error }: AdminEmpresasProps) {
   const queryClient = useQueryClient()
   const [nome, setNome] = useState('')
+  const [maxUsuarios, setMaxUsuarios] = useState('50')
   const [marcadoresBrasilHabilitado, setMarcadoresBrasilHabilitado] = useState(false)
 
   const { data: empresas = [], isLoading } = useQuery({
@@ -24,10 +25,12 @@ export function AdminEmpresas({ success, error }: AdminEmpresasProps) {
     mutationFn: () =>
       empresaService.criar({
         nome: nome.trim(),
+        max_usuarios: Number(maxUsuarios),
         marcadores_brasil_habilitado: marcadoresBrasilHabilitado,
       }),
     onSuccess: async (empresa) => {
       setNome('')
+      setMaxUsuarios('50')
       setMarcadoresBrasilHabilitado(false)
       await queryClient.invalidateQueries({ queryKey: ['empresas', 'owner'] })
       success(
@@ -43,6 +46,11 @@ export function AdminEmpresas({ success, error }: AdminEmpresasProps) {
     e.preventDefault()
     if (!nome.trim()) {
       error('Informe o nome da empresa.')
+      return
+    }
+    const limite = Number(maxUsuarios)
+    if (!Number.isInteger(limite) || limite < 1) {
+      error('Informe um limite máximo de usuários válido.')
       return
     }
     criar.mutate()
@@ -79,6 +87,24 @@ export function AdminEmpresas({ success, error }: AdminEmpresasProps) {
               color: 'var(--text)',
             }}
             maxLength={255}
+            required
+          />
+        </label>
+        <label className="block space-y-1">
+          <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+            Máximo de usuários
+          </span>
+          <input
+            type="number"
+            min={1}
+            value={maxUsuarios}
+            onChange={(e) => setMaxUsuarios(e.target.value)}
+            className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+            style={{
+              background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.10)',
+              color: 'var(--text)',
+            }}
             required
           />
         </label>
@@ -131,6 +157,19 @@ function EmpresasList({
     nome: string
     habilitado: boolean
   } | null>(null)
+  const [maxUsuariosEdicao, setMaxUsuariosEdicao] = useState<Record<number, string>>({})
+
+  const atualizarLimite = useMutation({
+    mutationFn: ({ id, max_usuarios }: { id: number; max_usuarios: number }) =>
+      empresaService.atualizar(id, { max_usuarios }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['empresas', 'owner'] })
+      success('Limite de usuários atualizado.')
+    },
+    onError: (err) => {
+      error(err instanceof Error ? err.message : 'Erro ao atualizar limite de usuários')
+    },
+  })
 
   const atualizarMarcadores = useMutation({
     mutationFn: ({ id, habilitado }: { id: number; habilitado: boolean }) =>
@@ -198,6 +237,51 @@ function EmpresasList({
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
               Código: {emp.codigo_empresa}
             </p>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+              Uso: {emp.total_usuarios + emp.convites_pendentes}/{emp.max_usuarios} usuários
+              {emp.convites_pendentes > 0 ? ` (${emp.convites_pendentes} convite(s) pendente(s))` : ''}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-end gap-2 shrink-0">
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+                Máximo de usuários
+              </span>
+              <input
+                type="number"
+                min={1}
+                value={maxUsuariosEdicao[emp.id] ?? String(emp.max_usuarios)}
+                onChange={(e) =>
+                  setMaxUsuariosEdicao((current) => ({ ...current, [emp.id]: e.target.value }))
+                }
+                className="w-28 px-2.5 py-1.5 rounded-lg text-sm outline-none"
+                style={{
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.10)',
+                  color: 'var(--text)',
+                }}
+              />
+            </label>
+            <button
+              type="button"
+              disabled={atualizarLimite.isPending}
+              onClick={() => {
+                const valor = Number(maxUsuariosEdicao[emp.id] ?? emp.max_usuarios)
+                if (!Number.isInteger(valor) || valor < 1) {
+                  error('Informe um limite máximo de usuários válido.')
+                  return
+                }
+                atualizarLimite.mutate({ id: emp.id, max_usuarios: valor })
+              }}
+              className="text-xs px-2.5 py-1.5 rounded-lg font-semibold"
+              style={{
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.10)',
+                color: 'var(--text)',
+              }}
+            >
+              Salvar limite
+            </button>
           </div>
           <div className="flex flex-wrap items-center gap-2 shrink-0">
             <span

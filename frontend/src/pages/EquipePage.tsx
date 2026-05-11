@@ -278,15 +278,23 @@ function InviteForm({
       })
       onSuccess(payload)
       setText('')
-      if (payload.resumo_envio.falhas > 0) {
-        const alerta = payload.resumo_envio.alerta_admins_enviado
+      const resumo = payload.resumo_envio
+      if (resumo.bloqueados_limite > 0) {
+        const alertaOwner = resumo.alerta_owners_limite_enviado
+          ? ' Os proprietários da plataforma foram alertados por e-mail.'
+          : ''
+        toastError(
+          `${resumo.bloqueados_limite} convite(s) bloqueados por limite de usuários da empresa.${alertaOwner}`,
+        )
+      } else if (resumo.falhas > 0) {
+        const alerta = resumo.alerta_admins_enviado
           ? ' Os administradores da empresa foram alertados por e-mail.'
           : ''
         toastError(
-          `${payload.resumo_envio.falhas} convite(s) não foram entregues por e-mail.${alerta}`,
+          `${resumo.falhas} convite(s) não foram entregues por e-mail.${alerta}`,
         )
-      } else {
-        success(`${payload.resumo_envio.enviados} convite(s) enviados por e-mail.`)
+      } else if (resumo.enviados > 0) {
+        success(`${resumo.enviados} convite(s) enviados por e-mail.`)
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Erro ao enviar convites')
@@ -380,7 +388,9 @@ function InviteForm({
                       ? 'Já cadastrado'
                       : result.status === 'convite_pendente'
                         ? 'Convite pendente'
-                        : result.token
+                        : result.status === 'limite_usuarios'
+                          ? 'Limite de usuários da empresa atingido'
+                          : result.token
                           ? 'Convite criado — copie o link'
                           : 'Processado'}
               </p>
