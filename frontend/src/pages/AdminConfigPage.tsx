@@ -57,7 +57,7 @@ export function AdminConfigPage() {
       <div>
         <h1 className="text-lg font-bold">Configuração do bolão</h1>
         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-          Pontuação e identidade visual da empresa
+          Pontuação e cores do bolão da empresa
         </p>
       </div>
 

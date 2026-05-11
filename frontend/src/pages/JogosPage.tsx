@@ -262,7 +262,7 @@ export function JogosPage() {
           <OfficialResultsPanel
             jogos={filtroStatus === 'abertos' ? jogosCronoPendentesOficial : jogosCronoFinalizadosOficial}
             readOnly={filtroStatus === 'fechados'}
-            showFlags={false}
+            showFlags
             showDateFilter={filtroStatus === 'abertos'}
             showFaseFilter={filtroStatus === 'abertos'}
             showGrupoFilter={filtroStatus === 'abertos'}
