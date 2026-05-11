@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field, model_validator
 
+from app.core.password_policy import validar_complexidade_senha
+
 
 class PerfilUpdate(BaseModel):
     nome: str | None = Field(default=None, min_length=1, max_length=255)
@@ -22,4 +24,5 @@ class AlterarSenhaRequest(BaseModel):
     def senhas_coincidem(self) -> "AlterarSenhaRequest":
         if self.nova_senha != self.confirmar_senha:
             raise ValueError("Senha e confirmação devem coincidir")
+        validar_complexidade_senha(self.nova_senha)
         return self

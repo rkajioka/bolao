@@ -7,6 +7,7 @@ import { MatchTeams } from './MatchTeams'
 import { MatchResult } from './MatchResult'
 import { KnockoutSection } from './KnockoutSection'
 import { BrazilScorers } from './BrazilScorers'
+import { FinishedMatchSummary } from './FinishedMatchSummary'
 import { api } from '@/lib/api'
 import type { Jogo, MarcadorCandidato, MarcadorPalpite, PalpiteJogo } from '@/types'
 import { jogoBloqueado, isBrasil } from '@/lib/utils'
@@ -46,7 +47,7 @@ export function GameCard({
   const { data: marcadoresSalvos = [] } = useQuery({
     queryKey: ['marcadores-brasil', 'me', jogo.id],
     queryFn: () => api.get<MarcadorPalpite[]>(`/marcadores-brasil/me/${jogo.id}`),
-    enabled: brasil && temPalpite && marcadoresBrasilHabilitado,
+    enabled: brasil && temPalpite && marcadoresBrasilHabilitado && (jogo.finalizado || !bloqueado),
   })
 
   const marcadoresParaUi = useMemo(
@@ -118,42 +119,33 @@ export function GameCard({
       <MatchHeader jogo={jogo} todosJogos={todosJogos} status={status} />
 
       <div className="px-4 py-4">
-        <MatchTeams
-          jogo={jogo}
-          casa={casa}
-          fora={fora}
-          bloqueado={bloqueado}
-          onCasaChange={setCasa}
-          onForaChange={setFora}
-        />
+        {jogo.finalizado ? (
+          <FinishedMatchSummary
+            jogo={jogo}
+            palpite={palpite}
+            marcadoresBrasilHabilitado={marcadoresBrasilHabilitado}
+            marcadoresSalvos={marcadoresParaUi}
+          />
+        ) : (
+          <>
+            <MatchTeams
+              jogo={jogo}
+              casa={casa}
+              fora={fora}
+              bloqueado={bloqueado}
+              onCasaChange={setCasa}
+              onForaChange={setFora}
+            />
 
-        <MatchResult jogo={jogo} />
+            <MatchResult jogo={jogo} />
 
-        <KnockoutSection
-          jogo={jogo}
-          classificado={classificado}
-          bloqueado={bloqueado}
-          onClassificadoChange={setClassificado}
-        />
-
-        {/* Pontos */}
-        {temPalpite && palpite && palpite.pontuacao_total > 0 && (
-          <div className="mt-2 flex gap-1.5 flex-wrap">
-            <span
-              className="text-xs px-2 py-0.5 rounded-full font-semibold"
-              style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid rgba(53,208,127,0.3)' }}
-            >
-              +{palpite.pontuacao_total} pts
-            </span>
-            {palpite.pontuacao_placar > 0 && (
-              <span
-                className="text-xs px-2 py-0.5 rounded-full"
-                style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.08)' }}
-              >
-                Exato +{palpite.pontuacao_placar}
-              </span>
-            )}
-          </div>
+            <KnockoutSection
+              jogo={jogo}
+              classificado={classificado}
+              bloqueado={bloqueado}
+              onClassificadoChange={setClassificado}
+            />
+          </>
         )}
 
         {/* Botão salvar */}
@@ -203,7 +195,7 @@ export function GameCard({
         )}
 
         {/* Marcadores do Brasil */}
-        {brasil && temPalpite && marcadoresBrasilHabilitado && onSaveMarcadores && (
+        {!jogo.finalizado && brasil && temPalpite && marcadoresBrasilHabilitado && onSaveMarcadores && (
           <BrazilScorers
             marcadores={marcadoresParaUi}
             candidatos={candidatos}
@@ -214,7 +206,7 @@ export function GameCard({
           />
         )}
 
-        {brasil && marcadoresBrasilHabilitado && !temPalpite && (
+        {!jogo.finalizado && brasil && marcadoresBrasilHabilitado && !temPalpite && (
           <p className="mt-3 text-xs text-center" style={{ color: 'var(--text-muted)' }}>
             Salve o palpite para registrar marcadores.
           </p>

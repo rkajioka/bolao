@@ -319,11 +319,12 @@ def test_redefinir_senha_encerra_primeiro_login(mock_send, client) -> None:
         "/auth/redefinir-senha",
         json={
             "token": token,
-            "nova_senha": "novasenha1",
-            "confirmar_senha": "novasenha1",
+            "nova_senha": "NovaSenha1!",
+            "confirmar_senha": "NovaSenha1!",
         },
     )
-    assert r.status_code == 204
+    assert r.status_code == 200, r.text
+    assert r.json()["access_token"]
 
     db_check = SessionLocal()
     try:

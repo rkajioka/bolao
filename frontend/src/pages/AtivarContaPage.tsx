@@ -9,6 +9,7 @@ import { PERFIL_AVATAR_MAX_BYTES } from '@/services/perfil.service'
 import { UserAvatar } from '@/components/UserAvatar'
 import { setToken } from '@/lib/api'
 import { ApiError } from '@/lib/api'
+import { validarSenhaSegura } from '@/lib/passwordPolicy'
 
 export function AtivarContaPage() {
   const [params] = useSearchParams()
@@ -77,8 +78,9 @@ export function AtivarContaPage() {
       setError('As senhas não coincidem')
       return
     }
-    if (senha.length < 8) {
-      setError('A senha deve ter ao menos 8 caracteres')
+    const senhaInvalida = validarSenhaSegura(senha)
+    if (senhaInvalida) {
+      setError(senhaInvalida)
       return
     }
     setLoading(true)

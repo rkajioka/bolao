@@ -2,13 +2,16 @@ import { useState } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Lock, Eye, EyeOff, CheckCircle2, ArrowLeft } from 'lucide-react'
+import { useAuth } from '@/features/auth/AuthContext'
 import { perfilService } from '@/services/perfil.service'
-import { ApiError } from '@/lib/api'
+import { ApiError, setToken } from '@/lib/api'
+import { validarSenhaSegura } from '@/lib/passwordPolicy'
 
 export function RedefinirSenhaPage() {
   const [params] = useSearchParams()
   const token = params.get('token') ?? ''
   const navigate = useNavigate()
+  const { refreshUser } = useAuth()
 
   const [senha, setSenha] = useState('')
   const [confirmar, setConfirmar] = useState('')
@@ -41,16 +44,19 @@ export function RedefinirSenhaPage() {
       setError('As senhas não coincidem')
       return
     }
-    if (senha.length < 8) {
-      setError('A senha deve ter ao menos 8 caracteres')
+    const senhaInvalida = validarSenhaSegura(senha)
+    if (senhaInvalida) {
+      setError(senhaInvalida)
       return
     }
     setLoading(true)
     setError(null)
     try {
-      await perfilService.redefinirSenha(token, senha, confirmar)
+      const res = await perfilService.redefinirSenha(token, senha, confirmar)
+      setToken(res.access_token)
+      await refreshUser()
       setSuccess(true)
-      setTimeout(() => navigate('/login', { replace: true }), 2000)
+      setTimeout(() => navigate('/jogos', { replace: true }), 1500)
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message)
@@ -100,7 +106,7 @@ export function RedefinirSenhaPage() {
                 Senha redefinida!
               </p>
               <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-                Redirecionando para o login…
+                Entrando no bolão…
               </p>
             </div>
           </motion.div>
@@ -119,7 +125,7 @@ export function RedefinirSenhaPage() {
                   type={showSenha ? 'text' : 'password'}
                   value={senha}
                   onChange={(e) => setSenha(e.target.value)}
-                  placeholder="Mínimo 8 caracteres"
+                  placeholder="8+ caracteres, 1 maiúscula e 1 especial"
                   required
                   autoFocus
                   className="flex-1 bg-transparent outline-none text-sm"

@@ -1,5 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
+from app.core.password_policy import validar_complexidade_senha
+
 
 def _normalize_email(v: str) -> str:
     return v.strip().lower()
@@ -29,6 +31,7 @@ class ResetPasswordRequest(BaseModel):
     def senhas_coincidem(self) -> "ResetPasswordRequest":
         if self.nova_senha != self.confirmar_senha:
             raise ValueError("Senha e confirmação devem coincidir")
+        validar_complexidade_senha(self.nova_senha)
         return self
 
 

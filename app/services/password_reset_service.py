@@ -128,7 +128,7 @@ def redefinir_senha(
     token: str,
     nova_senha: str,
     ip: str | None = None,
-) -> None:
+) -> Usuario:
     agora = datetime.now(UTC)
     pr = db.scalar(
         select(PasswordReset).where(
@@ -165,3 +165,5 @@ def redefinir_senha(
     )
 
     db.commit()
+    db.refresh(usuario)
+    return usuario

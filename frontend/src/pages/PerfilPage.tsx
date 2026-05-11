@@ -124,7 +124,7 @@ export function PerfilPage() {
               Empresa
             </p>
             <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
-              Empresa #{user.empresa_id}
+              {user.empresa_nome ?? `Empresa #${user.empresa_id}`}
             </p>
           </div>
         </div>

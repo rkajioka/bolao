@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Mail, Lock, ArrowRight } from 'lucide-react'
+import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useToast } from '@/components/Toast'
 
@@ -9,6 +9,7 @@ export function LoginPage() {
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showSenha, setShowSenha] = useState(false)
   const { login } = useAuth()
   const { error } = useToast()
   const navigate = useNavigate()
@@ -120,13 +121,13 @@ export function LoginPage() {
               />
               <input
                 id="senha"
-                type="password"
+                type={showSenha ? 'text' : 'password'}
                 value={senha}
                 onChange={(e) => setSenha(e.target.value)}
                 autoComplete="current-password"
                 required
                 placeholder="••••••••"
-                className="w-full pl-10 pr-4 py-3 rounded-xl text-sm transition-all duration-150 outline-none"
+                className="w-full pl-10 pr-11 py-3 rounded-xl text-sm transition-all duration-150 outline-none"
                 style={{
                   background: 'rgba(255,255,255,0.06)',
                   border: '1px solid rgba(255,255,255,0.10)',
@@ -139,6 +140,15 @@ export function LoginPage() {
                   (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)')
                 }
               />
+              <button
+                type="button"
+                onClick={() => setShowSenha((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2"
+                style={{ color: 'var(--text-muted)' }}
+                aria-label={showSenha ? 'Ocultar senha' : 'Mostrar senha'}
+              >
+                {showSenha ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
           </div>
 

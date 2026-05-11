@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.auth.password import hash_password
 from app.core.password_defaults import SENHA_PADRAO_TEMPORARIA
 from app.models.usuario import Usuario
-from app.schemas.usuario import UsuarioCreate, UsuarioUpdate
+from app.schemas.usuario import UsuarioCreate, UsuarioRead, UsuarioUpdate
 from app.services import email_dispatch_service, email_service, empresa_service, password_reset_service
 
 
@@ -184,3 +184,15 @@ def reset_password(db: Session, usuario: Usuario) -> EmailEntregaResultado:
         operacao="reset de senha",
         resultado=resultado,
     )
+
+
+def usuario_para_read(db: Session, usuario: Usuario) -> UsuarioRead:
+    empresa_nome: str | None = None
+    if usuario.empresa_id is not None:
+        if usuario.empresa is not None:
+            empresa_nome = usuario.empresa.nome
+        else:
+            empresa = empresa_service.get_by_id(db, usuario.empresa_id)
+            if empresa is not None:
+                empresa_nome = empresa.nome
+    return UsuarioRead.model_validate(usuario).model_copy(update={"empresa_nome": empresa_nome})

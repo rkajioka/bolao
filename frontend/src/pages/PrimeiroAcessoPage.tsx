@@ -6,13 +6,14 @@ import { User, Briefcase, Lock, CheckCircle2 } from 'lucide-react'
 import { api, getToken } from '@/lib/api'
 import { ApiError } from '@/lib/api'
 import { SENHA_PADRAO_TEMPORARIA } from '@/lib/passwordDefaults'
+import { validarSenhaSegura } from '@/lib/passwordPolicy'
 import { useToast } from '@/components/Toast'
 import { useAuth } from '@/features/auth/AuthContext'
 import { perfilService, PERFIL_AVATAR_MAX_BYTES } from '@/services/perfil.service'
 import { UserAvatar } from '@/components/UserAvatar'
 
 export function PrimeiroAcessoPage() {
-  const { user, refreshUser, logout } = useAuth()
+  const { user, refreshUser } = useAuth()
 
   useEffect(() => {
     if (getToken()) void refreshUser()
@@ -62,6 +63,11 @@ export function PrimeiroAcessoPage() {
       error('Escolha uma senha diferente da senha temporária padrão.')
       return
     }
+    const senhaInvalida = validarSenhaSegura(form.nova_senha)
+    if (senhaInvalida) {
+      error(senhaInvalida)
+      return
+    }
     setLoading(true)
     try {
       await api.post('/auth/primeiro-acesso', {
@@ -70,9 +76,9 @@ export function PrimeiroAcessoPage() {
         nova_senha: form.nova_senha,
         confirmar_senha: form.confirmar_senha,
       })
-      await logout()
-      success('Senha atualizada! Entre com sua nova senha.')
-      navigate('/login')
+      await refreshUser()
+      success('Cadastro concluído!')
+      navigate('/jogos')
     } catch (err) {
       error(err instanceof Error ? err.message : 'Erro ao salvar perfil')
     } finally {
@@ -197,7 +203,11 @@ export function PrimeiroAcessoPage() {
               Defina sua senha
             </p>
             {[
-              { label: 'Nova senha', key: 'nova_senha' as const, placeholder: 'Mínimo 8 caracteres' },
+              {
+                label: 'Nova senha',
+                key: 'nova_senha' as const,
+                placeholder: '8+ caracteres, 1 maiúscula e 1 especial',
+              },
               { label: 'Confirmar senha', key: 'confirmar_senha' as const, placeholder: 'Repita a senha' },
             ].map(({ label, key, placeholder }) => (
               <div key={key} className="mb-4">

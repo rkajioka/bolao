@@ -1,6 +1,8 @@
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
+
+from app.core.password_policy import validar_complexidade_senha
 
 
 def _normalize_email(v: str) -> str:
@@ -89,12 +91,12 @@ class AtivarContaRequest(BaseModel):
     confirmar_senha: str = Field(min_length=8, max_length=128)
     avatar_url: str | None = Field(default=None, max_length=2048)
 
-    @field_validator("confirmar_senha")
-    @classmethod
-    def senhas_coincidem(cls, v: str, info) -> str:
-        if info.data.get("senha") and v != info.data["senha"]:
+    @model_validator(mode="after")
+    def senhas_coincidem(self) -> "AtivarContaRequest":
+        if self.senha != self.confirmar_senha:
             raise ValueError("Senha e confirmação devem coincidir")
-        return v
+        validar_complexidade_senha(self.senha)
+        return self
 
 
 class AtivarContaResponse(BaseModel):

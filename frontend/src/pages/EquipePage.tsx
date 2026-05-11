@@ -15,11 +15,13 @@ import {
   ChevronDown,
   ChevronUp,
   Send,
+  Upload,
   User,
 } from 'lucide-react'
 import { equipeService } from '@/services/equipe.service'
 import type { BulkConviteResponse, ConviteResultado, ConviteResumoEnvio, MembroEquipe } from '@/types'
 import { ApiError } from '@/lib/api'
+import { parseInviteEmailsFromFile, parseInviteEmailsFromText } from '@/lib/inviteEmails'
 import { imgUrl } from '@/lib/utils'
 import { OwnerEmpresaPicker } from '@/components/OwnerEmpresaPicker'
 import { useResolvedEmpresaForAdmin } from '@/hooks/useResolvedEmpresaForAdmin'
@@ -233,17 +235,33 @@ function InviteForm({
   const [error, setError] = useState<string | null>(null)
   const [progress, setProgress] = useState<{ processed: number; total: number } | null>(null)
   const [liveResults, setLiveResults] = useState<ConviteResultado[]>([])
+  const [importingFile, setImportingFile] = useState(false)
+
+  const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+
+    setImportingFile(true)
+    setError(null)
+    try {
+      const imported = await parseInviteEmailsFromFile(file)
+      if (imported.length === 0) {
+        setError('Nenhum e-mail válido encontrado na coluna A do arquivo.')
+        return
+      }
+      const merged = parseInviteEmailsFromText([text, ...imported].filter(Boolean).join('\n'))
+      setText(merged.join('\n'))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não foi possível ler o arquivo.')
+    } finally {
+      setImportingFile(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const emails = Array.from(
-      new Set(
-        text
-          .split(/[\n,;]/)
-          .map((value) => value.trim().toLowerCase())
-          .filter((value) => value.includes('@')),
-      ),
-    )
+    const emails = parseInviteEmailsFromText(text)
 
     if (emails.length === 0) {
       setError('Informe ao menos um e-mail válido')
@@ -297,8 +315,32 @@ function InviteForm({
           }}
         />
         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-          Um e-mail por linha, ou separados por vírgula/ponto-e-vírgula
+          Um e-mail por linha, separados por vírgula/ponto-e-vírgula, ou importe CSV/Excel com os e-mails na coluna A
         </p>
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <label
+            className="inline-flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl cursor-pointer transition-opacity"
+            style={{
+              background: 'rgba(255,255,255,0.06)',
+              border: '1px solid var(--border)',
+              color: 'var(--text)',
+              opacity: importingFile || loading ? 0.6 : 1,
+            }}
+          >
+            <Upload size={14} />
+            {importingFile ? 'Lendo arquivo…' : 'Importar CSV/Excel'}
+            <input
+              type="file"
+              accept=".csv,.txt,.xlsx,.xls,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
+              onChange={handleFileImport}
+              disabled={importingFile || loading}
+              className="sr-only"
+            />
+          </label>
+          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            Coluna A, até 2 MB
+          </span>
+        </div>
       </div>
 
       {progress && (
@@ -355,7 +397,7 @@ function InviteForm({
 
       <motion.button
         type="submit"
-        disabled={loading || !text.trim()}
+        disabled={loading || importingFile || !text.trim()}
         whileTap={{ scale: 0.97 }}
         className="flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm disabled:opacity-50"
         style={{ background: 'var(--accent)', color: '#fff' }}

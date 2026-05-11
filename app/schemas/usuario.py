@@ -3,6 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 from app.core.password_defaults import SENHA_PADRAO_TEMPORARIA
+from app.core.password_policy import validar_complexidade_senha
 
 
 def _normalize_email(v: str) -> str:
@@ -37,6 +38,7 @@ class UsuarioRead(UsuarioBase):
     model_config = {"from_attributes": True}
 
     id: int
+    empresa_nome: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -125,6 +127,7 @@ class PrimeiroAcessoRequest(BaseModel):
             raise ValueError("Senha e confirmação devem coincidir")
         if self.nova_senha == SENHA_PADRAO_TEMPORARIA:
             raise ValueError("Escolha uma senha diferente da senha temporária padrão")
+        validar_complexidade_senha(self.nova_senha)
         return self
 
 
@@ -137,6 +140,7 @@ class ChangePasswordRequest(BaseModel):
     def senhas_coincidem(self) -> "ChangePasswordRequest":
         if self.nova_senha != self.confirmar_senha:
             raise ValueError("Senha e confirmação devem coincidir")
+        validar_complexidade_senha(self.nova_senha)
         return self
 
 

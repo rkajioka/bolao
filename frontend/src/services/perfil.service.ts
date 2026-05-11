@@ -27,7 +27,15 @@ export const perfilService = {
     return api.post<{ mensagem: string }>('/auth/forgot-password', { email })
   },
 
-  async redefinirSenha(token: string, nova_senha: string, confirmar_senha: string): Promise<void> {
-    await api.post('/auth/redefinir-senha', { token, nova_senha, confirmar_senha })
+  async redefinirSenha(
+    token: string,
+    nova_senha: string,
+    confirmar_senha: string,
+  ): Promise<{ access_token: string }> {
+    return api.post<{ access_token: string }>('/auth/redefinir-senha', {
+      token,
+      nova_senha,
+      confirmar_senha,
+    })
   },
 }

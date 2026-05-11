@@ -20,7 +20,14 @@ from app.schemas.usuario import (
     PrimeiroAcessoRequest,
     UsuarioRead,
 )
-from app.services import auth_service, ativacao_service, avatar_upload_service, convite_service, password_reset_service
+from app.services import (
+    auth_service,
+    ativacao_service,
+    avatar_upload_service,
+    convite_service,
+    password_reset_service,
+    usuario_service,
+)
 from app.services.rate_limit_service import enforce_limit, reset_key
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -107,8 +114,11 @@ def post_logout(
 
 
 @router.get("/me", response_model=UsuarioRead)
-def get_me(user: Usuario = Depends(get_current_active_user)) -> Usuario:
-    return user
+def get_me(
+    db: Session = Depends(get_db),
+    user: Usuario = Depends(get_current_active_user),
+) -> UsuarioRead:
+    return usuario_service.usuario_para_read(db, user)
 
 
 @router.post("/primeiro-acesso", status_code=status.HTTP_204_NO_CONTENT)
@@ -179,14 +189,18 @@ def post_forgot_password(
     return ForgotPasswordResponse(mensagem=_FORGOT_PASSWORD_MSG)
 
 
-@router.post("/redefinir-senha", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/redefinir-senha", response_model=AtivarContaResponse)
 def post_redefinir_senha(
     data: ResetPasswordRequest,
     request: Request,
+    response: Response,
     db: Session = Depends(get_db),
-) -> None:
+) -> AtivarContaResponse:
     ip = request.client.host if request.client else None
-    password_reset_service.redefinir_senha(db, data.token, data.nova_senha, ip)
+    usuario = password_reset_service.redefinir_senha(db, data.token, data.nova_senha, ip)
+    access_token, refresh_token = auth_service.issue_token_pair(db, usuario)
+    _set_refresh_cookie(response, refresh_token)
+    return AtivarContaResponse(access_token=access_token)
 
 
 @router.get("/reset-token-dev/{email}", response_model=PasswordResetTokenInfo)

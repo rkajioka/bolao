@@ -10,6 +10,7 @@ export interface User {
   bloqueado: boolean
   primeiro_login: boolean
   empresa_id: number | null
+  empresa_nome?: string | null
 }
 
 export interface Empresa {

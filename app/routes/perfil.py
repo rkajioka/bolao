@@ -6,14 +6,17 @@ from app.database import get_db
 from app.models.usuario import Usuario
 from app.schemas.perfil import AlterarSenhaRequest, PerfilUpdate
 from app.schemas.usuario import UsuarioRead
-from app.services import avatar_upload_service, equipe_service
+from app.services import avatar_upload_service, equipe_service, usuario_service
 
 router = APIRouter(prefix="/perfil", tags=["perfil"])
 
 
 @router.get("/", response_model=UsuarioRead)
-def get_perfil(user: Usuario = Depends(get_current_active_user)) -> Usuario:
-    return user
+def get_perfil(
+    db: Session = Depends(get_db),
+    user: Usuario = Depends(get_current_active_user),
+) -> UsuarioRead:
+    return usuario_service.usuario_para_read(db, user)
 
 
 @router.patch("/", response_model=UsuarioRead)
@@ -30,13 +33,14 @@ async def upload_avatar(
     db: Session = Depends(get_db),
     user: Usuario = Depends(get_current_active_user),
     file: UploadFile = File(...),
-) -> Usuario:
+) -> UsuarioRead:
     raw = await avatar_upload_service.read_upload_limited(
         file, avatar_upload_service.AVATAR_MAX_BYTES
     )
     ct = file.content_type
     path = avatar_upload_service.persist_avatar(raw, ct)
-    return equipe_service.definir_avatar_url(db, user, path)
+    row = equipe_service.definir_avatar_url(db, user, path)
+    return usuario_service.usuario_para_read(db, row)
 
 
 @router.post("/alterar-senha", status_code=204)
