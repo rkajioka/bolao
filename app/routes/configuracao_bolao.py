@@ -37,7 +37,10 @@ def put_configuracao_bolao(
     admin: Usuario = Depends(require_admin),
     empresa_id: int = Depends(get_resolved_empresa_id),
 ) -> ConfiguracaoBolaoRead:
-    row = configuracao_bolao_service.atualizar_configuracao_empresa(db, empresa_id, data)
+    try:
+        row = configuracao_bolao_service.atualizar_configuracao_empresa(db, empresa_id, data)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     pontuacao_service.recalcular_pontuacao_empresa(db, empresa_id)
     auditoria_admin_service.registrar_evento(
         db,

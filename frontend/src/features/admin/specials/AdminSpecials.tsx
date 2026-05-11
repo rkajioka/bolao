@@ -110,13 +110,16 @@ export function AdminSpecials({ success, error, variant, empresaId }: AdminSpeci
   )
 
   const marcadoresBrasilHabilitado = Boolean(form?.marcadores_brasil_habilitado)
+  const bloqueioEspeciaisTravado = config?.data_bloqueio_palpites_especiais != null
 
   const handleSaveConfiguracao = async () => {
     if (!form || empresaId == null) return
     setSavingConfig(true)
     try {
       const payload: Parameters<typeof adminService.updateConfig>[0] = {
-        data_bloqueio_palpites_especiais: form.data_bloqueio_palpites_especiais,
+        data_bloqueio_palpites_especiais: bloqueioEspeciaisTravado
+          ? config?.data_bloqueio_palpites_especiais ?? form.data_bloqueio_palpites_especiais
+          : form.data_bloqueio_palpites_especiais,
         pontos_campeao: form.pontos_campeao,
         pontos_vice_campeao: form.pontos_vice_campeao,
         pontos_terceiro_lugar: form.pontos_terceiro_lugar,
@@ -301,9 +304,15 @@ export function AdminSpecials({ success, error, variant, empresaId }: AdminSpeci
                   : old,
               )
             }
-            className={`${scoringInputClassName} text-left`}
+            disabled={bloqueioEspeciaisTravado}
+            className={`${scoringInputClassName} text-left disabled:opacity-60 disabled:cursor-not-allowed`}
             style={scoringFieldStyle}
           />
+          {bloqueioEspeciaisTravado && (
+            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+              Após definida, a data de bloqueio não pode ser alterada.
+            </p>
+          )}
         </div>
 
         <div className="space-y-2">

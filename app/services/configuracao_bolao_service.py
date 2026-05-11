@@ -15,6 +15,23 @@ from app.schemas.configuracao_bolao import ConfiguracaoBolaoRead, ConfiguracaoBo
 from app.services import empresa_service
 
 
+def _normalizar_data_utc(valor: datetime) -> datetime:
+    if valor.tzinfo is None:
+        return valor.replace(tzinfo=UTC)
+    return valor.astimezone(UTC)
+
+
+def _datas_bloqueio_especiais_equivalentes(
+    atual: datetime | None,
+    novo: datetime | None,
+) -> bool:
+    if atual is None and novo is None:
+        return True
+    if atual is None or novo is None:
+        return False
+    return _normalizar_data_utc(atual) == _normalizar_data_utc(novo)
+
+
 def get_configuracao_empresa(db: Session, empresa_id: int) -> ConfiguracaoBolao | None:
     return db.scalar(
         select(ConfiguracaoBolao).where(ConfiguracaoBolao.empresa_id == empresa_id).limit(1)
@@ -60,7 +77,16 @@ def atualizar_configuracao_empresa(
     db: Session, empresa_id: int, data: ConfiguracaoBolaoWrite
 ) -> ConfiguracaoBolao:
     c = ensure_configuracao_empresa(db, empresa_id)
-    c.data_bloqueio_palpites_especiais = data.data_bloqueio_palpites_especiais
+    if c.data_bloqueio_palpites_especiais is not None:
+        if not _datas_bloqueio_especiais_equivalentes(
+            c.data_bloqueio_palpites_especiais,
+            data.data_bloqueio_palpites_especiais,
+        ):
+            raise ValueError(
+                "A data de bloqueio dos palpites especiais já foi definida e não pode mais ser alterada"
+            )
+    else:
+        c.data_bloqueio_palpites_especiais = data.data_bloqueio_palpites_especiais
     c.pontos_campeao = data.pontos_campeao
     c.pontos_vice_campeao = data.pontos_vice_campeao
     c.pontos_terceiro_lugar = data.pontos_terceiro_lugar

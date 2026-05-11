@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
+
 from app.database import SessionLocal
 from tests.factories import (
     seed_admin_e_usuario,
@@ -35,6 +37,83 @@ def test_palpite_bloqueado_apos_inicio_jogo(client) -> None:
         json={"jogo_id": jogo_id, "palpite_casa": 1, "palpite_fora": 0},
     )
     assert r.status_code == 400
+
+
+def _payload_configuracao(client, token: str) -> dict:
+    r = client.get("/configuracao-bolao", headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    return {
+        k: body[k]
+        for k in body
+        if k not in {"id", "created_at", "updated_at", "empresa_id", "marcadores_brasil_habilitado"}
+    }
+
+
+def test_admin_pode_definir_bloqueio_especiais_uma_vez(client) -> None:
+    db = SessionLocal()
+    try:
+        seed_admin_e_usuario(db)
+    finally:
+        db.close()
+
+    token = _login(client, "admin-etapa13@example.com", "senhaadmin1")
+    h = {"Authorization": f"Bearer {token}"}
+    payload = _payload_configuracao(client, token)
+    bloqueio = (datetime.now(UTC) + timedelta(days=7)).replace(microsecond=0).isoformat()
+    payload["data_bloqueio_palpites_especiais"] = bloqueio
+
+    r_put = client.put("/configuracao-bolao", headers=h, json=payload)
+    assert r_put.status_code == 200, r_put.text
+    assert r_put.json()["data_bloqueio_palpites_especiais"] is not None
+
+
+def test_admin_nao_pode_alterar_bloqueio_especiais_apos_definido(client) -> None:
+    db = SessionLocal()
+    try:
+        seed_admin_e_usuario(db)
+    finally:
+        db.close()
+
+    token = _login(client, "admin-etapa13@example.com", "senhaadmin1")
+    h = {"Authorization": f"Bearer {token}"}
+    payload = _payload_configuracao(client, token)
+    bloqueio = (datetime.now(UTC) + timedelta(days=7)).replace(microsecond=0).isoformat()
+    payload["data_bloqueio_palpites_especiais"] = bloqueio
+    assert client.put("/configuracao-bolao", headers=h, json=payload).status_code == 200
+
+    payload["data_bloqueio_palpites_especiais"] = (
+        datetime.now(UTC) + timedelta(days=14)
+    ).replace(microsecond=0).isoformat()
+    r_put = client.put("/configuracao-bolao", headers=h, json=payload)
+    assert r_put.status_code == 400
+    assert r_put.json()["detail"] == (
+        "A data de bloqueio dos palpites especiais já foi definida e não pode mais ser alterada"
+    )
+
+
+def test_admin_pode_atualizar_pontos_mantendo_bloqueio_especiais(client) -> None:
+    db = SessionLocal()
+    try:
+        seed_admin_e_usuario(db)
+    finally:
+        db.close()
+
+    token = _login(client, "admin-etapa13@example.com", "senhaadmin1")
+    h = {"Authorization": f"Bearer {token}"}
+    payload = _payload_configuracao(client, token)
+    bloqueio = (datetime.now(UTC) + timedelta(days=7)).replace(microsecond=0).isoformat()
+    payload["data_bloqueio_palpites_especiais"] = bloqueio
+    r_primeiro = client.put("/configuracao-bolao", headers=h, json=payload)
+    assert r_primeiro.status_code == 200, r_primeiro.text
+    salvo = r_primeiro.json()["data_bloqueio_palpites_especiais"]
+
+    payload["pontos_campeao"] = int(payload["pontos_campeao"]) + 1
+    payload["data_bloqueio_palpites_especiais"] = salvo
+    r_segundo = client.put("/configuracao-bolao", headers=h, json=payload)
+    assert r_segundo.status_code == 200, r_segundo.text
+    assert r_segundo.json()["data_bloqueio_palpites_especiais"] == salvo
+    assert r_segundo.json()["pontos_campeao"] == payload["pontos_campeao"]
 
 
 def test_palpites_especiais_bloqueados(client) -> None:
