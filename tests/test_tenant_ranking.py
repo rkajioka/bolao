@@ -174,10 +174,12 @@ def test_post_empresas_cria_bootstrap(client) -> None:
     r = client.post(
         "/empresas/",
         headers=h,
-        json={"nome": "Nova Corp", "codigo_empresa": "NOVACORP"},
+        json={"nome": "Nova Corp"},
     )
     assert r.status_code == 201, r.text
-    empresa_id = r.json()["id"]
+    body = r.json()
+    empresa_id = body["id"]
+    assert body["codigo_empresa"] == "NOVA_CORP"
 
     db = SessionLocal()
     try:
@@ -193,3 +195,22 @@ def test_post_empresas_cria_bootstrap(client) -> None:
         assert tema is not None
     finally:
         db.close()
+
+
+def test_post_empresas_gera_codigo_automatico_e_unico(client) -> None:
+    db = SessionLocal()
+    try:
+        seed_owner_admin_e_usuario(db)
+    finally:
+        db.close()
+
+    token = _login(client, "owner-etapa13@example.com", "senhaowner1")
+    h = {"Authorization": f"Bearer {token}"}
+
+    r1 = client.post("/empresas/", headers=h, json={"nome": "LPC Latina"})
+    assert r1.status_code == 201, r1.text
+    assert r1.json()["codigo_empresa"] == "LPC_LATINA"
+
+    r2 = client.post("/empresas/", headers=h, json={"nome": "LPC Latina"})
+    assert r2.status_code == 201, r2.text
+    assert r2.json()["codigo_empresa"] == "LPC_LATINA_2"

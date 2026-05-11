@@ -48,17 +48,6 @@ function LoadingScreen() {
   )
 }
 
-function PageFallback() {
-  return (
-    <div className="flex items-center justify-center py-16">
-      <div
-        className="w-8 h-8 rounded-full border-2 animate-spin"
-        style={{ borderColor: 'rgba(53,208,127,0.2)', borderTopColor: 'var(--accent)' }}
-      />
-    </div>
-  )
-}
-
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth()
   if (isLoading) return <LoadingScreen />
@@ -86,10 +75,6 @@ function AppShell() {
       <AppLayout />
     </ProtectedRoute>
   )
-}
-
-function LazyPage({ children }: { children: React.ReactNode }) {
-  return <Suspense fallback={<PageFallback />}>{children}</Suspense>
 }
 
 export default function App() {
@@ -140,34 +125,34 @@ export default function App() {
       {/* Protegidas */}
       <Route element={<AppShell />}>
         <Route path="/" element={<Navigate to="/jogos" replace />} />
-        <Route path="/jogos" element={<LazyPage><JogosPage /></LazyPage>} />
-        <Route path="/especiais" element={<LazyPage><EspeciaisPage /></LazyPage>} />
-        <Route path="/regras" element={<LazyPage><RegrasPage /></LazyPage>} />
+        <Route path="/jogos" element={<JogosPage />} />
+        <Route path="/especiais" element={<EspeciaisPage />} />
+        <Route path="/regras" element={<RegrasPage />} />
         <Route path="/grupos" element={<Navigate to="/jogos" replace />} />
-        <Route path="/ranking" element={<LazyPage><RankingPage /></LazyPage>} />
-        <Route path="/perfil" element={<LazyPage><PerfilPage /></LazyPage>} />
+        <Route path="/ranking" element={<RankingPage />} />
+        <Route path="/perfil" element={<PerfilPage />} />
         <Route
           path="/admin"
           element={
-            <LazyPage>
-              <OwnerRoute><AdminPage /></OwnerRoute>
-            </LazyPage>
+            <OwnerRoute>
+              <AdminPage />
+            </OwnerRoute>
           }
         />
         <Route
           path="/admin/config"
           element={
-            <LazyPage>
-              <AdminRoute><AdminConfigPage /></AdminRoute>
-            </LazyPage>
+            <AdminRoute>
+              <AdminConfigPage />
+            </AdminRoute>
           }
         />
         <Route
           path="/equipe"
           element={
-            <LazyPage>
-              <AdminRoute><EquipePage /></AdminRoute>
-            </LazyPage>
+            <AdminRoute>
+              <EquipePage />
+            </AdminRoute>
           }
         />
       </Route>

@@ -16,7 +16,12 @@ class EmpresaRead(BaseModel):
 
 class EmpresaCreate(BaseModel):
     nome: str = Field(min_length=1, max_length=255)
-    codigo_empresa: str = Field(min_length=2, max_length=64, pattern=r"^[A-Z0-9_-]+$")
+    codigo_empresa: str | None = Field(
+        default=None,
+        min_length=2,
+        max_length=64,
+        pattern=r"^[A-Z0-9_-]+$",
+    )
 
 
 class EmpresaUpdate(BaseModel):

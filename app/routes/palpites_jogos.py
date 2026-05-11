@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import require_primeiro_login_concluido
+from app.auth.dependencies import require_participante_bolao, require_primeiro_login_concluido
 from app.database import get_db
 from app.models.palpite_jogo import PalpiteJogo
 from app.models.usuario import Usuario
@@ -33,7 +33,7 @@ def get_palpites_me(
 def post_palpite_jogo(
     data: PalpiteJogoCreate,
     db: Session = Depends(get_db),
-    user: Usuario = Depends(require_primeiro_login_concluido),
+    user: Usuario = Depends(require_participante_bolao),
 ) -> PalpiteJogo:
     try:
         return palpite_jogo_service.create_palpite(db, user.id, data)
@@ -51,7 +51,7 @@ def put_palpite_jogo(
     palpite_id: int,
     data: PalpiteJogoUpdate,
     db: Session = Depends(get_db),
-    user: Usuario = Depends(require_primeiro_login_concluido),
+    user: Usuario = Depends(require_participante_bolao),
 ) -> PalpiteJogo:
     try:
         return palpite_jogo_service.update_palpite(db, user.id, palpite_id, data)

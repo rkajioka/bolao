@@ -143,6 +143,15 @@ def require_primeiro_login_concluido(user: Usuario = Depends(get_current_active_
     return user
 
 
+def require_participante_bolao(user: Usuario = Depends(require_primeiro_login_concluido)) -> Usuario:
+    if is_owner(user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Proprietário da plataforma não participa do bolão",
+        )
+    return user
+
+
 def get_empresa_id(user: Usuario = Depends(get_current_active_user)) -> int:
     """Retorna empresa_id do usuário autenticado. Garante isolamento tenant."""
     if user.empresa_id is None:

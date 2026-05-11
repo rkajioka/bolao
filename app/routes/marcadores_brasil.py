@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import require_owner, require_primeiro_login_concluido
+from app.auth.dependencies import require_owner, require_participante_bolao, require_primeiro_login_concluido
 from app.database import get_db
 from app.models.candidato_marcador_brasil import CandidatoMarcadorBrasil
 from app.models.marcador_brasil import MarcadorBrasilPalpite, MarcadorBrasilResultado
@@ -96,7 +96,7 @@ def post_marcadores_jogo(
     jogo_id: int,
     body: MarcadoresBrasilPalpiteSync,
     db: Session = Depends(get_db),
-    user: Usuario = Depends(require_primeiro_login_concluido),
+    user: Usuario = Depends(require_participante_bolao),
 ) -> list[MarcadorBrasilPalpite]:
     try:
         return marcador_brasil_service.sincronizar_marcadores_palpite(db, user.id, jogo_id, body.marcadores)
@@ -114,7 +114,7 @@ def put_marcadores_jogo(
     jogo_id: int,
     body: MarcadoresBrasilPalpiteSync,
     db: Session = Depends(get_db),
-    user: Usuario = Depends(require_primeiro_login_concluido),
+    user: Usuario = Depends(require_participante_bolao),
 ) -> list[MarcadorBrasilPalpite]:
     try:
         return marcador_brasil_service.sincronizar_marcadores_palpite(db, user.id, jogo_id, body.marcadores)

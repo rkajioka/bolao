@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import require_owner, require_primeiro_login_concluido
+from app.auth.dependencies import require_owner, require_participante_bolao, require_primeiro_login_concluido
 from app.database import get_db
 from app.models.usuario import Usuario
 from app.schemas.palpite_especial import PalpiteEspecialAdminRead, PalpiteEspecialCreate, PalpiteEspecialRead, PalpiteEspecialUpdate
@@ -35,7 +35,7 @@ def get_palpite_especial_me(
 def post_palpite_especial(
     data: PalpiteEspecialCreate,
     db: Session = Depends(get_db),
-    user: Usuario = Depends(require_primeiro_login_concluido),
+    user: Usuario = Depends(require_participante_bolao),
 ) -> PalpiteEspecialRead:
     try:
         row = palpite_especial_service.create_palpite(db, user.id, data, user.empresa_id)
@@ -53,7 +53,7 @@ def post_palpite_especial(
 def put_palpite_especial_me(
     data: PalpiteEspecialUpdate,
     db: Session = Depends(get_db),
-    user: Usuario = Depends(require_primeiro_login_concluido),
+    user: Usuario = Depends(require_participante_bolao),
 ) -> PalpiteEspecialRead:
     try:
         row = palpite_especial_service.update_palpite_me(db, user.id, data, user.empresa_id)

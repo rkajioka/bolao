@@ -12,6 +12,8 @@ interface AuthState {
   isOwner: boolean
   canManageTorneio: boolean
   canManageEquipe: boolean
+  canParticipate: boolean
+  canLancarResultadoOficial: boolean
   empresaId: number | null
 }
 
@@ -31,6 +33,8 @@ function computeRoles(user: User | null) {
     isAdmin,
     canManageTorneio: isOwner,
     canManageEquipe: isAdmin,
+    canParticipate: !isOwner,
+    canLancarResultadoOficial: isOwner,
     empresaId: user?.empresa_id ?? null,
   }
 }
@@ -104,6 +108,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isOwner: roles.isOwner,
         canManageTorneio: roles.canManageTorneio,
         canManageEquipe: roles.canManageEquipe,
+        canParticipate: roles.canParticipate,
+        canLancarResultadoOficial: roles.canLancarResultadoOficial,
         empresaId: roles.empresaId,
         login,
         logout,

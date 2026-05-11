@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { Star, Lock } from 'lucide-react'
 import { api } from '@/lib/api'
+import { useAuth } from '@/features/auth/AuthContext'
 import { useToast } from '@/components/Toast'
 import { SectionHeader } from '@/components/SectionHeader'
 import { CountryFlag } from '@/components/CountryFlag'
@@ -12,6 +13,7 @@ import type { PalpiteEspecial, Pais } from '@/types'
 export function EspeciaisPage() {
   const { success, error } = useToast()
   const queryClient = useQueryClient()
+  const { isOwner } = useAuth()
 
   const { data: palpite, isLoading: loadingPalpite } = useQuery({
     queryKey: ['palpites-especiais', 'me'],
@@ -44,6 +46,8 @@ export function EspeciaisPage() {
   }, [palpite])
 
   const bloqueado = palpite?.bloqueado ?? false
+  const somenteConsulta = isOwner
+  const bloqueadoEdicao = bloqueado || somenteConsulta
 
   const handleSave = async () => {
     setSaving(true)
@@ -75,9 +79,28 @@ export function EspeciaisPage() {
 
   return (
     <div className="space-y-4">
-      <SectionHeader title="Palpites Especiais" subtitle="Defina seus palpites para o torneio" />
+      <SectionHeader
+        title="Palpites Especiais"
+        subtitle={
+          somenteConsulta
+            ? 'Consulta dos palpites especiais do bolão'
+            : 'Defina seus palpites para o torneio'
+        }
+      />
 
-      {bloqueado && (
+      {somenteConsulta && (
+        <div
+          className="flex items-center gap-3 px-4 py-3 rounded-2xl"
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)' }}
+        >
+          <Lock size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            O proprietário da plataforma não participa do bolão. Resultados oficiais do torneio ficam em Torneio → Resultados.
+          </p>
+        </div>
+      )}
+
+      {bloqueado && !somenteConsulta && (
         <div
           className="flex items-center gap-3 px-4 py-3 rounded-2xl"
           style={{ background: 'var(--danger-dim)', border: '1px solid rgba(255,92,122,0.3)' }}
@@ -123,7 +146,7 @@ export function EspeciaisPage() {
                 countries={paises}
                 onChange={(val) => setForm((f) => ({ ...f, [key]: val }))}
                 placeholder={placeholder}
-                disabled={bloqueado}
+                disabled={bloqueadoEdicao}
               />
             </div>
           ))}
@@ -181,7 +204,7 @@ export function EspeciaisPage() {
             </div>
           )}
 
-          {!bloqueado && (
+          {!bloqueadoEdicao && (
             <button
               type="button"
               onClick={handleSave}

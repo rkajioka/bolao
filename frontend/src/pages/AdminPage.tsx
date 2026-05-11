@@ -1,5 +1,4 @@
 import { lazy, Suspense, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { Users, Trophy, Medal, Building2 } from 'lucide-react'
 import { useToast } from '@/components/Toast'
 
@@ -81,26 +80,16 @@ export function AdminPage() {
         ))}
       </div>
 
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={activeTab}
-          id={`tabpanel-${activeTab}`}
-          role="tabpanel"
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -6 }}
-          transition={{ duration: 0.15 }}
-        >
-          <Suspense fallback={<TabFallback />}>
-            {activeTab === 'jogos' && <AdminGames success={success} error={error} />}
-            {activeTab === 'usuarios' && <AdminUsers success={success} error={error} />}
-            {activeTab === 'empresas' && <AdminEmpresas success={success} error={error} />}
-            {activeTab === 'resultados' && (
-              <AdminSpecials variant="results" success={success} error={error} />
-            )}
-          </Suspense>
-        </motion.div>
-      </AnimatePresence>
+      <div id={`tabpanel-${activeTab}`} role="tabpanel">
+        <Suspense fallback={<TabFallback />}>
+          {activeTab === 'jogos' && <AdminGames success={success} error={error} />}
+          {activeTab === 'usuarios' && <AdminUsers success={success} error={error} />}
+          {activeTab === 'empresas' && <AdminEmpresas success={success} error={error} />}
+          {activeTab === 'resultados' && (
+            <AdminSpecials variant="results" success={success} error={error} />
+          )}
+        </Suspense>
+      </div>
     </div>
   )
 }

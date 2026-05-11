@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { motion, AnimatePresence } from 'framer-motion'
 import { api } from '@/lib/api'
+import { useAuth } from '@/features/auth/AuthContext'
 import { GameCard } from '@/components/GameCard'
+import { OfficialResultsPanel } from '@/features/official-results/OfficialResultsPanel'
 import { GameCardSkeleton } from '@/components/Skeleton'
 import { EmptyState } from '@/components/EmptyState'
 import { SectionHeader } from '@/components/SectionHeader'
@@ -46,6 +47,7 @@ export function JogosPage() {
   const [segmentoGrupo, setSegmentoGrupo] = useState<string>('')
   const { success, error } = useToast()
   const queryClient = useQueryClient()
+  const { canParticipate, canLancarResultadoOficial } = useAuth()
 
   const { data: jogosCrono = [], isLoading: loadingJogos } = useQuery({
     queryKey: ['jogos', 'cronologico'],
@@ -55,11 +57,13 @@ export function JogosPage() {
   const { data: palpites = [] } = useQuery({
     queryKey: ['palpites', 'me'],
     queryFn: () => api.get<PalpiteJogo[]>('/palpites-jogos/me'),
+    enabled: canParticipate,
   })
 
   const { data: candidatos = [] } = useQuery({
     queryKey: ['marcadores', 'candidatos'],
     queryFn: () => api.get<MarcadorCandidato[]>('/marcadores-brasil/candidatos'),
+    enabled: canParticipate,
   })
 
   const { data: gruposDisponiveis = [] } = useQuery({
@@ -120,6 +124,11 @@ export function JogosPage() {
     }
   }
 
+  const handleResultadoOficialSaved = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['jogos'] })
+    success('Resultado oficial salvo e jogo finalizado.')
+  }
+
   const handleSaveMarcadores = async (
     jogoId: number,
     marcadores: { nome_jogador: string; quantidade_gols: number }[],
@@ -152,6 +161,9 @@ export function JogosPage() {
   const jogosCronoFechados = [
     ...jogosOrdenadosAsc.filter((jogo) => isJogoFechado(jogo) || isJogoFinalizado(jogo)),
   ].reverse()
+
+  const jogosCronoPendentesOficial = jogosOrdenadosAsc.filter((jogo) => !jogo.finalizado)
+  const jogosCronoFinalizadosOficial = [...jogosOrdenadosAsc.filter((jogo) => jogo.finalizado)].reverse()
 
   const jogosCronoFiltrados = filtroStatus === 'abertos' ? jogosCronoAbertos : jogosCronoFechados
 
@@ -211,6 +223,55 @@ export function JogosPage() {
     [jogosDoGrupoFiltrados, segmentoGrupoAtivo],
   )
 
+  if (canLancarResultadoOficial) {
+    return (
+      <div className="space-y-4">
+        <SectionHeader
+          title="Resultados"
+          subtitle="Lance os resultados oficiais das partidas"
+        />
+
+        <SegmentedControl
+          segments={[
+            { key: 'abertos' as StatusFiltro, label: 'Pendentes' },
+            { key: 'fechados' as StatusFiltro, label: 'Finalizados' },
+          ]}
+          value={filtroStatus}
+          onChange={setFiltroStatus}
+          controlId="owner-resultados"
+        />
+
+        {loadingJogos ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <GameCardSkeleton key={i} />
+            ))}
+          </div>
+        ) : jogosCrono.length === 0 ? (
+          <EmptyState
+            icon={<CalendarDays size={28} style={{ color: 'var(--text-muted)' }} />}
+            title="Nenhum jogo cadastrado"
+            description="Os jogos aparecerão aqui quando forem adicionados."
+          />
+        ) : (
+          <OfficialResultsPanel
+            jogos={filtroStatus === 'abertos' ? jogosCronoPendentesOficial : jogosCronoFinalizadosOficial}
+            readOnly={filtroStatus === 'fechados'}
+            showFlags={false}
+            showDateFilter={filtroStatus === 'abertos'}
+            emptyMessage={
+              filtroStatus === 'abertos'
+                ? 'Nenhum jogo pendente de finalização.'
+                : 'Nenhum jogo finalizado ainda.'
+            }
+            onSaved={handleResultadoOficialSaved}
+            onError={(msg) => error(msg)}
+          />
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4">
       <SectionHeader title="Palpites" subtitle="Faça seus palpites antes do fechamento" />
@@ -233,16 +294,9 @@ export function JogosPage() {
           description="Os jogos aparecerão aqui quando forem adicionados."
         />
       ) : (
-        <AnimatePresence mode="wait">
+        <div className="space-y-3">
           {tab === 'cronologico' ? (
-            <motion.div
-              key="crono"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="space-y-3"
-            >
+            <div className="space-y-3">
               <SegmentedControl
                 segments={STATUS_SEGMENTS}
                 value={filtroStatus}
@@ -283,16 +337,9 @@ export function JogosPage() {
                   />
                 ))
               )}
-            </motion.div>
+            </div>
           ) : (
-            <motion.div
-              key="grupos"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="space-y-7 pt-2"
-            >
+            <div className="space-y-7 pt-2">
               <div className="space-y-2">
                 <p className="text-xs font-medium px-1" style={{ color: 'var(--text-muted)' }}>
                   Selecionar grupo
@@ -373,9 +420,9 @@ export function JogosPage() {
                   </div>
                 )}
               </div>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
+        </div>
       )}
     </div>
   )

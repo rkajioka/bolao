@@ -14,6 +14,11 @@ export interface CreateJogoPayload {
 export interface UpdateResultadoPayload {
   placar_casa: number
   placar_fora: number
+  teve_prorrogacao?: boolean
+  foi_para_penaltis?: boolean
+  penaltis_casa?: number | null
+  penaltis_fora?: number | null
+  classificado_id?: number | null
 }
 
 export interface MarcadorAdminItem {

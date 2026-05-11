@@ -12,7 +12,6 @@ interface AdminEmpresasProps {
 export function AdminEmpresas({ success, error }: AdminEmpresasProps) {
   const queryClient = useQueryClient()
   const [nome, setNome] = useState('')
-  const [codigo, setCodigo] = useState('')
 
   const { data: empresas = [], isLoading } = useQuery({
     queryKey: ['empresas', 'owner'],
@@ -20,16 +19,13 @@ export function AdminEmpresas({ success, error }: AdminEmpresasProps) {
   })
 
   const criar = useMutation({
-    mutationFn: () =>
-      empresaService.criar({
-        nome: nome.trim(),
-        codigo_empresa: codigo.trim().toUpperCase(),
-      }),
-    onSuccess: async () => {
+    mutationFn: () => empresaService.criar({ nome: nome.trim() }),
+    onSuccess: async (empresa) => {
       setNome('')
-      setCodigo('')
       await queryClient.invalidateQueries({ queryKey: ['empresas', 'owner'] })
-      success('Empresa criada. Cadastre o administrador em Usuários com a empresa vinculada.')
+      success(
+        `Empresa criada com o código ${empresa.codigo_empresa}. Cadastre o administrador em Usuários com a empresa vinculada.`,
+      )
     },
     onError: (err) => {
       error(err instanceof Error ? err.message : 'Erro ao criar empresa')
@@ -40,15 +36,6 @@ export function AdminEmpresas({ success, error }: AdminEmpresasProps) {
     e.preventDefault()
     if (!nome.trim()) {
       error('Informe o nome da empresa.')
-      return
-    }
-    const codigoNorm = codigo.trim().toUpperCase()
-    if (codigoNorm.length < 2) {
-      error('O código deve ter pelo menos 2 caracteres (letras, números, _ ou -).')
-      return
-    }
-    if (!/^[A-Z0-9_-]+$/.test(codigoNorm)) {
-      error('Use apenas letras, números, _ ou - no código da empresa.')
       return
     }
     criar.mutate()
@@ -70,7 +57,8 @@ export function AdminEmpresas({ success, error }: AdminEmpresasProps) {
           <p className="text-sm font-semibold">Nova empresa</p>
         </div>
         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-          Após criar, cadastre o administrador em Usuários com o papel admin e a empresa escolhida.
+          O código da empresa é gerado automaticamente. Após criar, cadastre o administrador em Usuários com o
+          papel admin e a empresa escolhida.
         </p>
         <label className="block space-y-1">
           <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Nome</span>
@@ -84,21 +72,6 @@ export function AdminEmpresas({ success, error }: AdminEmpresasProps) {
               color: 'var(--text)',
             }}
             maxLength={255}
-            required
-          />
-        </label>
-        <label className="block space-y-1">
-          <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Código</span>
-          <input
-            value={codigo}
-            onChange={(e) => setCodigo(e.target.value.toUpperCase())}
-            className="w-full px-3 py-2.5 rounded-xl text-sm outline-none uppercase"
-            style={{
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.10)',
-              color: 'var(--text)',
-            }}
-            maxLength={64}
             required
           />
         </label>

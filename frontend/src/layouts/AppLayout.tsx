@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react'
+import { Suspense, type ReactNode } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -25,6 +25,17 @@ interface NavItem {
   icon: ReactNode
   label: string
   visible?: boolean
+}
+
+function PageFallback() {
+  return (
+    <div className="flex items-center justify-center py-16">
+      <div
+        className="w-8 h-8 rounded-full border-2 animate-spin"
+        style={{ borderColor: 'rgba(53,208,127,0.2)', borderTopColor: 'var(--accent)' }}
+      />
+    </div>
+  )
 }
 
 export function AppLayout() {
@@ -163,7 +174,9 @@ export function AppLayout() {
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.16, ease: 'easeOut' }}
           >
-            <Outlet />
+            <Suspense fallback={<PageFallback />}>
+              <Outlet />
+            </Suspense>
           </motion.div>
         </AnimatePresence>
       </main>

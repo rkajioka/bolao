@@ -3,7 +3,6 @@ import type { Empresa } from '@/types'
 
 export interface EmpresaCreatePayload {
   nome: string
-  codigo_empresa: string
 }
 
 export const empresaService = {
