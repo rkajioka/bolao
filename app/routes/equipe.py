@@ -1,30 +1,22 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import get_current_active_user, require_admin
+from app.auth.dependencies import get_resolved_empresa_id, require_admin
 from app.database import get_db
 from app.models.usuario import Usuario
 from app.schemas.convite import BulkConviteRequest
-from app.services import convite_service, equipe_service
+from app.schemas.usuario import UsuarioResetPasswordBody
+from app.services import convite_service, equipe_service, usuario_service
 
 router = APIRouter(prefix="/equipe", tags=["equipe"])
-
-
-def _empresa_id_do_admin(admin: Usuario) -> int:
-    if admin.empresa_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Administrador não está vinculado a uma empresa",
-        )
-    return admin.empresa_id
 
 
 @router.get("/")
 def listar_equipe(
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(require_admin),
+    _admin: Usuario = Depends(require_admin),
+    empresa_id: int = Depends(get_resolved_empresa_id),
 ) -> list:
-    empresa_id = _empresa_id_do_admin(admin)
     return equipe_service.listar_equipe(db, empresa_id)
 
 
@@ -34,8 +26,8 @@ def criar_convites(
     request: Request,
     db: Session = Depends(get_db),
     admin: Usuario = Depends(require_admin),
+    empresa_id: int = Depends(get_resolved_empresa_id),
 ) -> list:
-    empresa_id = _empresa_id_do_admin(admin)
     ip = request.client.host if request.client else None
     return convite_service.criar_bulk_convites(db, empresa_id, data, admin.id, ip)
 
@@ -43,9 +35,9 @@ def criar_convites(
 @router.get("/convites")
 def listar_convites(
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(require_admin),
+    _admin: Usuario = Depends(require_admin),
+    empresa_id: int = Depends(get_resolved_empresa_id),
 ) -> list:
-    empresa_id = _empresa_id_do_admin(admin)
     convites = convite_service.listar_convites(db, empresa_id)
     return [
         {
@@ -68,11 +60,23 @@ def bloquear_usuario(
     bloqueado: bool = True,
     db: Session = Depends(get_db),
     admin: Usuario = Depends(require_admin),
+    empresa_id: int = Depends(get_resolved_empresa_id),
 ) -> dict:
-    empresa_id = _empresa_id_do_admin(admin)
     ip = request.client.host if request.client else None
     usuario = equipe_service.bloquear_usuario(db, empresa_id, usuario_id, bloqueado, admin.id, ip)
     return {"id": usuario.id, "bloqueado": usuario.bloqueado}
+
+
+@router.patch("/{usuario_id}/reset-password", status_code=status.HTTP_204_NO_CONTENT)
+def reset_password_membro(
+    usuario_id: int,
+    data: UsuarioResetPasswordBody,
+    db: Session = Depends(get_db),
+    admin: Usuario = Depends(require_admin),
+    empresa_id: int = Depends(get_resolved_empresa_id),
+) -> None:
+    usuario = equipe_service.get_usuario_empresa(db, empresa_id, usuario_id)
+    usuario_service.reset_password(db, usuario, data)
 
 
 @router.delete("/{usuario_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -81,7 +85,7 @@ def remover_usuario(
     request: Request,
     db: Session = Depends(get_db),
     admin: Usuario = Depends(require_admin),
+    empresa_id: int = Depends(get_resolved_empresa_id),
 ) -> None:
-    empresa_id = _empresa_id_do_admin(admin)
     ip = request.client.host if request.client else None
     equipe_service.remover_usuario(db, empresa_id, usuario_id, admin.id, ip)

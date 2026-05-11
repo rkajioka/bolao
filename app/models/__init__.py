@@ -5,6 +5,8 @@ from app.models.configuracao_bolao import ConfiguracaoBolao
 from app.models.configuracao_email import ConfiguracaoEmail
 from app.models.convite import Convite
 from app.models.empresa import Empresa
+from app.models.empresa_tema import EmpresaTema
+from app.models.plataforma_tema import PlataformaTema
 from app.models.jogo import Jogo
 from app.models.marcador_brasil import MarcadorBrasilPalpite, MarcadorBrasilResultado
 from app.models.pais import Pais
@@ -24,6 +26,8 @@ __all__ = [
     "ConfiguracaoEmail",
     "Convite",
     "Empresa",
+    "EmpresaTema",
+    "PlataformaTema",
     "Jogo",
     "MarcadorBrasilPalpite",
     "MarcadorBrasilResultado",

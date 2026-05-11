@@ -1,5 +1,18 @@
 import { api } from '@/lib/api'
-import type { User, Pais, ConfiguracaoBolao, PontuacaoFase, ResultadoEspecial } from '@/types'
+import type {
+  User,
+  Pais,
+  ConfiguracaoBolao,
+  PontuacaoFase,
+  ResultadoEspecial,
+  EmpresaTemaResponse,
+  TemaTokensResponse,
+} from '@/types'
+
+function empresaQs(empresaId?: number | null): string {
+  if (empresaId == null) return ''
+  return `?empresa_id=${empresaId}`
+}
 
 export interface UpdateConfigPayload {
   data_bloqueio_palpites_especiais: string | null
@@ -33,22 +46,50 @@ export interface ResultadoEspecialPayload {
   finalizado: boolean
 }
 
+export interface TemaTokensWrite {
+  tokens_dark: Record<string, string>
+  tokens_light: Record<string, string>
+}
+
+export interface CreateUserPayload {
+  nome: string
+  email: string
+  senha_plana: string
+  funcao?: string | null
+  tipo_usuario: User['tipo_usuario']
+  empresa_id?: number | null
+  ativo?: boolean
+  primeiro_login?: boolean
+}
+
+export interface UpdateUserPayload {
+  nome?: string
+  email?: string
+  funcao?: string | null
+  tipo_usuario?: User['tipo_usuario']
+  empresa_id?: number | null
+}
+
 export const adminService = {
   getUsers: () => api.get<User[]>('/usuarios'),
+  createUser: (data: CreateUserPayload) => api.post<User>('/usuarios', data),
+  updateUser: (id: number, data: UpdateUserPayload) => api.put<User>(`/usuarios/${id}`, data),
   toggleUserStatus: (id: number, ativo: boolean) =>
     api.patch<void>(`/usuarios/${id}/status`, { ativo }),
-  resetUserPassword: (id: number) =>
-    api.patch<void>(`/usuarios/${id}/reset-password`, {}),
+  resetUserPassword: (id: number, senha_plana: string) =>
+    api.patch<void>(`/usuarios/${id}/reset-password`, { senha_plana }),
 
   getPaises: () => api.get<Pais[]>('/paises'),
 
-  getConfig: () => api.get<ConfiguracaoBolao>('/configuracao-bolao'),
-  updateConfig: (data: UpdateConfigPayload) =>
-    api.put<ConfiguracaoBolao>('/configuracao-bolao', data),
+  getConfig: (empresaId?: number | null) =>
+    api.get<ConfiguracaoBolao>(`/configuracao-bolao${empresaQs(empresaId)}`),
+  updateConfig: (data: UpdateConfigPayload, empresaId?: number | null) =>
+    api.put<ConfiguracaoBolao>(`/configuracao-bolao${empresaQs(empresaId)}`, data),
 
-  getFases: () => api.get<PontuacaoFase[]>('/configuracao-pontuacao-fase'),
-  updateFases: (data: UpdateFasesPayload) =>
-    api.put<void>('/configuracao-pontuacao-fase', data),
+  getFases: (empresaId?: number | null) =>
+    api.get<PontuacaoFase[]>(`/configuracao-pontuacao-fase${empresaQs(empresaId)}`),
+  updateFases: (data: UpdateFasesPayload, empresaId?: number | null) =>
+    api.put<void>(`/configuracao-pontuacao-fase${empresaQs(empresaId)}`, data),
 
   getResultadoEspecial: () =>
     api.get<ResultadoEspecial | null>('/resultados-especiais'),
@@ -57,5 +98,14 @@ export const adminService = {
       ? api.put<ResultadoEspecial>('/resultados-especiais', data)
       : api.post<ResultadoEspecial>('/resultados-especiais', data),
   finalizarResultadoEspecial: () =>
-    api.patch<void>('/resultados-especiais/finalizar', {}),
+    api.patch<ResultadoEspecial>('/resultados-especiais/finalizar', {}),
+
+  getPlataformaTema: () => api.get<TemaTokensResponse>('/plataforma/tema'),
+  putPlataformaTema: (body: TemaTokensWrite) =>
+    api.put<TemaTokensResponse>('/plataforma/tema', body),
+
+  getEmpresaTema: (empresaId: number) =>
+    api.get<EmpresaTemaResponse>(`/empresas/${empresaId}/tema`),
+  putEmpresaTema: (empresaId: number, body: TemaTokensWrite) =>
+    api.put<EmpresaTemaResponse>(`/empresas/${empresaId}/tema`, body),
 }

@@ -13,7 +13,7 @@ class UsuarioBase(BaseModel):
     funcao: str | None = Field(default=None, max_length=255)
     imagem_perfil: str | None = Field(default=None, max_length=2048)
     avatar_url: str | None = Field(default=None, max_length=2048)
-    tipo_usuario: str = Field(pattern="^(admin|usuario)$")
+    tipo_usuario: str = Field(pattern="^(admin|usuario|owner)$")
     ativo: bool = True
     bloqueado: bool = False
     primeiro_login: bool = True
@@ -46,7 +46,8 @@ class UsuarioUpdate(BaseModel):
     email: EmailStr | None = None
     funcao: str | None = Field(default=None, max_length=255)
     imagem_perfil: str | None = Field(default=None, max_length=2048)
-    tipo_usuario: str | None = Field(default=None, pattern="^(admin|usuario)$")
+    tipo_usuario: str | None = Field(default=None, pattern="^(admin|usuario|owner)$")
+    empresa_id: int | None = None
 
     @model_validator(mode="after")
     def require_at_least_one_field(self) -> "UsuarioUpdate":

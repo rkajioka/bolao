@@ -22,6 +22,7 @@ from app.routes import (
     pontuacao_fase,
     ranking,
     resultados_especiais,
+    tema,
     usuarios,
 )
 
@@ -54,6 +55,7 @@ app.include_router(palpites_especiais.router)
 app.include_router(resultados_especiais.router)
 app.include_router(marcadores_brasil.router)
 app.include_router(pontuacao_fase.router)
+app.include_router(tema.router)
 
 # Serve static assets (ex.: bandeiras)
 app.mount("/static", StaticFiles(directory=str(_static_root)), name="static")

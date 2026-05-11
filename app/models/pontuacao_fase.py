@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer, String, UniqueConstraint, text
+from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -8,9 +8,14 @@ from app.database import Base
 
 class PontuacaoFase(Base):
     __tablename__ = "pontuacao_fase"
-    __table_args__ = (UniqueConstraint("fase_key", name="uq_pontuacao_fase_key"),)
+    __table_args__ = (
+        UniqueConstraint("empresa_id", "fase_key", name="uq_pontuacao_fase_empresa_fase"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    empresa_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("empresas.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     fase_key: Mapped[str] = mapped_column(String(64), nullable=False)
     label: Mapped[str] = mapped_column(String(128), nullable=False)
     ordem: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

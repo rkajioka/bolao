@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Users, Trophy, Star, Shield } from 'lucide-react'
+import { Users, Trophy, Medal, Building2 } from 'lucide-react'
 import { useToast } from '@/components/Toast'
 
 const AdminGames = lazy(() =>
@@ -12,13 +12,17 @@ const AdminUsers = lazy(() =>
 const AdminSpecials = lazy(() =>
   import('@/features/admin/specials/AdminSpecials').then((m) => ({ default: m.AdminSpecials })),
 )
+const AdminEmpresas = lazy(() =>
+  import('@/features/admin/empresas/AdminEmpresas').then((m) => ({ default: m.AdminEmpresas })),
+)
 
-type AdminTab = 'jogos' | 'usuarios' | 'especiais'
+type AdminTab = 'jogos' | 'usuarios' | 'empresas' | 'resultados'
 
 const tabs: { key: AdminTab; label: string; icon: React.ReactNode }[] = [
   { key: 'jogos', label: 'Jogos', icon: <Trophy size={16} /> },
   { key: 'usuarios', label: 'Usuários', icon: <Users size={16} /> },
-  { key: 'especiais', label: 'Especiais', icon: <Star size={16} /> },
+  { key: 'empresas', label: 'Empresas', icon: <Building2 size={16} /> },
+  { key: 'resultados', label: 'Resultados', icon: <Medal size={16} /> },
 ]
 
 function TabFallback() {
@@ -44,15 +48,14 @@ export function AdminPage() {
           style={{ background: 'rgba(255,92,122,0.15)', border: '1px solid rgba(255,92,122,0.3)' }}
           aria-hidden="true"
         >
-          <Shield size={16} style={{ color: 'var(--danger)' }} />
+          <Trophy size={16} style={{ color: 'var(--danger)' }} />
         </div>
         <div>
-          <h1 className="text-lg font-bold">Administração</h1>
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Painel de gerenciamento do bolão</p>
+          <h1 className="text-lg font-bold">Gestão do torneio</h1>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Cadastro de jogos, usuários globais e resultado oficial</p>
         </div>
       </div>
 
-      {/* Tab nav */}
       <div
         className="flex gap-1 overflow-x-auto scrollbar-hidden"
         role="tablist"
@@ -91,7 +94,10 @@ export function AdminPage() {
           <Suspense fallback={<TabFallback />}>
             {activeTab === 'jogos' && <AdminGames success={success} error={error} />}
             {activeTab === 'usuarios' && <AdminUsers success={success} error={error} />}
-            {activeTab === 'especiais' && <AdminSpecials success={success} error={error} />}
+            {activeTab === 'empresas' && <AdminEmpresas success={success} error={error} />}
+            {activeTab === 'resultados' && (
+              <AdminSpecials variant="results" success={success} error={error} />
+            )}
           </Suspense>
         </motion.div>
       </AnimatePresence>

@@ -5,7 +5,7 @@ export interface User {
   funcao: string | null
   imagem_perfil: string | null
   avatar_url: string | null
-  tipo_usuario: 'admin' | 'usuario'
+  tipo_usuario: 'usuario' | 'admin' | 'owner'
   ativo: boolean
   bloqueado: boolean
   primeiro_login: boolean
@@ -38,7 +38,7 @@ export interface MembroEquipe {
   email: string
   funcao?: string | null
   avatar_url?: string | null
-  tipo_usuario?: 'admin' | 'usuario'
+  tipo_usuario?: 'usuario' | 'admin' | 'owner'
   ativo?: boolean
   bloqueado?: boolean
   primeiro_login?: boolean
@@ -239,4 +239,15 @@ export interface AtivarContaResponse {
 
 export interface ApiError {
   detail: string
+}
+
+/** Resposta de tema da plataforma ou overlay por empresa (tokens CSS). */
+export interface TemaTokensResponse {
+  tokens_dark: Record<string, string>
+  tokens_light: Record<string, string>
+  updated_at?: string | null
+}
+
+export interface EmpresaTemaResponse extends TemaTokensResponse {
+  empresa_id: number
 }

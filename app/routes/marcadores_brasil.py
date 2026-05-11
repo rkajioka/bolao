@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import require_admin, require_primeiro_login_concluido
+from app.auth.dependencies import require_owner, require_primeiro_login_concluido
 from app.database import get_db
 from app.models.candidato_marcador_brasil import CandidatoMarcadorBrasil
 from app.models.marcador_brasil import MarcadorBrasilPalpite, MarcadorBrasilResultado
@@ -33,7 +33,7 @@ def _http_value_error(exc: ValueError) -> HTTPException:
 @router.get("/candidatos/admin", response_model=list[CandidatoMarcadorBrasilRead])
 def get_candidatos_marcador_brasil_admin(
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(require_admin),
+    _admin: Usuario = Depends(require_owner),
 ) -> list[CandidatoMarcadorBrasil]:
     """Lista todos os candidatos (inclui inativos) para gestão no painel admin."""
     return candidato_marcador_brasil_service.listar_todos(db)
@@ -52,7 +52,7 @@ def get_candidatos_marcador_brasil(
 def post_candidato_marcador_brasil(
     data: CandidatoMarcadorBrasilCreate,
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_owner),
 ) -> CandidatoMarcadorBrasil:
     row = candidato_marcador_brasil_service.criar(db, data)
     auditoria_admin_service.registrar_evento(
@@ -66,7 +66,7 @@ def put_candidato_marcador_brasil(
     candidato_id: int,
     data: CandidatoMarcadorBrasilUpdate,
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_owner),
 ) -> CandidatoMarcadorBrasil:
     row = candidato_marcador_brasil_service.get_by_id(db, candidato_id)
     if row is None:
@@ -131,7 +131,7 @@ def put_marcadores_jogo(
 def get_marcadores_resultado_admin(
     jogo_id: int,
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(require_admin),
+    _admin: Usuario = Depends(require_owner),
 ) -> list[MarcadorBrasilResultado]:
     try:
         return marcador_brasil_service.listar_marcadores_resultado_admin(db, jogo_id)
@@ -144,7 +144,7 @@ def post_marcadores_resultado(
     jogo_id: int,
     body: MarcadoresBrasilResultadoSync,
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_owner),
 ) -> list[MarcadorBrasilResultado]:
     try:
         rows = marcador_brasil_service.sincronizar_marcadores_resultado_admin(db, jogo_id, body)
@@ -180,7 +180,7 @@ def put_marcadores_resultado(
     jogo_id: int,
     body: MarcadoresBrasilResultadoSync,
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_owner),
 ) -> list[MarcadorBrasilResultado]:
     try:
         rows = marcador_brasil_service.sincronizar_marcadores_resultado_admin(db, jogo_id, body)
@@ -215,7 +215,7 @@ def put_marcadores_resultado(
 def patch_recalcular_marcadores(
     jogo_id: int,
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_owner),
 ) -> None:
     """Recalcula pontuação dos palpites do jogo (inclui bônus de marcadores do Brasil)."""
     try:

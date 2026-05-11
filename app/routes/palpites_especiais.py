@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import require_admin, require_primeiro_login_concluido
+from app.auth.dependencies import require_owner, require_primeiro_login_concluido
 from app.database import get_db
 from app.models.usuario import Usuario
 from app.schemas.palpite_especial import PalpiteEspecialAdminRead, PalpiteEspecialCreate, PalpiteEspecialRead, PalpiteEspecialUpdate
@@ -38,7 +38,7 @@ def post_palpite_especial(
     user: Usuario = Depends(require_primeiro_login_concluido),
 ) -> PalpiteEspecialRead:
     try:
-        row = palpite_especial_service.create_palpite(db, user.id, data)
+        row = palpite_especial_service.create_palpite(db, user.id, data, user.empresa_id)
         return palpite_especial_service.to_read(db, row)
     except ValueError as e:
         raise _http_from_value_error(e) from e
@@ -56,7 +56,7 @@ def put_palpite_especial_me(
     user: Usuario = Depends(require_primeiro_login_concluido),
 ) -> PalpiteEspecialRead:
     try:
-        row = palpite_especial_service.update_palpite_me(db, user.id, data)
+        row = palpite_especial_service.update_palpite_me(db, user.id, data, user.empresa_id)
         return palpite_especial_service.to_read(db, row)
     except ValueError as e:
         raise _http_from_value_error(e) from e
@@ -70,7 +70,7 @@ def put_palpite_especial_me(
 @router.get("", response_model=list[PalpiteEspecialAdminRead])
 def get_palpites_especiais_admin(
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(require_admin),
+    _admin: Usuario = Depends(require_owner),
 ) -> list[PalpiteEspecialAdminRead]:
     return [palpite_especial_service.to_admin_read(db, p) for p in palpite_especial_service.listar_todos_admin(db)]
 
@@ -78,7 +78,7 @@ def get_palpites_especiais_admin(
 @router.patch("/recalcular", status_code=status.HTTP_204_NO_CONTENT)
 def patch_palpites_especiais_recalcular(
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(require_admin),
+    _admin: Usuario = Depends(require_owner),
 ) -> None:
     """Recalcula pontuação de todos os palpites especiais (útil após ajustes manuais no banco)."""
     palpite_especial_service.recalcular_palpites_especiais_stub(db)

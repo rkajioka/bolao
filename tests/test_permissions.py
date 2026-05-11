@@ -1,9 +1,9 @@
-"""Etapa 13 — usuário comum não acessa rotas admin."""
+"""Etapa 13 — permissões por papel."""
 
 from __future__ import annotations
 
 from app.database import SessionLocal
-from tests.factories import seed_admin_e_usuario, seed_dois_paises
+from tests.factories import seed_admin_e_usuario, seed_dois_paises, seed_owner_admin_e_usuario
 
 
 def _login(client, email: str, senha: str) -> str:
@@ -50,15 +50,28 @@ def test_usuario_comum_nao_cria_jogo(client) -> None:
     assert r.status_code == 403
 
 
-def test_admin_lista_usuarios(client) -> None:
+def test_admin_nao_lista_usuarios_globais(client) -> None:
     db = SessionLocal()
     try:
-        seed_admin_e_usuario(db)
+        seed_owner_admin_e_usuario(db)
     finally:
         db.close()
 
     token = _login(client, "admin-etapa13@example.com", "senhaadmin1")
     h = {"Authorization": f"Bearer {token}"}
     r = client.get("/usuarios", headers=h)
+    assert r.status_code == 403
+
+
+def test_owner_lista_usuarios(client) -> None:
+    db = SessionLocal()
+    try:
+        seed_owner_admin_e_usuario(db)
+    finally:
+        db.close()
+
+    token = _login(client, "owner-etapa13@example.com", "senhaowner1")
+    h = {"Authorization": f"Bearer {token}"}
+    r = client.get("/usuarios", headers=h)
     assert r.status_code == 200
-    assert len(r.json()) >= 2
+    assert len(r.json()) >= 3

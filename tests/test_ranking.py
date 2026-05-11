@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from app.database import SessionLocal
-from tests.factories import seed_admin_e_usuario, seed_config, seed_dois_paises, seed_jogo_grupo_em_breve
+from tests.factories import seed_admin_e_usuario, seed_dois_paises, seed_jogo_grupo_em_breve
 
 
 def _login(client, email: str, senha: str) -> str:
@@ -15,7 +15,6 @@ def _login(client, email: str, senha: str) -> str:
 def test_ranking_retorna_linhas_ordenadas(client) -> None:
     db = SessionLocal()
     try:
-        seed_config(db)
         seed_admin_e_usuario(db)
         a, b = seed_dois_paises(db)
         jogo = seed_jogo_grupo_em_breve(db, a, b)

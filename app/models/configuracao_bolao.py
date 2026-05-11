@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer, text
+from sqlalchemy import DateTime, ForeignKey, Integer, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -8,8 +8,12 @@ from app.database import Base
 
 class ConfiguracaoBolao(Base):
     __tablename__ = "configuracoes_bolao"
+    __table_args__ = (UniqueConstraint("empresa_id", name="uq_configuracoes_bolao_empresa_id"),)
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    empresa_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("empresas.id", ondelete="CASCADE"), nullable=False, index=True
+    )
 
     data_bloqueio_palpites_especiais: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),

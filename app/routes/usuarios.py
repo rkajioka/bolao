@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import require_admin
+from app.auth.dependencies import require_owner
 from app.database import get_db
 from app.models.usuario import Usuario
 from app.schemas.usuario import (
@@ -27,7 +27,7 @@ def _integrity_error() -> HTTPException:
 @router.get("", response_model=list[UsuarioRead])
 def list_usuarios(
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(require_admin),
+    _admin: Usuario = Depends(require_owner),
 ) -> list[Usuario]:
     return usuario_service.list_usuarios(db)
 
@@ -36,7 +36,7 @@ def list_usuarios(
 def create_usuario(
     data: UsuarioCreate,
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_owner),
 ) -> Usuario:
     try:
         row = usuario_service.create_usuario(db, data)
@@ -44,6 +44,8 @@ def create_usuario(
             db, admin, acao="usuarios.post", entidade="usuario", entidade_id=row.id, status="success"
         )
         return row
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except IntegrityError as exc:
         auditoria_admin_service.registrar_evento(
             db, admin, acao="usuarios.post", entidade="usuario", status="error", detalhes={"erro": "integrity_error"}
@@ -55,7 +57,7 @@ def create_usuario(
 def get_usuario(
     usuario_id: int,
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(require_admin),
+    _admin: Usuario = Depends(require_owner),
 ) -> Usuario:
     u = usuario_service.get_by_id(db, usuario_id)
     if u is None:
@@ -68,7 +70,7 @@ def put_usuario(
     usuario_id: int,
     data: UsuarioUpdate,
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_owner),
 ) -> Usuario:
     u = usuario_service.get_by_id(db, usuario_id)
     if u is None:
@@ -79,6 +81,8 @@ def put_usuario(
             db, admin, acao="usuarios.put", entidade="usuario", entidade_id=usuario_id, status="success"
         )
         return row
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except IntegrityError as exc:
         auditoria_admin_service.registrar_evento(
             db,
@@ -97,7 +101,7 @@ def patch_usuario_status(
     usuario_id: int,
     data: UsuarioStatusUpdate,
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_owner),
 ) -> Usuario:
     u = usuario_service.get_by_id(db, usuario_id)
     if u is None:
@@ -120,7 +124,7 @@ def patch_reset_password(
     usuario_id: int,
     data: UsuarioResetPasswordBody,
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_owner),
 ) -> None:
     u = usuario_service.get_by_id(db, usuario_id)
     if u is None:

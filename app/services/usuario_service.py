@@ -7,6 +7,11 @@ from app.models.usuario import Usuario
 from app.schemas.usuario import UsuarioCreate, UsuarioResetPasswordBody, UsuarioUpdate
 
 
+def _validar_vinculo_empresa(tipo_usuario: str, empresa_id: int | None) -> None:
+    if tipo_usuario == "admin" and empresa_id is None:
+        raise ValueError("Administrador deve estar vinculado a uma empresa")
+
+
 def _email_filter(email_normalized: str):
     return func.lower(Usuario.email) == email_normalized
 
@@ -25,6 +30,7 @@ def list_usuarios(db: Session) -> list[Usuario]:
 
 
 def create_usuario(db: Session, data: UsuarioCreate) -> Usuario:
+    _validar_vinculo_empresa(data.tipo_usuario, data.empresa_id)
     u = Usuario(
         nome=data.nome,
         email=str(data.email).strip().lower(),
@@ -34,6 +40,7 @@ def create_usuario(db: Session, data: UsuarioCreate) -> Usuario:
         tipo_usuario=data.tipo_usuario,
         ativo=data.ativo,
         primeiro_login=data.primeiro_login,
+        empresa_id=data.empresa_id,
     )
     db.add(u)
     try:
@@ -46,6 +53,9 @@ def create_usuario(db: Session, data: UsuarioCreate) -> Usuario:
 
 
 def update_usuario(db: Session, usuario: Usuario, data: UsuarioUpdate) -> Usuario:
+    tipo = data.tipo_usuario if data.tipo_usuario is not None else usuario.tipo_usuario
+    empresa_id = data.empresa_id if "empresa_id" in data.model_fields_set else usuario.empresa_id
+    _validar_vinculo_empresa(tipo, empresa_id)
     if data.nome is not None:
         usuario.nome = data.nome
     if data.email is not None:
@@ -56,6 +66,8 @@ def update_usuario(db: Session, usuario: Usuario, data: UsuarioUpdate) -> Usuari
         usuario.imagem_perfil = data.imagem_perfil
     if data.tipo_usuario is not None:
         usuario.tipo_usuario = data.tipo_usuario
+    if "empresa_id" in data.model_fields_set:
+        usuario.empresa_id = data.empresa_id
     try:
         db.commit()
     except IntegrityError:

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState, useCallback, type ReactNode } from 'react'
 import { api, clearToken, getToken, setToken } from '@/lib/api'
 import type { LoginResponse, User } from '@/types'
 
@@ -7,7 +7,12 @@ interface AuthState {
   token: string | null
   isLoading: boolean
   isAuthenticated: boolean
+  /** Administrador da empresa ou proprietário da plataforma */
   isAdmin: boolean
+  isOwner: boolean
+  canManageTorneio: boolean
+  canManageEquipe: boolean
+  empresaId: number | null
 }
 
 interface AuthContextValue extends AuthState {
@@ -17,6 +22,18 @@ interface AuthContextValue extends AuthState {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
+
+function computeRoles(user: User | null) {
+  const isOwner = user?.tipo_usuario === 'owner'
+  const isAdmin = user?.tipo_usuario === 'admin' || isOwner
+  return {
+    isOwner,
+    isAdmin,
+    canManageTorneio: isOwner,
+    canManageEquipe: isAdmin,
+    empresaId: user?.empresa_id ?? null,
+  }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -74,6 +91,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { primeiro_login: res.primeiro_login }
   }, [])
 
+  const roles = useMemo(() => computeRoles(user), [user])
+
   return (
     <AuthContext.Provider
       value={{
@@ -81,7 +100,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         token,
         isLoading,
         isAuthenticated: !!user && !!token,
-        isAdmin: user?.tipo_usuario === 'admin',
+        isAdmin: roles.isAdmin,
+        isOwner: roles.isOwner,
+        canManageTorneio: roles.canManageTorneio,
+        canManageEquipe: roles.canManageEquipe,
+        empresaId: roles.empresaId,
         login,
         logout,
         refreshUser,

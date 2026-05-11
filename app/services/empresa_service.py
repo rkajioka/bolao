@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.models.empresa import Empresa
 from app.schemas.empresa import EmpresaCreate, EmpresaUpdate
+from app.services import empresa_bootstrap_service
 
 
 def get_by_id(db: Session, empresa_id: int) -> Empresa | None:
@@ -32,6 +33,7 @@ def create_empresa(db: Session, data: EmpresaCreate) -> Empresa:
         db.rollback()
         raise
     db.refresh(empresa)
+    empresa_bootstrap_service.bootstrap_empresa_defaults(db, empresa.id)
     return empresa
 
 

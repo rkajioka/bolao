@@ -57,7 +57,7 @@ class RankingInsightsInterno:
     meus_pontos_periodo: int
 
 
-def listar_ranking(db: Session) -> list[LinhaRankingInterna]:
+def listar_ranking(db: Session, empresa_id: int | None = None) -> list[LinhaRankingInterna]:
     """
     Lista usuários ativos com pontuação agregada.
     Usuários sem palpites aparecem com zeros nos componentes de pontos.
@@ -105,8 +105,10 @@ def listar_ranking(db: Session) -> list[LinhaRankingInterna]:
         .outerjoin(agg_jogos, agg_jogos.c.usuario_id == Usuario.id)
         .outerjoin(PalpiteEspecial, PalpiteEspecial.usuario_id == Usuario.id)
         .where(Usuario.ativo.is_(True))
-        .order_by(total_expr.desc(), Usuario.nome.asc())
     )
+    if empresa_id is not None:
+        stmt = stmt.where(Usuario.empresa_id == empresa_id)
+    stmt = stmt.order_by(total_expr.desc(), Usuario.nome.asc())
 
     rows = db.execute(stmt).all()
     return [
@@ -152,10 +154,17 @@ def _resolver_periodo_atual(db: Session) -> tuple[str, str, list[int]]:
 
 
 def _top_por_metrica(
-    db: Session, jogo_ids: list[int], expr, limit: int = 3
+    db: Session,
+    jogo_ids: list[int],
+    expr,
+    empresa_id: int | None = None,
+    limit: int = 3,
 ) -> list[InsightDestaqueInterno]:
     if not jogo_ids:
         return []
+    condicoes = [Usuario.ativo.is_(True), PalpiteJogo.jogo_id.in_(jogo_ids)]
+    if empresa_id is not None:
+        condicoes.append(Usuario.empresa_id == empresa_id)
     rows = db.execute(
         select(
             Usuario.id.label("usuario_id"),
@@ -164,7 +173,7 @@ def _top_por_metrica(
         )
         .select_from(PalpiteJogo)
         .join(Usuario, Usuario.id == PalpiteJogo.usuario_id)
-        .where(and_(Usuario.ativo.is_(True), PalpiteJogo.jogo_id.in_(jogo_ids)))
+        .where(and_(*condicoes))
         .group_by(Usuario.id, Usuario.nome)
         .order_by(desc("valor"), Usuario.nome.asc())
         .limit(limit)
@@ -176,7 +185,9 @@ def _top_por_metrica(
     ]
 
 
-def obter_insights_periodo(db: Session, usuario_id: int) -> RankingInsightsInterno:
+def obter_insights_periodo(
+    db: Session, usuario_id: int, empresa_id: int | None = None
+) -> RankingInsightsInterno:
     periodo_tipo, periodo_label, jogo_ids = _resolver_periodo_atual(db)
     if not jogo_ids:
         return RankingInsightsInterno(
@@ -193,8 +204,19 @@ def obter_insights_periodo(db: Session, usuario_id: int) -> RankingInsightsInter
             meus_pontos_periodo=0,
         )
 
-    destaques_resultado = _top_por_metrica(db, jogo_ids, PalpiteJogo.pontuacao_resultado)
-    destaques_placar = _top_por_metrica(db, jogo_ids, PalpiteJogo.pontuacao_placar)
+    destaques_resultado = _top_por_metrica(
+        db, jogo_ids, PalpiteJogo.pontuacao_resultado, empresa_id=empresa_id
+    )
+    destaques_placar = _top_por_metrica(
+        db, jogo_ids, PalpiteJogo.pontuacao_placar, empresa_id=empresa_id
+    )
+    condicoes_marcadores = [
+        Usuario.ativo.is_(True),
+        PalpiteJogo.jogo_id.in_(jogo_ids),
+        MarcadorBrasilPalpite.pontuacao > 0,
+    ]
+    if empresa_id is not None:
+        condicoes_marcadores.append(Usuario.empresa_id == empresa_id)
     destaque_marcadores = list(
         db.execute(
             select(
@@ -205,13 +227,7 @@ def obter_insights_periodo(db: Session, usuario_id: int) -> RankingInsightsInter
             .select_from(PalpiteJogo)
             .join(Usuario, Usuario.id == PalpiteJogo.usuario_id)
             .join(MarcadorBrasilPalpite, MarcadorBrasilPalpite.palpite_jogo_id == PalpiteJogo.id)
-            .where(
-                and_(
-                    Usuario.ativo.is_(True),
-                    PalpiteJogo.jogo_id.in_(jogo_ids),
-                    MarcadorBrasilPalpite.pontuacao > 0,
-                )
-            )
+            .where(and_(*condicoes_marcadores))
             .group_by(Usuario.id, Usuario.nome)
             .order_by(desc("valor"), Usuario.nome.asc())
             .limit(3)

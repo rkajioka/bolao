@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import get_current_active_user
+from app.auth.dependencies import get_current_active_user, get_ranking_empresa_id
 from app.database import get_db
 from app.models.usuario import Usuario
 from app.schemas.ranking import RankingInsightsRead, RankingLinhaRead, RankingResponse
@@ -14,8 +14,9 @@ router = APIRouter(prefix="/ranking", tags=["ranking"])
 def get_ranking(
     db: Session = Depends(get_db),
     _user: Usuario = Depends(get_current_active_user),
+    empresa_id: int = Depends(get_ranking_empresa_id),
 ) -> RankingResponse:
-    linhas_svc = ranking_service.listar_ranking(db)
+    linhas_svc = ranking_service.listar_ranking(db, empresa_id)
     linhas = [
         RankingLinhaRead(
             posicao=i + 1,
@@ -41,8 +42,9 @@ def get_ranking(
 def get_ranking_insights(
     db: Session = Depends(get_db),
     user: Usuario = Depends(get_current_active_user),
+    empresa_id: int = Depends(get_ranking_empresa_id),
 ) -> RankingInsightsRead:
-    data = ranking_service.obter_insights_periodo(db, user.id)
+    data = ranking_service.obter_insights_periodo(db, user.id, empresa_id=empresa_id)
     return RankingInsightsRead(
         periodo_label=data.periodo_label,
         periodo_tipo=data.periodo_tipo,

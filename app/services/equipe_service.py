@@ -75,7 +75,7 @@ def bloquear_usuario(
     solicitante_id: int,
     ip: str | None = None,
 ) -> Usuario:
-    usuario = _get_usuario_empresa(db, empresa_id, usuario_id)
+    usuario = get_usuario_empresa(db, empresa_id, usuario_id)
     usuario.bloqueado = bloqueado
     acao = "equipe.bloqueado" if bloqueado else "equipe.desbloqueado"
     audit_log_service.log(
@@ -94,7 +94,7 @@ def remover_usuario(
     solicitante_id: int,
     ip: str | None = None,
 ) -> None:
-    usuario = _get_usuario_empresa(db, empresa_id, usuario_id)
+    usuario = get_usuario_empresa(db, empresa_id, usuario_id)
     if usuario.id == solicitante_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -108,7 +108,7 @@ def remover_usuario(
     db.commit()
 
 
-def _get_usuario_empresa(db: Session, empresa_id: int, usuario_id: int) -> Usuario:
+def get_usuario_empresa(db: Session, empresa_id: int, usuario_id: int) -> Usuario:
     usuario = db.scalar(
         select(Usuario).where(
             and_(

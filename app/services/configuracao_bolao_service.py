@@ -1,7 +1,5 @@
 """
-Configurações do bolão — leitura mínima para regras transversais (bloqueio de palpites especiais, etc.).
-
-CRUD admin de configurações: etapa futura conforme MD; aqui só leitura para data de bloqueio.
+Configurações do bolão por empresa.
 """
 
 from __future__ import annotations
@@ -16,16 +14,18 @@ from app.models.jogo import Jogo
 from app.schemas.configuracao_bolao import ConfiguracaoBolaoWrite
 
 
-def get_primeira_configuracao(db: Session) -> ConfiguracaoBolao | None:
-    return db.scalar(select(ConfiguracaoBolao).order_by(ConfiguracaoBolao.id.asc()).limit(1))
+def get_configuracao_empresa(db: Session, empresa_id: int) -> ConfiguracaoBolao | None:
+    return db.scalar(
+        select(ConfiguracaoBolao).where(ConfiguracaoBolao.empresa_id == empresa_id).limit(1)
+    )
 
 
-def ensure_primeira_configuracao(db: Session) -> ConfiguracaoBolao:
-    """Garante uma linha em configuracoes_bolao (defaults alinhados ao seed)."""
-    c = get_primeira_configuracao(db)
+def ensure_configuracao_empresa(db: Session, empresa_id: int) -> ConfiguracaoBolao:
+    c = get_configuracao_empresa(db, empresa_id)
     if c is not None:
         return c
     c = ConfiguracaoBolao(
+        empresa_id=empresa_id,
         data_bloqueio_palpites_especiais=None,
         pontos_campeao=35,
         pontos_vice_campeao=25,
@@ -43,8 +43,10 @@ def ensure_primeira_configuracao(db: Session) -> ConfiguracaoBolao:
     return c
 
 
-def atualizar_configuracao(db: Session, data: ConfiguracaoBolaoWrite) -> ConfiguracaoBolao:
-    c = ensure_primeira_configuracao(db)
+def atualizar_configuracao_empresa(
+    db: Session, empresa_id: int, data: ConfiguracaoBolaoWrite
+) -> ConfiguracaoBolao:
+    c = ensure_configuracao_empresa(db, empresa_id)
     c.data_bloqueio_palpites_especiais = data.data_bloqueio_palpites_especiais
     c.pontos_campeao = data.pontos_campeao
     c.pontos_vice_campeao = data.pontos_vice_campeao
@@ -60,13 +62,8 @@ def atualizar_configuracao(db: Session, data: ConfiguracaoBolaoWrite) -> Configu
     return c
 
 
-def get_data_bloqueio_palpites_especiais_efetiva(db: Session) -> datetime | None:
-    """
-    §10.2: data manual em `configuracoes_bolao`, senão 1h antes do primeiro jogo
-    da 1ª rodada da fase de grupos.
-    Retorna None se não houver configuração manual nem jogo da rodada 1 de grupos.
-    """
-    cfg = get_primeira_configuracao(db)
+def get_data_bloqueio_palpites_especiais_efetiva(db: Session, empresa_id: int) -> datetime | None:
+    cfg = get_configuracao_empresa(db, empresa_id)
     if cfg and cfg.data_bloqueio_palpites_especiais is not None:
         return cfg.data_bloqueio_palpites_especiais
     return db.scalar(
@@ -77,8 +74,8 @@ def get_data_bloqueio_palpites_especiais_efetiva(db: Session) -> datetime | None
     )
 
 
-def palpites_especiais_esta_bloqueado(db: Session) -> bool:
-    ts = get_data_bloqueio_palpites_especiais_efetiva(db)
+def palpites_especiais_esta_bloqueado(db: Session, empresa_id: int) -> bool:
+    ts = get_data_bloqueio_palpites_especiais_efetiva(db, empresa_id)
     if ts is None:
         return False
     agora = datetime.now(UTC)

@@ -40,8 +40,12 @@ def test_palpite_bloqueado_apos_inicio_jogo(client) -> None:
 def test_palpites_especiais_bloqueados(client) -> None:
     db = SessionLocal()
     try:
-        seed_admin_e_usuario(db)
-        seed_config_com_bloqueio_especiais(db)
+        _, user_id = seed_admin_e_usuario(db)
+        from app.services import usuario_service
+
+        user = usuario_service.get_by_id(db, user_id)
+        assert user is not None and user.empresa_id is not None
+        seed_config_com_bloqueio_especiais(db, user.empresa_id)
     finally:
         db.close()
 

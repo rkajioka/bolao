@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import get_current_active_user, require_admin
+from app.auth.dependencies import get_current_active_user, require_owner
 from app.database import get_db
 from app.models.jogo import Jogo
 from app.models.usuario import Usuario
@@ -69,7 +69,7 @@ def get_jogos_brasil(
 def post_jogo(
     data: JogoCreate,
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_owner),
 ) -> Jogo:
     try:
         row = jogo_service.create_jogo(db, data)
@@ -102,7 +102,7 @@ def put_jogo(
     jogo_id: int,
     data: JogoUpdate,
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_owner),
 ) -> Jogo:
     jogo = jogo_service.get_by_id(db, jogo_id)
     if jogo is None:
@@ -139,7 +139,7 @@ def patch_jogo_resultado(
     jogo_id: int,
     data: JogoResultadoPatch,
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_owner),
 ) -> Jogo:
     jogo = jogo_service.get_by_id(db, jogo_id)
     if jogo is None:
@@ -181,7 +181,7 @@ def patch_jogo_resultado(
 def patch_jogo_finalizar(
     jogo_id: int,
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_owner),
 ) -> Jogo:
     jogo = jogo_service.get_by_id(db, jogo_id)
     if jogo is None:

@@ -1,25 +1,37 @@
 import { api, apiPostMultipart } from '@/lib/api'
 import type { ConviteResultado, MembroEquipe } from '@/types'
 
+function empresaQs(empresaId?: number | null): string {
+  if (empresaId == null) return ''
+  return `?empresa_id=${empresaId}`
+}
+
 export const equipeService = {
-  async listarEquipe(): Promise<MembroEquipe[]> {
-    return api.get<MembroEquipe[]>('/equipe/')
+  async listarEquipe(empresaId?: number | null): Promise<MembroEquipe[]> {
+    const tail = empresaId != null ? `?empresa_id=${empresaId}` : ''
+    return api.get<MembroEquipe[]>(`/equipe/${tail}`)
   },
 
-  async enviarConvites(emails: string[]): Promise<ConviteResultado[]> {
-    return api.post<ConviteResultado[]>('/equipe/convites', { emails })
+  async enviarConvites(emails: string[], empresaId?: number | null): Promise<ConviteResultado[]> {
+    return api.post<ConviteResultado[]>(`/equipe/convites${empresaQs(empresaId)}`, { emails })
   },
 
-  async listarConvites(): Promise<ConviteResultado[]> {
-    return api.get<ConviteResultado[]>('/equipe/convites')
+  async listarConvites(empresaId?: number | null): Promise<ConviteResultado[]> {
+    return api.get<ConviteResultado[]>(`/equipe/convites${empresaQs(empresaId)}`)
   },
 
-  async bloquearUsuario(usuarioId: number, bloqueado: boolean): Promise<void> {
-    await api.patch(`/equipe/${usuarioId}/bloquear?bloqueado=${bloqueado}`)
+  async bloquearUsuario(usuarioId: number, bloqueado: boolean, empresaId?: number | null): Promise<void> {
+    const params = new URLSearchParams({ bloqueado: String(bloqueado) })
+    if (empresaId != null) params.set('empresa_id', String(empresaId))
+    await api.patch(`/equipe/${usuarioId}/bloquear?${params.toString()}`)
   },
 
-  async removerUsuario(usuarioId: number): Promise<void> {
-    await api.delete(`/equipe/${usuarioId}`)
+  async removerUsuario(usuarioId: number, empresaId?: number | null): Promise<void> {
+    await api.delete(`/equipe/${usuarioId}${empresaQs(empresaId)}`)
+  },
+
+  async resetSenhaMembro(usuarioId: number, senha_plana: string, empresaId?: number | null): Promise<void> {
+    await api.patch(`/equipe/${usuarioId}/reset-password${empresaQs(empresaId)}`, { senha_plana })
   },
 
   async ativarConta(token: string, nome: string, senha: string, confirmar_senha: string, avatar_url?: string) {

@@ -6,6 +6,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from app.auth.password import hash_password
+from app.models.empresa import Empresa
 from app.models.password_reset import PasswordReset
 from app.models.usuario import Usuario
 from app.services import audit_log_service, email_service, usuario_service
@@ -68,8 +69,14 @@ def solicitar_reset(
         ip=ip,
     )
 
+    empresa_nome = "Bolão"
+    if usuario.empresa_id is not None:
+        empresa = db.get(Empresa, usuario.empresa_id)
+        if empresa is not None:
+            empresa_nome = empresa.nome
+
     db.commit()
-    email_service.tentar_enviar_reset_senha(db, email, token)
+    email_service.tentar_enviar_reset_senha(db, email, token, empresa_nome)
     return token
 
 

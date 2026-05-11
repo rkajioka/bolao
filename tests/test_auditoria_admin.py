@@ -20,7 +20,7 @@ def test_admin_cria_pais_e_gera_auditoria(client) -> None:
     finally:
         db.close()
 
-    token = _login(client, "admin-etapa13@example.com", "senhaadmin1")
+    token = _login(client, "owner-etapa13@example.com", "senhaowner1")
     h = {"Authorization": f"Bearer {token}"}
     r = client.post(
         "/paises",

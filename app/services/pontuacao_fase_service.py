@@ -19,14 +19,18 @@ DEFAULTS: list[dict[str, int | str]] = [
 ]
 
 
-def listar(db: Session) -> list[PontuacaoFase]:
+def listar_empresa(db: Session, empresa_id: int) -> list[PontuacaoFase]:
     return list(
-        db.scalars(select(PontuacaoFase).order_by(PontuacaoFase.ordem.asc(), PontuacaoFase.id.asc())).all()
+        db.scalars(
+            select(PontuacaoFase)
+            .where(PontuacaoFase.empresa_id == empresa_id)
+            .order_by(PontuacaoFase.ordem.asc(), PontuacaoFase.id.asc())
+        ).all()
     )
 
 
-def ensure_defaults(db: Session) -> list[PontuacaoFase]:
-    atuais = {x.fase_key: x for x in listar(db)}
+def ensure_defaults_empresa(db: Session, empresa_id: int) -> list[PontuacaoFase]:
+    atuais = {x.fase_key: x for x in listar_empresa(db, empresa_id)}
     changed = False
     for item in DEFAULTS:
         key = str(item["fase_key"])
@@ -34,6 +38,7 @@ def ensure_defaults(db: Session) -> list[PontuacaoFase]:
             continue
         db.add(
             PontuacaoFase(
+                empresa_id=empresa_id,
                 fase_key=key,
                 label=str(item["label"]),
                 ordem=int(item["ordem"]),
@@ -45,11 +50,13 @@ def ensure_defaults(db: Session) -> list[PontuacaoFase]:
         changed = True
     if changed:
         db.commit()
-    return listar(db)
+    return listar_empresa(db, empresa_id)
 
 
-def substituir_todos(db: Session, payload: PontuacaoFaseBulkWrite) -> list[PontuacaoFase]:
-    atuais = {x.fase_key: x for x in listar(db)}
+def substituir_todos_empresa(
+    db: Session, empresa_id: int, payload: PontuacaoFaseBulkWrite
+) -> list[PontuacaoFase]:
+    atuais = {x.fase_key: x for x in listar_empresa(db, empresa_id)}
     payload_keys = {i.fase_key for i in payload.itens}
     default_keys = {str(d["fase_key"]) for d in DEFAULTS}
     if payload_keys != default_keys:
@@ -65,7 +72,7 @@ def substituir_todos(db: Session, payload: PontuacaoFaseBulkWrite) -> list[Pontu
     for item in payload.itens:
         row = atuais.get(item.fase_key)
         if row is None:
-            row = PontuacaoFase(fase_key=item.fase_key)
+            row = PontuacaoFase(empresa_id=empresa_id, fase_key=item.fase_key)
             db.add(row)
         row.label = item.label
         row.ordem = item.ordem
@@ -73,8 +80,13 @@ def substituir_todos(db: Session, payload: PontuacaoFaseBulkWrite) -> list[Pontu
         row.pontos_resultado_correto = item.pontos_resultado_correto
         row.pontos_classificado_mata_mata = item.pontos_classificado_mata_mata
     db.commit()
-    return listar(db)
+    return listar_empresa(db, empresa_id)
 
 
-def get_por_fase_key(db: Session, fase_key: str) -> PontuacaoFase | None:
-    return db.scalar(select(PontuacaoFase).where(PontuacaoFase.fase_key == fase_key))
+def get_por_fase_key_empresa(db: Session, empresa_id: int, fase_key: str) -> PontuacaoFase | None:
+    return db.scalar(
+        select(PontuacaoFase).where(
+            PontuacaoFase.empresa_id == empresa_id,
+            PontuacaoFase.fase_key == fase_key,
+        )
+    )

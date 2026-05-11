@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -21,6 +21,10 @@ import { equipeService } from '@/services/equipe.service'
 import type { MembroEquipe, ConviteResultado } from '@/types'
 import { ApiError } from '@/lib/api'
 import { imgUrl } from '@/lib/utils'
+import { OwnerEmpresaPicker } from '@/components/OwnerEmpresaPicker'
+import { useResolvedEmpresaForAdmin } from '@/hooks/useResolvedEmpresaForAdmin'
+import { useAuth } from '@/features/auth/AuthContext'
+import { empresaService } from '@/services/empresa.service'
 
 function StatusBadge({ membro }: { membro: MembroEquipe }) {
   if (membro.tipo === 'convite') {
@@ -67,15 +71,19 @@ function StatusBadge({ membro }: { membro: MembroEquipe }) {
   )
 }
 
+interface MemberCardProps {
+  membro: MembroEquipe
+  onBloquear?: (id: number, bloqueado: boolean) => void
+  onRemover?: (id: number) => void
+  onResetSenha?: (id: number, nome: string) => void
+}
+
 function MemberCard({
   membro,
   onBloquear,
   onRemover,
-}: {
-  membro: MembroEquipe
-  onBloquear?: (id: number, bloqueado: boolean) => void
-  onRemover?: (id: number) => void
-}) {
+  onResetSenha,
+}: MemberCardProps) {
   const [showToken, setShowToken] = useState(false)
   const [copied, setCopied] = useState(false)
 
@@ -187,12 +195,21 @@ function MemberCard({
               {membro.bloqueado ? 'Desbloquear' : 'Bloquear'}
             </button>
             <button
+              type="button"
               onClick={() => onRemover?.(membro.id!)}
               className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg"
               style={{ background: 'rgba(239,68,68,0.08)', color: '#ef4444' }}
             >
               <Trash2 size={11} />
               Remover
+            </button>
+            <button
+              type="button"
+              onClick={() => onResetSenha?.(membro.id!, membro.nome ?? membro.email)}
+              className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg"
+              style={{ background: 'rgba(99,102,241,0.1)', color: '#818cf8' }}
+            >
+              Nova senha
             </button>
           </div>
         )}
@@ -201,7 +218,13 @@ function MemberCard({
   )
 }
 
-function InviteForm({ onSuccess }: { onSuccess: (results: ConviteResultado[]) => void }) {
+function InviteForm({
+  empresaId,
+  onSuccess,
+}: {
+  empresaId: number | undefined
+  onSuccess: (results: ConviteResultado[]) => void
+}) {
   const [text, setText] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -220,7 +243,7 @@ function InviteForm({ onSuccess }: { onSuccess: (results: ConviteResultado[]) =>
     setLoading(true)
     setError(null)
     try {
-      const results = await equipeService.enviarConvites(emails)
+      const results = await equipeService.enviarConvites(emails, empresaId)
       onSuccess(results)
       setText('')
     } catch (err) {
@@ -329,24 +352,59 @@ function InviteResults({ results, onClose }: { results: ConviteResultado[]; onCl
 
 export function EquipePage() {
   const queryClient = useQueryClient()
+  const { empresaId: authEmpresaId } = useAuth()
+  const { resolvedEmpresaId, setOwnerEmpresaId, needsOwnerEmpresaPick } = useResolvedEmpresaForAdmin()
   const [showInvite, setShowInvite] = useState(false)
   const [inviteResults, setInviteResults] = useState<ConviteResultado[] | null>(null)
 
+  const { data: empresas = [] } = useQuery({
+    queryKey: ['empresas', 'owner'],
+    queryFn: () => empresaService.listar(),
+    enabled: needsOwnerEmpresaPick,
+  })
+
+  useEffect(() => {
+    if (!needsOwnerEmpresaPick || resolvedEmpresaId != null || empresas.length === 0) return
+    setOwnerEmpresaId(empresas[0].id)
+  }, [needsOwnerEmpresaPick, resolvedEmpresaId, empresas, setOwnerEmpresaId])
+
+  const effectiveEmpresaId = needsOwnerEmpresaPick ? resolvedEmpresaId : authEmpresaId
+
   const { data: equipe, isLoading } = useQuery({
-    queryKey: ['equipe'],
-    queryFn: () => equipeService.listarEquipe(),
+    queryKey: ['equipe', effectiveEmpresaId],
+    queryFn: () => equipeService.listarEquipe(effectiveEmpresaId ?? undefined),
+    enabled: effectiveEmpresaId != null,
   })
 
   const bloquearMutation = useMutation({
     mutationFn: ({ id, bloqueado }: { id: number; bloqueado: boolean }) =>
-      equipeService.bloquearUsuario(id, bloqueado),
+      equipeService.bloquearUsuario(id, bloqueado, effectiveEmpresaId ?? undefined),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['equipe'] }),
   })
 
   const removerMutation = useMutation({
-    mutationFn: (id: number) => equipeService.removerUsuario(id),
+    mutationFn: (id: number) => equipeService.removerUsuario(id, effectiveEmpresaId ?? undefined),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['equipe'] }),
   })
+
+  const resetSenhaMutation = useMutation({
+    mutationFn: ({ id, senha }: { id: number; senha: string }) =>
+      equipeService.resetSenhaMembro(id, senha, effectiveEmpresaId ?? undefined),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['equipe'] }),
+  })
+
+  const handleResetSenha = (id: number, nome: string) => {
+    const senha = window.prompt(
+      `Nova senha para ${nome} (mínimo 8 caracteres):`,
+      '',
+    )
+    if (senha == null) return
+    if (senha.length < 8) {
+      window.alert('A senha deve ter pelo menos 8 caracteres.')
+      return
+    }
+    resetSenhaMutation.mutate({ id, senha })
+  }
 
   const handleInviteSuccess = (results: ConviteResultado[]) => {
     setInviteResults(results)
@@ -358,98 +416,111 @@ export function EquipePage() {
 
   return (
     <div className="pb-24 pt-2 flex flex-col gap-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold" style={{ color: 'var(--text)' }}>
-            Equipe
-          </h1>
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            {usuarios.length} {usuarios.length === 1 ? 'membro' : 'membros'}{' '}
-            {convites.length > 0 && `· ${convites.length} convite${convites.length > 1 ? 's' : ''} pendente${convites.length > 1 ? 's' : ''}`}
-          </p>
-        </div>
-        <motion.button
-          onClick={() => { setShowInvite((v) => !v); setInviteResults(null) }}
-          whileTap={{ scale: 0.95 }}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-semibold text-sm"
-          style={{ background: 'var(--accent)', color: '#fff' }}
-        >
-          <UserPlus size={15} />
-          Convidar
-        </motion.button>
-      </div>
+      {needsOwnerEmpresaPick && (
+        <OwnerEmpresaPicker value={resolvedEmpresaId} onChange={setOwnerEmpresaId} />
+      )}
 
-      {/* Formulário de convite */}
-      <AnimatePresence>
-        {showInvite && (
-          <motion.div
-            key="invite-form"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden"
-          >
-            <div
-              className="rounded-2xl p-4"
-              style={{ background: 'var(--glass)', border: '1px solid var(--border)' }}
-            >
-              <div className="flex items-center gap-2 mb-4">
-                <Mail size={16} style={{ color: 'var(--accent)' }} />
-                <h2 className="font-semibold text-sm" style={{ color: 'var(--text)' }}>
-                  Convidar pessoas
-                </h2>
-              </div>
-              {inviteResults ? (
-                <InviteResults results={inviteResults} onClose={() => setInviteResults(null)} />
-              ) : (
-                <InviteForm onSuccess={handleInviteSuccess} />
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {!needsOwnerEmpresaPick && authEmpresaId == null && (
+        <p className="text-sm" style={{ color: 'var(--danger)' }}>
+          Sua conta não está vinculada a uma empresa.
+        </p>
+      )}
 
-      {/* Lista de membros */}
-      {isLoading ? (
-        <div className="flex flex-col gap-3">
-          {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="h-20 rounded-2xl animate-pulse"
-              style={{ background: 'var(--glass)' }}
-            />
-          ))}
-        </div>
-      ) : (
+      {effectiveEmpresaId != null && (
         <>
-          {usuarios.length === 0 && convites.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 py-12">
-              <Users size={40} style={{ color: 'var(--text-muted)', opacity: 0.4 }} />
-              <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
-                Nenhum membro ainda
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-bold" style={{ color: 'var(--text)' }}>
+                Equipe
+              </h1>
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                {usuarios.length} {usuarios.length === 1 ? 'membro' : 'membros'}{' '}
+                {convites.length > 0 && `· ${convites.length} convite${convites.length > 1 ? 's' : ''} pendente${convites.length > 1 ? 's' : ''}`}
               </p>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                Use o botão Convidar para adicionar pessoas
-              </p>
+            </div>
+            <motion.button
+              type="button"
+              onClick={() => { setShowInvite((v) => !v); setInviteResults(null) }}
+              whileTap={{ scale: 0.95 }}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-semibold text-sm"
+              style={{ background: 'var(--accent)', color: '#fff' }}
+            >
+              <UserPlus size={15} />
+              Convidar
+            </motion.button>
+          </div>
+
+          <AnimatePresence>
+            {showInvite && (
+              <motion.div
+                key="invite-form"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden"
+              >
+                <div
+                  className="rounded-2xl p-4"
+                  style={{ background: 'var(--glass)', border: '1px solid var(--border)' }}
+                >
+                  <div className="flex items-center gap-2 mb-4">
+                    <Mail size={16} style={{ color: 'var(--accent)' }} />
+                    <h2 className="font-semibold text-sm" style={{ color: 'var(--text)' }}>
+                      Convidar pessoas
+                    </h2>
+                  </div>
+                  {inviteResults ? (
+                    <InviteResults results={inviteResults} onClose={() => setInviteResults(null)} />
+                  ) : (
+                    <InviteForm empresaId={effectiveEmpresaId} onSuccess={handleInviteSuccess} />
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {isLoading ? (
+            <div className="flex flex-col gap-3">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="h-20 rounded-2xl animate-pulse"
+                  style={{ background: 'var(--glass)' }}
+                />
+              ))}
             </div>
           ) : (
-            <div className="flex flex-col gap-3">
-              <AnimatePresence>
-                {[...usuarios, ...convites].map((membro) => (
-                  <MemberCard
-                    key={membro.tipo === 'usuario' ? `u-${membro.id}` : `c-${membro.convite_id}`}
-                    membro={membro}
-                    onBloquear={(id, bloqueado) => bloquearMutation.mutate({ id, bloqueado })}
-                    onRemover={(id) => {
-                      if (confirm('Remover este usuário da empresa?')) {
-                        removerMutation.mutate(id)
-                      }
-                    }}
-                  />
-                ))}
-              </AnimatePresence>
-            </div>
+            <>
+              {usuarios.length === 0 && convites.length === 0 ? (
+                <div className="flex flex-col items-center gap-3 py-12">
+                  <Users size={40} style={{ color: 'var(--text-muted)', opacity: 0.4 }} />
+                  <p className="text-sm font-medium" style={{ color: 'var(--text-muted)' }}>
+                    Nenhum membro ainda
+                  </p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    Use o botão Convidar para adicionar pessoas
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <AnimatePresence>
+                    {[...usuarios, ...convites].map((membro) => (
+                      <MemberCard
+                        key={membro.tipo === 'usuario' ? `u-${membro.id}` : `c-${membro.convite_id}`}
+                        membro={membro}
+                        onBloquear={(id, bloqueado) => bloquearMutation.mutate({ id, bloqueado })}
+                        onRemover={(id) => {
+                          if (confirm('Remover este usuário da empresa?')) {
+                            removerMutation.mutate(id)
+                          }
+                        }}
+                        onResetSenha={handleResetSenha}
+                      />
+                    ))}
+                  </AnimatePresence>
+                </div>
+              )}
+            </>
           )}
         </>
       )}

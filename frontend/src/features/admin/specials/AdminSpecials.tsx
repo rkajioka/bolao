@@ -8,6 +8,9 @@ import { adminService } from '@/services/admin.service'
 interface AdminSpecialsProps {
   success: (msg: string) => void
   error: (msg: string) => void
+  variant: 'scoring' | 'results'
+  /** Obrigatório quando variant === scoring (tenant). */
+  empresaId?: number
 }
 
 const PONTUACAO_CONFIG_FIELDS: { key: keyof Pick<ConfiguracaoBolao,
@@ -19,7 +22,7 @@ const PONTUACAO_CONFIG_FIELDS: { key: keyof Pick<ConfiguracaoBolao,
   { key: 'pontos_artilheiro_pais', label: 'País do artilheiro' },
 ]
 
-export function AdminSpecials({ success, error }: AdminSpecialsProps) {
+export function AdminSpecials({ success, error, variant, empresaId }: AdminSpecialsProps) {
   const queryClient = useQueryClient()
   const [form, setForm] = useState<ConfiguracaoBolao | null>(null)
   const [fases, setFases] = useState<PontuacaoFase[]>([])
@@ -32,36 +35,40 @@ export function AdminSpecials({ success, error }: AdminSpecialsProps) {
     artilheiro_pais_id: '',
   })
 
+  const scoringEnabled = variant === 'scoring' && empresaId != null
+
   const { data: config } = useQuery({
-    queryKey: ['configuracao-bolao'],
-    queryFn: () => adminService.getConfig(),
+    queryKey: ['configuracao-bolao', variant, empresaId],
+    queryFn: () => adminService.getConfig(empresaId),
+    enabled: scoringEnabled,
   })
   const { data: fasesData = [] } = useQuery({
-    queryKey: ['configuracao-pontuacao-fase'],
-    queryFn: () => adminService.getFases(),
+    queryKey: ['configuracao-pontuacao-fase', variant, empresaId],
+    queryFn: () => adminService.getFases(empresaId),
+    enabled: scoringEnabled,
   })
   const { data: paises = [] } = useQuery({
     queryKey: ['paises'],
     queryFn: () => adminService.getPaises(),
+    enabled: variant === 'results',
   })
   const { data: resultadoEspecial } = useQuery({
     queryKey: ['resultados-especiais', 'admin'],
     queryFn: () => adminService.getResultadoEspecial(),
+    enabled: variant === 'results',
   })
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (config) setForm(config)
+    if (!config) return
+    setForm(config)
   }, [config])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFases(fasesData)
   }, [fasesData])
 
   useEffect(() => {
     if (!resultadoEspecial) return
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setResultadoForm({
       campeao_id: resultadoEspecial.campeao_id ? String(resultadoEspecial.campeao_id) : '',
       vice_campeao_id: resultadoEspecial.vice_campeao_id ? String(resultadoEspecial.vice_campeao_id) : '',
@@ -76,31 +83,37 @@ export function AdminSpecials({ success, error }: AdminSpecialsProps) {
   )
 
   const handleSaveConfiguracao = async () => {
-    if (!form) return
+    if (!form || empresaId == null) return
     setSavingConfig(true)
     try {
-      await adminService.updateConfig({
-        data_bloqueio_palpites_especiais: form.data_bloqueio_palpites_especiais,
-        pontos_campeao: form.pontos_campeao,
-        pontos_vice_campeao: form.pontos_vice_campeao,
-        pontos_terceiro_lugar: form.pontos_terceiro_lugar,
-        pontos_artilheiro_pais: form.pontos_artilheiro_pais,
-        pontos_placar_exato: form.pontos_placar_exato,
-        pontos_resultado_correto: form.pontos_resultado_correto,
-        pontos_classificado_mata_mata: form.pontos_classificado_mata_mata,
-        pontos_marcador_brasil: form.pontos_marcador_brasil,
-        pontos_marcador_brasil_com_quantidade: form.pontos_marcador_brasil_com_quantidade,
-      })
-      await adminService.updateFases({
-        itens: fases.map((f) => ({
-          fase_key: f.fase_key,
-          label: f.label,
-          ordem: f.ordem,
-          pontos_placar_exato: f.pontos_placar_exato,
-          pontos_resultado_correto: f.pontos_resultado_correto,
-          pontos_classificado_mata_mata: f.pontos_classificado_mata_mata,
-        })),
-      })
+      await adminService.updateConfig(
+        {
+          data_bloqueio_palpites_especiais: form.data_bloqueio_palpites_especiais,
+          pontos_campeao: form.pontos_campeao,
+          pontos_vice_campeao: form.pontos_vice_campeao,
+          pontos_terceiro_lugar: form.pontos_terceiro_lugar,
+          pontos_artilheiro_pais: form.pontos_artilheiro_pais,
+          pontos_placar_exato: form.pontos_placar_exato,
+          pontos_resultado_correto: form.pontos_resultado_correto,
+          pontos_classificado_mata_mata: form.pontos_classificado_mata_mata,
+          pontos_marcador_brasil: form.pontos_marcador_brasil,
+          pontos_marcador_brasil_com_quantidade: form.pontos_marcador_brasil_com_quantidade,
+        },
+        empresaId,
+      )
+      await adminService.updateFases(
+        {
+          itens: fases.map((f) => ({
+            fase_key: f.fase_key,
+            label: f.label,
+            ordem: f.ordem,
+            pontos_placar_exato: f.pontos_placar_exato,
+            pontos_resultado_correto: f.pontos_resultado_correto,
+            pontos_classificado_mata_mata: f.pontos_classificado_mata_mata,
+          })),
+        },
+        empresaId,
+      )
       await queryClient.invalidateQueries({ queryKey: ['configuracao-bolao'] })
       await queryClient.invalidateQueries({ queryKey: ['configuracao-pontuacao-fase'] })
       success('Configuração salva')
@@ -141,9 +154,82 @@ export function AdminSpecials({ success, error }: AdminSpecialsProps) {
     }
   }
 
+  if (variant === 'scoring' && empresaId == null) {
+    return (
+      <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+        Selecione uma empresa para editar a pontuação.
+      </p>
+    )
+  }
+
+  if (variant === 'results') {
+    return (
+      <div className="space-y-4">
+        <div className="glass rounded-2xl p-4">
+          <p className="font-semibold text-sm">Palpites especiais</p>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+            O bloqueio efetivo é calculado pela data de bloqueio da configuração do bolão em cada empresa.
+          </p>
+          <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
+            Resultado oficial abaixo é único na plataforma (torneio).
+          </p>
+        </div>
+
+        <div className="glass rounded-2xl p-5 space-y-4">
+          <p className="font-semibold text-sm">Resultado oficial de especiais</p>
+          <div className="grid grid-cols-2 gap-2">
+            <SelectInput
+              value={resultadoForm.campeao_id}
+              onChange={(value) => setResultadoForm((old) => ({ ...old, campeao_id: value }))}
+              options={paisOptions}
+              placeholder="Campeão"
+            />
+            <SelectInput
+              value={resultadoForm.vice_campeao_id}
+              onChange={(value) => setResultadoForm((old) => ({ ...old, vice_campeao_id: value }))}
+              options={paisOptions}
+              placeholder="Vice-campeão"
+            />
+            <SelectInput
+              value={resultadoForm.terceiro_lugar_id}
+              onChange={(value) => setResultadoForm((old) => ({ ...old, terceiro_lugar_id: value }))}
+              options={paisOptions}
+              placeholder="3º lugar"
+            />
+            <SelectInput
+              value={resultadoForm.artilheiro_pais_id}
+              onChange={(value) => setResultadoForm((old) => ({ ...old, artilheiro_pais_id: value }))}
+              options={paisOptions}
+              placeholder="País do artilheiro"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => void handleSaveResultadoEspecial()}
+              disabled={savingResultado}
+              className="w-full py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40"
+              style={{ background: 'var(--highlight-dim)', border: '1px solid rgba(246,198,91,0.3)', color: 'var(--highlight)' }}
+            >
+              {savingResultado ? 'Salvando…' : 'Salvar resultado'}
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleFinalizarResultadoEspecial()}
+              disabled={resultadoEspecial?.finalizado}
+              className="w-full py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40"
+              style={{ background: 'rgba(53,208,127,0.16)', border: '1px solid rgba(53,208,127,0.35)', color: 'var(--accent)' }}
+            >
+              {resultadoEspecial?.finalizado ? 'Especiais finalizado' : 'Finalizar especiais'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4">
-      {/* Info bloqueio */}
       <div className="glass rounded-2xl p-4">
         <p className="font-semibold text-sm">Palpites especiais</p>
         <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
@@ -157,56 +243,6 @@ export function AdminSpecials({ success, error }: AdminSpecialsProps) {
         </p>
       </div>
 
-      {/* Resultado oficial */}
-      <div className="glass rounded-2xl p-5 space-y-4">
-        <p className="font-semibold text-sm">Resultado oficial de especiais</p>
-        <div className="grid grid-cols-2 gap-2">
-          <SelectInput
-            value={resultadoForm.campeao_id}
-            onChange={(value) => setResultadoForm((old) => ({ ...old, campeao_id: value }))}
-            options={paisOptions}
-            placeholder="Campeão"
-          />
-          <SelectInput
-            value={resultadoForm.vice_campeao_id}
-            onChange={(value) => setResultadoForm((old) => ({ ...old, vice_campeao_id: value }))}
-            options={paisOptions}
-            placeholder="Vice-campeão"
-          />
-          <SelectInput
-            value={resultadoForm.terceiro_lugar_id}
-            onChange={(value) => setResultadoForm((old) => ({ ...old, terceiro_lugar_id: value }))}
-            options={paisOptions}
-            placeholder="3º lugar"
-          />
-          <SelectInput
-            value={resultadoForm.artilheiro_pais_id}
-            onChange={(value) => setResultadoForm((old) => ({ ...old, artilheiro_pais_id: value }))}
-            options={paisOptions}
-            placeholder="País do artilheiro"
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={handleSaveResultadoEspecial}
-            disabled={savingResultado}
-            className="w-full py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40"
-            style={{ background: 'var(--highlight-dim)', border: '1px solid rgba(246,198,91,0.3)', color: 'var(--highlight)' }}
-          >
-            {savingResultado ? 'Salvando…' : 'Salvar resultado'}
-          </button>
-          <button
-            onClick={handleFinalizarResultadoEspecial}
-            disabled={resultadoEspecial?.finalizado}
-            className="w-full py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40"
-            style={{ background: 'rgba(53,208,127,0.16)', border: '1px solid rgba(53,208,127,0.35)', color: 'var(--accent)' }}
-          >
-            {resultadoEspecial?.finalizado ? 'Especiais finalizado' : 'Finalizar especiais'}
-          </button>
-        </div>
-      </div>
-
-      {/* Configuração de pontuação */}
       <div className="glass rounded-2xl p-5 space-y-4">
         <p className="font-semibold text-sm">Configuração de pontuação</p>
 
@@ -316,7 +352,8 @@ export function AdminSpecials({ success, error }: AdminSpecialsProps) {
         </div>
 
         <button
-          onClick={handleSaveConfiguracao}
+          type="button"
+          onClick={() => void handleSaveConfiguracao()}
           disabled={savingConfig}
           className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-40"
           style={{ background: 'var(--accent)', color: '#070A12' }}

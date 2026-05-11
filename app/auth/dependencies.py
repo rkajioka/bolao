@@ -2,7 +2,7 @@
 Dependências de autenticação e autorização.
 """
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
@@ -71,13 +71,66 @@ def get_current_active_user(user: Usuario = Depends(get_current_user)) -> Usuari
     return user
 
 
+def is_owner(user: Usuario) -> bool:
+    return user.tipo_usuario == "owner"
+
+
+def is_admin_or_owner(user: Usuario) -> bool:
+    return user.tipo_usuario in {"admin", "owner"}
+
+
+def require_owner(user: Usuario = Depends(get_current_active_user)) -> Usuario:
+    if not is_owner(user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso restrito a proprietários da plataforma",
+        )
+    return user
+
+
 def require_admin(user: Usuario = Depends(get_current_active_user)) -> Usuario:
-    if user.tipo_usuario != "admin":
+    if not is_admin_or_owner(user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Acesso restrito a administradores",
         )
     return user
+
+
+def resolve_empresa_id(
+    user: Usuario,
+    empresa_id: int | None = None,
+) -> int:
+    if is_owner(user):
+        if empresa_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="empresa_id é obrigatório para proprietários da plataforma",
+            )
+        return empresa_id
+    if user.tipo_usuario != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso restrito a administradores",
+        )
+    if user.empresa_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Administrador não está vinculado a uma empresa",
+        )
+    if empresa_id is not None and empresa_id != user.empresa_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso restrito à própria empresa",
+        )
+    return user.empresa_id
+
+
+def get_resolved_empresa_id(
+    empresa_id: int | None = Query(default=None),
+    user: Usuario = Depends(require_admin),
+) -> int:
+    return resolve_empresa_id(user, empresa_id)
 
 
 def require_primeiro_login_concluido(user: Usuario = Depends(get_current_active_user)) -> Usuario:
@@ -92,6 +145,20 @@ def require_primeiro_login_concluido(user: Usuario = Depends(get_current_active_
 
 def get_empresa_id(user: Usuario = Depends(get_current_active_user)) -> int:
     """Retorna empresa_id do usuário autenticado. Garante isolamento tenant."""
+    if user.empresa_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Usuário não está vinculado a uma empresa",
+        )
+    return user.empresa_id
+
+
+def get_ranking_empresa_id(
+    empresa_id: int | None = Query(default=None),
+    user: Usuario = Depends(get_current_active_user),
+) -> int:
+    if is_owner(user):
+        return resolve_empresa_id(user, empresa_id)
     if user.empresa_id is None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

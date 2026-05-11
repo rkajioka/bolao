@@ -41,7 +41,13 @@ def test_bloqueio_especiais_usa_primeiro_jogo_da_rodada_1_grupos() -> None:
             ),
         )
 
-        ts = configuracao_bolao_service.get_data_bloqueio_palpites_especiais_efetiva(db)
+        from app.services import usuario_service
+
+        user = usuario_service.get_by_email(db, "user-etapa13@example.com")
+        assert user is not None and user.empresa_id is not None
+        ts = configuracao_bolao_service.get_data_bloqueio_palpites_especiais_efetiva(
+            db, user.empresa_id
+        )
         assert ts is not None
         assert ts == jogo_grupo.data_jogo
     finally:

@@ -19,17 +19,14 @@ from app.models.marcador_brasil import MarcadorBrasilPalpite, MarcadorBrasilResu
 from app.models.palpite_especial import PalpiteEspecial
 from app.models.palpite_jogo import PalpiteJogo
 from app.models.resultado_especial import ResultadoEspecial
+from app.models.usuario import Usuario
 from app.jogo_fases import fase_mata_mata_slug_ou_none
 from app.services import configuracao_bolao_service, jogo_service
 from app.services import pontuacao_fase_service
 from app.utils.texto import normalizar_texto_palpite
 
 
-def _config(db: Session) -> ConfiguracaoBolao | Any:
-    c = configuracao_bolao_service.get_primeira_configuracao(db)
-    if c is not None:
-        return c
-
+def _zeros_config() -> Any:
     class _Zeros:
         pontos_placar_exato = 0
         pontos_resultado_correto = 0
@@ -37,8 +34,20 @@ def _config(db: Session) -> ConfiguracaoBolao | Any:
         pontos_marcador_brasil = 0
         pontos_marcador_brasil_com_quantidade = 0
         pontos_campeao = 0
+        pontos_vice_campeao = 0
+        pontos_terceiro_lugar = 0
+        pontos_artilheiro_pais = 0
 
     return _Zeros()
+
+
+def _config_empresa(db: Session, empresa_id: int | None) -> ConfiguracaoBolao | Any:
+    if empresa_id is None:
+        return _zeros_config()
+    c = configuracao_bolao_service.get_configuracao_empresa(db, empresa_id)
+    if c is not None:
+        return c
+    return _zeros_config()
 
 
 def _signo_resultado(casa: int, fora: int) -> int:
@@ -182,28 +191,34 @@ def _fase_key_para_jogo(jogo: Jogo) -> str | None:
     return fase_mata_mata_slug_ou_none(jogo.fase)
 
 
-def _config_para_jogo(db: Session, jogo: Jogo, cfg_global: ConfiguracaoBolao | Any) -> ConfiguracaoBolao | Any:
+def _config_para_jogo(
+    db: Session, jogo: Jogo, cfg_global: ConfiguracaoBolao | Any, empresa_id: int | None
+) -> ConfiguracaoBolao | Any:
     key = _fase_key_para_jogo(jogo)
-    if not key:
+    if not key or empresa_id is None:
         return cfg_global
-    fase_cfg = pontuacao_fase_service.get_por_fase_key(db, key)
+    fase_cfg = pontuacao_fase_service.get_por_fase_key_empresa(db, empresa_id, key)
     if fase_cfg is None:
         return cfg_global
     return fase_cfg
 
 
-def _palpites_jogo_com_marcadores(db: Session, jogo_id: int) -> list[PalpiteJogo]:
-    return list(
-        db.scalars(
-            select(PalpiteJogo)
-            .options(
-                selectinload(PalpiteJogo.marcadores_brasil),
-            )
-            .where(PalpiteJogo.jogo_id == jogo_id)
+def _palpites_jogo_com_marcadores(
+    db: Session, jogo_id: int, empresa_id: int | None = None
+) -> list[PalpiteJogo]:
+    stmt = (
+        select(PalpiteJogo)
+        .options(
+            selectinload(PalpiteJogo.marcadores_brasil),
+            selectinload(PalpiteJogo.usuario),
         )
-        .unique()
-        .all()
+        .where(PalpiteJogo.jogo_id == jogo_id)
     )
+    if empresa_id is not None:
+        stmt = stmt.join(Usuario, Usuario.id == PalpiteJogo.usuario_id).where(
+            Usuario.empresa_id == empresa_id
+        )
+    return list(db.scalars(stmt).unique().all())
 
 
 def _resultado_marcadores_tuples(db: Session, jogo_id: int) -> list[tuple[str, int]]:
@@ -215,9 +230,11 @@ def _resultado_marcadores_tuples(db: Session, jogo_id: int) -> list[tuple[str, i
     return [(r.nome_jogador, r.quantidade_gols) for r in rows]
 
 
-def _atualizar_um_palpite_jogo(db: Session, palpite: PalpiteJogo, jogo: Jogo, cfg: ConfiguracaoBolao | Any) -> None:
+def _atualizar_um_palpite_jogo(
+    db: Session, palpite: PalpiteJogo, jogo: Jogo, cfg: ConfiguracaoBolao | Any, empresa_id: int | None
+) -> None:
     p_placar = p_res = p_class = p_marc = 0
-    cfg_jogo = _config_para_jogo(db, jogo, cfg)
+    cfg_jogo = _config_para_jogo(db, jogo, cfg, empresa_id)
 
     if jogo.finalizado and jogo.placar_casa is not None and jogo.placar_fora is not None:
         rc, rf = jogo.placar_casa, jogo.placar_fora
@@ -260,14 +277,15 @@ def _atualizar_um_palpite_jogo(db: Session, palpite: PalpiteJogo, jogo: Jogo, cf
     palpite.pontuacao_total = p_placar + p_res + p_class + p_marc
 
 
-def recalcular_todos_palpites_do_jogo(db: Session, jogo_id: int) -> None:
+def recalcular_todos_palpites_do_jogo(db: Session, jogo_id: int, empresa_id: int | None = None) -> None:
     """Persiste pontuação em todos os `palpites_jogos` daquele jogo (§7.4, §8.3)."""
     jogo = jogo_service.get_by_id(db, jogo_id)
     if jogo is None:
         return
-    cfg = _config(db)
-    for palpite in _palpites_jogo_com_marcadores(db, jogo_id):
-        _atualizar_um_palpite_jogo(db, palpite, jogo, cfg)
+    for palpite in _palpites_jogo_com_marcadores(db, jogo_id, empresa_id):
+        palpite_empresa_id = palpite.usuario.empresa_id if palpite.usuario else empresa_id
+        cfg = _config_empresa(db, palpite_empresa_id)
+        _atualizar_um_palpite_jogo(db, palpite, jogo, cfg, palpite_empresa_id)
     db.commit()
 
 
@@ -276,11 +294,15 @@ def recalcular_marcadores_brasil_para_jogo(db: Session, jogo_id: int) -> None:
     recalcular_todos_palpites_do_jogo(db, jogo_id)
 
 
-def recalcular_todos_palpites_especiais(db: Session) -> None:
+def recalcular_todos_palpites_especiais(db: Session, empresa_id: int | None = None) -> None:
     """Atualiza pontuação de todos os palpites especiais conforme `resultados_especiais` (§10.3)."""
     res = db.scalar(select(ResultadoEspecial).order_by(ResultadoEspecial.id.asc()).limit(1))
-    cfg = _config(db)
-    palpites = list(db.scalars(select(PalpiteEspecial).order_by(PalpiteEspecial.id.asc())).all())
+    stmt = select(PalpiteEspecial).options(selectinload(PalpiteEspecial.usuario)).order_by(PalpiteEspecial.id.asc())
+    if empresa_id is not None:
+        stmt = stmt.join(Usuario, Usuario.id == PalpiteEspecial.usuario_id).where(
+            Usuario.empresa_id == empresa_id
+        )
+    palpites = list(db.scalars(stmt).unique().all())
     if res is None:
         for p in palpites:
             p.pontuacao_campeao = 0
@@ -292,6 +314,7 @@ def recalcular_todos_palpites_especiais(db: Session) -> None:
         return
 
     for p in palpites:
+        cfg = _config_empresa(db, p.usuario.empresa_id if p.usuario else empresa_id)
         c, vice, terceiro, art_pais = calcular_pontuacao_especial(p, res, cfg)
         p.pontuacao_campeao = c
         p.pontuacao_vice_campeao = vice
@@ -299,3 +322,10 @@ def recalcular_todos_palpites_especiais(db: Session) -> None:
         p.pontuacao_artilheiro_pais = art_pais
         p.pontuacao_total = c + vice + terceiro + art_pais
     db.commit()
+
+
+def recalcular_pontuacao_empresa(db: Session, empresa_id: int) -> None:
+    jogo_ids = list(db.scalars(select(Jogo.id)).all())
+    for jogo_id in jogo_ids:
+        recalcular_todos_palpites_do_jogo(db, int(jogo_id), empresa_id=empresa_id)
+    recalcular_todos_palpites_especiais(db, empresa_id=empresa_id)

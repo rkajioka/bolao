@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import get_current_active_user, require_admin
+from app.auth.dependencies import get_current_active_user, require_owner
 from app.database import get_db
 from app.models.pais import Pais
 from app.models.usuario import Usuario
@@ -31,7 +31,7 @@ def get_paises(
 def post_pais(
     data: PaisCreate,
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_owner),
 ) -> Pais:
     try:
         row = pais_service.create_pais(db, data)
@@ -59,7 +59,7 @@ def put_pais(
     pais_id: int,
     data: PaisUpdate,
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_owner),
 ) -> Pais:
     p = pais_service.get_by_id(db, pais_id)
     if p is None:

@@ -20,6 +20,7 @@ class ConfiguracaoBolaoRead(ConfiguracaoBolaoBase):
     model_config = {"from_attributes": True}
 
     id: int
+    empresa_id: int
     created_at: datetime
     updated_at: datetime
 

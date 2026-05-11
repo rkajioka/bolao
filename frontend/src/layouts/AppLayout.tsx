@@ -1,45 +1,36 @@
 import { type ReactNode } from 'react'
-import { NavLink, useNavigate, useLocation } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   CalendarDays,
   Star,
   ScrollText,
   Trophy,
-  Settings,
   LogOut,
   Moon,
   Sun,
   Users,
+  Shield,
+  SlidersHorizontal,
 } from 'lucide-react'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useTheme } from '@/hooks/useTheme'
+import { useEmpresaTheme } from '@/hooks/useEmpresaTheme'
 import { cn } from '@/lib/utils'
 import { UserAvatar } from '@/components/UserAvatar'
 
 interface NavItem {
   to: string
+  end?: boolean
   icon: ReactNode
   label: string
-  adminOnly?: boolean
+  visible?: boolean
 }
 
-const navItems: NavItem[] = [
-  { to: '/jogos', icon: <CalendarDays size={22} />, label: 'Palpites' },
-  { to: '/especiais', icon: <Star size={22} />, label: 'Especiais' },
-  { to: '/regras', icon: <ScrollText size={22} />, label: 'Regras' },
-  { to: '/ranking', icon: <Trophy size={22} />, label: 'Ranking' },
-  { to: '/equipe', icon: <Users size={22} />, label: 'Equipe', adminOnly: true },
-  { to: '/admin', icon: <Settings size={22} />, label: 'Admin', adminOnly: true },
-]
-
-interface AppLayoutProps {
-  children: ReactNode
-}
-
-export function AppLayout({ children }: AppLayoutProps) {
-  const { user, logout, isAdmin } = useAuth()
+export function AppLayout() {
+  const { user, logout, canManageEquipe, canManageTorneio } = useAuth()
   const { isDark, toggle } = useTheme()
+  useEmpresaTheme()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -48,7 +39,22 @@ export function AppLayout({ children }: AppLayoutProps) {
     navigate('/login')
   }
 
-  const visibleItems = navItems.filter((item) => !item.adminOnly || isAdmin)
+  const navItems: NavItem[] = [
+    { to: '/jogos', icon: <CalendarDays size={22} />, label: 'Palpites', visible: true },
+    { to: '/especiais', icon: <Star size={22} />, label: 'Especiais', visible: true },
+    { to: '/regras', icon: <ScrollText size={22} />, label: 'Regras', visible: true },
+    { to: '/ranking', icon: <Trophy size={22} />, label: 'Ranking', visible: true },
+    { to: '/equipe', icon: <Users size={22} />, label: 'Equipe', visible: !!canManageEquipe },
+    { to: '/admin', end: true, icon: <Shield size={22} />, label: 'Torneio', visible: !!canManageTorneio },
+    {
+      to: '/admin/config',
+      icon: <SlidersHorizontal size={22} />,
+      label: 'Bolão',
+      visible: !!canManageEquipe,
+    },
+  ]
+
+  const visibleItems = navItems.filter((item) => item.visible)
 
   const avatarSrc = user?.avatar_url || user?.imagem_perfil
 
@@ -84,6 +90,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             {/* Avatar — clicável para ir ao perfil */}
             {user && (
               <button
+                type="button"
                 onClick={() => navigate('/perfil')}
                 className="flex items-center gap-2 hover:opacity-80 transition-opacity"
                 aria-label="Meu perfil"
@@ -105,6 +112,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
             {/* Theme toggle */}
             <motion.button
+              type="button"
               onClick={toggle}
               whileTap={{ scale: 0.88 }}
               className="w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-200"
@@ -128,6 +136,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
             {/* Logout */}
             <button
+              type="button"
               onClick={handleLogout}
               aria-label="Sair da conta"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all duration-150"
@@ -146,15 +155,15 @@ export function AppLayout({ children }: AppLayoutProps) {
 
       {/* Main content */}
       <main className="flex-1 max-w-2xl w-full mx-auto px-4 pt-4 safe-bottom">
-        <AnimatePresence mode="sync" initial={false}>
+        <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={location.pathname}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
+            exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.16, ease: 'easeOut' }}
           >
-            {children}
+            <Outlet />
           </motion.div>
         </AnimatePresence>
       </main>
@@ -176,6 +185,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             <NavLink
               key={item.to}
               to={item.to}
+              end={item.end}
               className={({ isActive }) =>
                 cn(
                   'flex-1 flex flex-col items-center justify-center gap-1 transition-all duration-150 relative',
@@ -198,11 +208,9 @@ export function AppLayout({ children }: AppLayoutProps) {
                     {item.label}
                   </span>
                   {isActive && (
-                    <motion.div
-                      layoutId="nav-indicator"
+                    <div
                       className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full"
                       style={{ background: 'var(--accent)' }}
-                      transition={{ type: 'spring', stiffness: 400, damping: 35 }}
                     />
                   )}
                 </>

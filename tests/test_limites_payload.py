@@ -18,7 +18,7 @@ def test_palpite_com_placar_absurdo_retorna_422(client) -> None:
     finally:
         db.close()
 
-    admin_token = _login(client, "admin-etapa13@example.com", "senhaadmin1")
+    admin_token = _login(client, "owner-etapa13@example.com", "senhaowner1")
     h_admin = {"Authorization": f"Bearer {admin_token}"}
     r_jogo = client.post(
         "/jogos",

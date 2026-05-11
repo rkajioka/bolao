@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { Trophy, TrendingUp, Star, User } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { RankingCardSkeleton, PodiumSkeleton } from '@/components/Skeleton'
 import { SegmentedControl } from '@/components/SegmentedControl'
 import { SectionHeader } from '@/components/SectionHeader'
@@ -13,6 +13,9 @@ import { rankingService } from '@/services/ranking.service'
 import type { Pais, RankingLinha } from '@/types'
 import { api } from '@/lib/api'
 import { useAuth } from '@/features/auth/AuthContext'
+import { OwnerEmpresaPicker } from '@/components/OwnerEmpresaPicker'
+import { useResolvedEmpresaForAdmin } from '@/hooks/useResolvedEmpresaForAdmin'
+import { empresaService } from '@/services/empresa.service'
 
 type Aba = 'classificacao' | 'insights'
 type SortBy = 'total' | 'jogos' | 'especiais'
@@ -76,21 +79,38 @@ function RankingRowAvatar({ src, alt }: { src?: string | null; alt: string }) {
 }
 
 export function RankingPage() {
-  const { user } = useAuth()
+  const { user, empresaId: authEmpresaId } = useAuth()
+  const { resolvedEmpresaId, setOwnerEmpresaId, needsOwnerEmpresaPick } = useResolvedEmpresaForAdmin()
   const [aba, setAba] = useState<Aba>('classificacao')
   const [sortBy, setSortBy] = useState<SortBy>('total')
 
+  const { data: empresas = [] } = useQuery({
+    queryKey: ['empresas', 'owner'],
+    queryFn: () => empresaService.listar(),
+    enabled: needsOwnerEmpresaPick,
+  })
+
+  useEffect(() => {
+    if (!needsOwnerEmpresaPick || resolvedEmpresaId != null || empresas.length === 0) return
+    setOwnerEmpresaId(empresas[0].id)
+  }, [needsOwnerEmpresaPick, resolvedEmpresaId, empresas, setOwnerEmpresaId])
+
+  const effectiveEmpresaId = needsOwnerEmpresaPick ? resolvedEmpresaId : authEmpresaId
+  const rankingEnabled = !needsOwnerEmpresaPick || effectiveEmpresaId != null
+
   const { data, isLoading } = useQuery({
-    queryKey: ['ranking'],
-    queryFn: () => rankingService.get(),
+    queryKey: ['ranking', effectiveEmpresaId],
+    queryFn: () => rankingService.get(needsOwnerEmpresaPick ? effectiveEmpresaId : undefined),
+    enabled: rankingEnabled,
   })
   const { data: paises = [] } = useQuery({
     queryKey: ['paises'],
     queryFn: () => api.get<Pais[]>('/paises'),
   })
   const { data: insights, isLoading: isLoadingInsights } = useQuery({
-    queryKey: ['ranking', 'insights'],
-    queryFn: () => rankingService.getInsights(),
+    queryKey: ['ranking', 'insights', effectiveEmpresaId],
+    queryFn: () => rankingService.getInsights(needsOwnerEmpresaPick ? effectiveEmpresaId : undefined),
+    enabled: rankingEnabled,
   })
 
   const linhas = data?.linhas ?? []
@@ -123,6 +143,16 @@ export function RankingPage() {
   return (
     <div className="space-y-4">
       <SectionHeader title="Ranking" subtitle="Classificação geral do bolão" />
+
+      {needsOwnerEmpresaPick && (
+        <OwnerEmpresaPicker value={resolvedEmpresaId} onChange={setOwnerEmpresaId} />
+      )}
+
+      {needsOwnerEmpresaPick && effectiveEmpresaId == null && (
+        <p className="text-sm px-1" style={{ color: 'var(--text-muted)' }}>
+          Selecione uma empresa para ver o ranking.
+        </p>
+      )}
 
       <SegmentedControl
         segments={ABA_SEGMENTS}

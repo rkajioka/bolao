@@ -20,6 +20,12 @@ class Settings(BaseSettings):
     rate_limit_window_seconds: int = 60
     debug: bool = False
     public_app_url: str = "http://localhost:5173"
+    azure_client_id: str | None = None
+    azure_client_secret: str | None = None
+    azure_tenant_id: str | None = None
+    outlook_sender: str | None = None
+    graph_api_url: str = "https://graph.microsoft.com/v1.0"
+    graph_api_scope: str = "https://graph.microsoft.com/.default"
 
 
 @lru_cache

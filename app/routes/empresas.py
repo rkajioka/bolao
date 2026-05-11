@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import require_admin
+from app.auth.dependencies import require_owner
 from app.database import get_db
 from app.models.usuario import Usuario
 from app.schemas.empresa import EmpresaCreate, EmpresaRead, EmpresaUpdate
@@ -14,7 +14,7 @@ router = APIRouter(prefix="/empresas", tags=["empresas"])
 @router.get("/", response_model=list[EmpresaRead])
 def list_empresas(
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(require_admin),
+    _admin: Usuario = Depends(require_owner),
 ) -> list:
     return empresa_service.list_empresas(db)
 
@@ -23,7 +23,7 @@ def list_empresas(
 def create_empresa(
     data: EmpresaCreate,
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(require_admin),
+    _admin: Usuario = Depends(require_owner),
 ) -> object:
     try:
         return empresa_service.create_empresa(db, data)
@@ -38,7 +38,7 @@ def create_empresa(
 def get_empresa(
     empresa_id: int,
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(require_admin),
+    _admin: Usuario = Depends(require_owner),
 ) -> object:
     empresa = empresa_service.get_by_id(db, empresa_id)
     if empresa is None:
@@ -51,7 +51,7 @@ def update_empresa(
     empresa_id: int,
     data: EmpresaUpdate,
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(require_admin),
+    _admin: Usuario = Depends(require_owner),
 ) -> object:
     empresa = empresa_service.get_by_id(db, empresa_id)
     if empresa is None:

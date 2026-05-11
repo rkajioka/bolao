@@ -4,6 +4,7 @@ from app.auth.dependencies import (
     get_current_user_id,
     get_token_payload,
     require_admin,
+    require_owner,
     require_primeiro_login_concluido,
 )
 from app.auth.jwt import create_access_token, decode_access_token, decode_access_token_safe
@@ -20,5 +21,6 @@ __all__ = [
     "get_current_user",
     "get_current_active_user",
     "require_admin",
+    "require_owner",
     "require_primeiro_login_concluido",
 ]

@@ -45,14 +45,14 @@ def main() -> None:
             senha_hash=hash_password(args.senha),
             funcao="Administrador",
             imagem_perfil=None,
-            tipo_usuario="admin",
+            tipo_usuario="owner",
             ativo=True,
             primeiro_login=False,
         )
         db.add(u)
         db.commit()
         db.refresh(u)
-        print(f"Admin criado: id={u.id} email={u.email}")
+        print(f"Owner criado: id={u.id} email={u.email}")
     finally:
         db.close()
 

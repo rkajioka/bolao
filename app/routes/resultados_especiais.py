@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import require_admin
+from app.auth.dependencies import require_owner
 from app.database import get_db
 from app.models.resultado_especial import ResultadoEspecial
 from app.models.usuario import Usuario
@@ -24,7 +24,7 @@ def _http(exc: ValueError) -> HTTPException:
 @router.get("", response_model=ResultadoEspecialRead | None)
 def get_resultado_especial(
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(require_admin),
+    _admin: Usuario = Depends(require_owner),
 ) -> ResultadoEspecial | None:
     return resultado_especial_service.obter_singleton(db)
 
@@ -33,7 +33,7 @@ def get_resultado_especial(
 def post_resultado_especial(
     data: ResultadoEspecialWrite,
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_owner),
 ) -> ResultadoEspecial:
     try:
         row = resultado_especial_service.criar(db, data)
@@ -70,7 +70,7 @@ def post_resultado_especial(
 def put_resultado_especial(
     data: ResultadoEspecialWrite,
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_owner),
 ) -> ResultadoEspecial:
     try:
         row = resultado_especial_service.atualizar(db, data)
@@ -106,7 +106,7 @@ def put_resultado_especial(
 @router.patch("/finalizar", response_model=ResultadoEspecialRead)
 def patch_resultado_especial_finalizar(
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_owner),
 ) -> ResultadoEspecial:
     try:
         row = resultado_especial_service.finalizar(db)

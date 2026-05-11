@@ -15,6 +15,9 @@ const EspeciaisPage = lazy(() =>
   import('@/pages/EspeciaisPage').then((m) => ({ default: m.EspeciaisPage })),
 )
 const AdminPage = lazy(() => import('@/pages/AdminPage').then((m) => ({ default: m.AdminPage })))
+const AdminConfigPage = lazy(() =>
+  import('@/pages/AdminConfigPage').then((m) => ({ default: m.AdminConfigPage })),
+)
 const RegrasPage = lazy(() =>
   import('@/pages/RegrasPage').then((m) => ({ default: m.RegrasPage })),
 )
@@ -36,10 +39,7 @@ const RedefinirSenhaPage = lazy(() =>
 
 function LoadingScreen() {
   return (
-    <div
-      className="min-h-dvh flex items-center justify-center"
-      style={{ background: 'var(--bg)' }}
-    >
+    <div className="min-h-dvh flex items-center justify-center" style={{ background: 'var(--bg)' }}>
       <div
         className="w-10 h-10 rounded-full border-2 animate-spin"
         style={{ borderColor: 'rgba(53,208,127,0.3)', borderTopColor: 'var(--accent)' }}
@@ -66,20 +66,30 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+/** Administrador da empresa ou proprietário (equipe, pontuação, aparência). */
 function AdminRoute({ children }: { children: React.ReactNode }) {
-  const { isAdmin } = useAuth()
-  if (!isAdmin) return <Navigate to="/jogos" replace />
+  const { canManageEquipe } = useAuth()
+  if (!canManageEquipe) return <Navigate to="/jogos" replace />
   return <>{children}</>
 }
 
-function AppPage({ children }: { children: React.ReactNode }) {
+/** Somente proprietário da plataforma (torneio global). */
+function OwnerRoute({ children }: { children: React.ReactNode }) {
+  const { canManageTorneio } = useAuth()
+  if (!canManageTorneio) return <Navigate to="/jogos" replace />
+  return <>{children}</>
+}
+
+function AppShell() {
   return (
     <ProtectedRoute>
-      <AppLayout>
-        <Suspense fallback={<PageFallback />}>{children}</Suspense>
-      </AppLayout>
+      <AppLayout />
     </ProtectedRoute>
   )
+}
+
+function LazyPage({ children }: { children: React.ReactNode }) {
+  return <Suspense fallback={<PageFallback />}>{children}</Suspense>
 }
 
 export default function App() {
@@ -128,29 +138,39 @@ export default function App() {
       />
 
       {/* Protegidas */}
-      <Route path="/" element={<Navigate to="/jogos" replace />} />
-      <Route path="/jogos" element={<AppPage><JogosPage /></AppPage>} />
-      <Route path="/especiais" element={<AppPage><EspeciaisPage /></AppPage>} />
-      <Route path="/regras" element={<AppPage><RegrasPage /></AppPage>} />
-      <Route path="/grupos" element={<Navigate to="/jogos" replace />} />
-      <Route path="/ranking" element={<AppPage><RankingPage /></AppPage>} />
-      <Route path="/perfil" element={<AppPage><PerfilPage /></AppPage>} />
-      <Route
-        path="/admin"
-        element={
-          <AppPage>
-            <AdminRoute><AdminPage /></AdminRoute>
-          </AppPage>
-        }
-      />
-      <Route
-        path="/equipe"
-        element={
-          <AppPage>
-            <AdminRoute><EquipePage /></AdminRoute>
-          </AppPage>
-        }
-      />
+      <Route element={<AppShell />}>
+        <Route path="/" element={<Navigate to="/jogos" replace />} />
+        <Route path="/jogos" element={<LazyPage><JogosPage /></LazyPage>} />
+        <Route path="/especiais" element={<LazyPage><EspeciaisPage /></LazyPage>} />
+        <Route path="/regras" element={<LazyPage><RegrasPage /></LazyPage>} />
+        <Route path="/grupos" element={<Navigate to="/jogos" replace />} />
+        <Route path="/ranking" element={<LazyPage><RankingPage /></LazyPage>} />
+        <Route path="/perfil" element={<LazyPage><PerfilPage /></LazyPage>} />
+        <Route
+          path="/admin"
+          element={
+            <LazyPage>
+              <OwnerRoute><AdminPage /></OwnerRoute>
+            </LazyPage>
+          }
+        />
+        <Route
+          path="/admin/config"
+          element={
+            <LazyPage>
+              <AdminRoute><AdminConfigPage /></AdminRoute>
+            </LazyPage>
+          }
+        />
+        <Route
+          path="/equipe"
+          element={
+            <LazyPage>
+              <AdminRoute><EquipePage /></AdminRoute>
+            </LazyPage>
+          }
+        />
+      </Route>
       <Route path="*" element={<Navigate to="/jogos" replace />} />
     </Routes>
   )

@@ -1,0 +1,51 @@
+"""Tokens de tema padrão (espelham frontend/src/index.css)."""
+
+DEFAULT_THEME_TOKENS_DARK: dict[str, str] = {
+    "bg": "#070A12",
+    "bg-2": "#0B1020",
+    "glass": "rgba(255, 255, 255, 0.06)",
+    "glass-hover": "rgba(255, 255, 255, 0.10)",
+    "border": "rgba(255, 255, 255, 0.10)",
+    "border-hover": "rgba(255, 255, 255, 0.18)",
+    "text": "#F8FAFC",
+    "text-muted": "#A7B0C0",
+    "accent": "#35D07F",
+    "accent-dim": "rgba(53, 208, 127, 0.15)",
+    "highlight": "#D4A017",
+    "highlight-dim": "rgba(212, 160, 23, 0.15)",
+    "danger": "#FF5C7A",
+    "danger-dim": "rgba(255, 92, 122, 0.15)",
+    "topbar-bg": "rgba(7, 10, 18, 0.85)",
+    "nav-bg": "rgba(7, 10, 18, 0.90)",
+    "segmented-bg": "rgba(255, 255, 255, 0.04)",
+    "segmented-border": "rgba(255, 255, 255, 0.08)",
+    "segmented-active-bg": "rgba(255, 255, 255, 0.12)",
+    "segmented-active-border": "rgba(255, 255, 255, 0.14)",
+    "theme-color": "#070A12",
+}
+
+DEFAULT_THEME_TOKENS_LIGHT: dict[str, str] = {
+    "bg": "#F0F2F7",
+    "bg-2": "#E4E8F0",
+    "glass": "rgba(255, 255, 255, 0.70)",
+    "glass-hover": "rgba(255, 255, 255, 0.88)",
+    "border": "rgba(0, 0, 0, 0.08)",
+    "border-hover": "rgba(0, 0, 0, 0.15)",
+    "text": "#0F1117",
+    "text-muted": "#5A6478",
+    "accent": "#1DB864",
+    "accent-dim": "rgba(29, 184, 100, 0.12)",
+    "highlight": "#B8860B",
+    "highlight-dim": "rgba(184, 134, 11, 0.12)",
+    "danger": "#E03050",
+    "danger-dim": "rgba(224, 48, 80, 0.10)",
+    "topbar-bg": "rgba(240, 242, 247, 0.88)",
+    "nav-bg": "rgba(240, 242, 247, 0.92)",
+    "segmented-bg": "rgba(0, 0, 0, 0.05)",
+    "segmented-border": "rgba(0, 0, 0, 0.09)",
+    "segmented-active-bg": "rgba(255, 255, 255, 0.92)",
+    "segmented-active-border": "rgba(0, 0, 0, 0.10)",
+    "theme-color": "#F0F2F7",
+}
+
+ALLOWED_THEME_TOKEN_KEYS = frozenset(DEFAULT_THEME_TOKENS_DARK.keys())

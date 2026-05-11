@@ -30,8 +30,10 @@ def _loaders():
     )
 
 
-def _assert_nao_bloqueado(db: Session) -> None:
-    if configuracao_bolao_service.palpites_especiais_esta_bloqueado(db):
+def _assert_nao_bloqueado(db: Session, empresa_id: int | None) -> None:
+    if empresa_id is None:
+        return
+    if configuracao_bolao_service.palpites_especiais_esta_bloqueado(db, empresa_id):
         raise ValueError("Palpites especiais bloqueados após o início da primeira rodada")
 
 
@@ -49,15 +51,31 @@ def _validar_pais_generico(db: Session, pais_id: int | None, label: str) -> None
         raise ValueError(f"País de {label} não encontrado")
 
 
+def _empresa_id_palpite(p: PalpiteEspecial) -> int | None:
+    if p.usuario is not None:
+        return p.usuario.empresa_id
+    return None
+
+
 def to_read(db: Session, p: PalpiteEspecial) -> PalpiteEspecialRead:
     r = PalpiteEspecialRead.model_validate(p)
-    efetivo = p.bloqueado or configuracao_bolao_service.palpites_especiais_esta_bloqueado(db)
+    empresa_id = _empresa_id_palpite(p)
+    efetivo = p.bloqueado or (
+        configuracao_bolao_service.palpites_especiais_esta_bloqueado(db, empresa_id)
+        if empresa_id is not None
+        else False
+    )
     return r.model_copy(update={"bloqueado": efetivo})
 
 
 def to_admin_read(db: Session, p: PalpiteEspecial) -> PalpiteEspecialAdminRead:
     r = PalpiteEspecialAdminRead.model_validate(p)
-    efetivo = p.bloqueado or configuracao_bolao_service.palpites_especiais_esta_bloqueado(db)
+    empresa_id = _empresa_id_palpite(p)
+    efetivo = p.bloqueado or (
+        configuracao_bolao_service.palpites_especiais_esta_bloqueado(db, empresa_id)
+        if empresa_id is not None
+        else False
+    )
     return r.model_copy(update={"bloqueado": efetivo})
 
 
@@ -78,11 +96,11 @@ def listar_todos_admin(db: Session) -> list[PalpiteEspecial]:
     return list(db.scalars(q).unique().all())
 
 
-def create_palpite(db: Session, usuario_id: int, data: PalpiteEspecialCreate) -> PalpiteEspecial:
+def create_palpite(db: Session, usuario_id: int, data: PalpiteEspecialCreate, empresa_id: int | None) -> PalpiteEspecial:
     if get_por_usuario(db, usuario_id) is not None:
         raise ValueError("Palpite especial já existe; use PUT /palpites-especiais/me para alterar")
 
-    _assert_nao_bloqueado(db)
+    _assert_nao_bloqueado(db, empresa_id)
     _validar_campeao(db, data.campeao_id)
     _validar_pais_generico(db, data.vice_campeao_id, "vice-campeão")
     _validar_pais_generico(db, data.terceiro_lugar_id, "terceiro lugar")
@@ -108,12 +126,12 @@ def create_palpite(db: Session, usuario_id: int, data: PalpiteEspecialCreate) ->
     return row
 
 
-def update_palpite_me(db: Session, usuario_id: int, data: PalpiteEspecialUpdate) -> PalpiteEspecial:
+def update_palpite_me(db: Session, usuario_id: int, data: PalpiteEspecialUpdate, empresa_id: int | None) -> PalpiteEspecial:
     p = get_por_usuario(db, usuario_id)
     if p is None:
         raise ValueError("Palpite especial não encontrado; use POST para criar")
 
-    _assert_nao_bloqueado(db)
+    _assert_nao_bloqueado(db, empresa_id)
 
     raw = data.model_dump(exclude_unset=True)
     if "campeao_id" in raw:
