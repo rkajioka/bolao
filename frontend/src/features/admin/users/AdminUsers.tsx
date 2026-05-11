@@ -76,7 +76,6 @@ export function AdminUsers({ success, error }: AdminUsersProps) {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
-  const [senha, setSenha] = useState('')
   const [funcao, setFuncao] = useState('')
   const [tipoUsuario, setTipoUsuario] = useState<TipoUsuario>('admin')
   const [empresaId, setEmpresaId] = useState<number | ''>('')
@@ -113,7 +112,6 @@ export function AdminUsers({ success, error }: AdminUsersProps) {
     setEditingId(null)
     setNome('')
     setEmail('')
-    setSenha('')
     setFuncao('')
     setTipoUsuario('admin')
     setEmpresaId('')
@@ -125,7 +123,6 @@ export function AdminUsers({ success, error }: AdminUsersProps) {
       adminService.createUser({
         nome: nome.trim(),
         email: email.trim(),
-        senha_plana: senha,
         funcao: funcao.trim() || null,
         tipo_usuario: tipoUsuario,
         empresa_id: tipoUsuario === 'admin' ? Number(empresaId) : empresaId === '' ? null : Number(empresaId),
@@ -136,7 +133,7 @@ export function AdminUsers({ success, error }: AdminUsersProps) {
       await queryClient.invalidateQueries({ queryKey: ['usuarios'] })
       const message = mensagemEntregaEmail(
         created,
-        'Usuário criado. Enviamos as instruções de acesso por e-mail.',
+        'Usuário criado. Enviamos um link único por e-mail para definir a senha.',
       )
       if (created.email_enviado === false) {
         error(message)
@@ -174,7 +171,6 @@ export function AdminUsers({ success, error }: AdminUsersProps) {
     setEditingId(u.id)
     setNome(u.nome)
     setEmail(u.email)
-    setSenha('')
     setFuncao(u.funcao ?? '')
     setTipoUsuario(u.tipo_usuario)
     setEmpresaId(u.empresa_id ?? '')
@@ -191,10 +187,6 @@ export function AdminUsers({ success, error }: AdminUsersProps) {
       return
     }
     if (editingId == null) {
-      if (senha.length < 8) {
-        error('A senha deve ter pelo menos 8 caracteres.')
-        return
-      }
       createUser.mutate()
       return
     }
@@ -272,19 +264,9 @@ export function AdminUsers({ success, error }: AdminUsersProps) {
             />
           </label>
           {editingId == null && (
-            <label className="block space-y-1 sm:col-span-2">
-              <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Senha</span>
-              <input
-                type="password"
-                value={senha}
-                onChange={(e) => setSenha(e.target.value)}
-                autoComplete="new-password"
-                className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
-                style={inputStyle}
-                minLength={8}
-                required
-              />
-            </label>
+            <p className="text-xs sm:col-span-2" style={{ color: 'var(--text-muted)' }}>
+              O acesso será enviado por e-mail com um link único para definir a senha.
+            </p>
           )}
           <label className="block space-y-1">
             <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>Função</span>

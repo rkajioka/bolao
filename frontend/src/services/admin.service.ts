@@ -55,7 +55,6 @@ export interface TemaTokensWrite {
 export interface CreateUserPayload {
   nome: string
   email: string
-  senha_plana: string
   funcao?: string | null
   tipo_usuario: User['tipo_usuario']
   empresa_id?: number | null

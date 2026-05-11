@@ -195,7 +195,7 @@ def test_convite_falha_alerta_todos_admins_da_empresa(mock_send, client) -> None
 
 
 @patch("app.services.email_service.enviar_email_outlook")
-def test_criar_usuario_envia_email_de_acesso(mock_send, client) -> None:
+def test_criar_usuario_envia_link_de_redefinicao(mock_send, client) -> None:
     db = SessionLocal()
     try:
         emp = Empresa(nome="Empresa Criacao", codigo_empresa="emp-create-1", ativo=True)
@@ -232,7 +232,6 @@ def test_criar_usuario_envia_email_de_acesso(mock_send, client) -> None:
         json={
             "nome": "Novo Admin",
             "email": "novo-admin@example.com",
-            "senha_plana": "senhaadmin1",
             "tipo_usuario": "admin",
             "ativo": True,
             "primeiro_login": True,
@@ -245,8 +244,8 @@ def test_criar_usuario_envia_email_de_acesso(mock_send, client) -> None:
     kwargs = mock_send.call_args.kwargs
     assert kwargs["destinatario"] == "novo-admin@example.com"
     assert kwargs["nome_remetente"] == "Empresa Criacao"
-    assert "senhaadmin1" in kwargs["corpo_html"]
-    assert "/login" in kwargs["corpo_html"]
+    assert "redefinir-senha" in kwargs["corpo_html"]
+    assert "senhaadmin1" not in kwargs["corpo_html"]
 
 
 @patch("app.services.email_service.enviar_email_outlook")
@@ -280,3 +279,56 @@ def test_forgot_password_chama_outlook_com_nome_empresa(mock_send, client) -> No
     assert kwargs["nome_remetente"] == "Empresa Reset"
     assert "Empresa Reset" in kwargs["corpo_html"]
     assert "redefinir-senha" in kwargs["corpo_html"]
+
+
+@patch("app.services.email_service.enviar_email_outlook")
+def test_redefinir_senha_encerra_primeiro_login(mock_send, client) -> None:
+    db = SessionLocal()
+    user_id: int
+    token: str
+    try:
+        emp = Empresa(nome="Empresa Primeiro Login", codigo_empresa="emp-primeiro-1", ativo=True)
+        db.add(emp)
+        db.commit()
+        db.refresh(emp)
+        user, _ = usuario_service.create_usuario(
+            db,
+            UsuarioCreate(
+                nome="Usuario Primeiro Login",
+                email="primeiro-login@example.com",
+                senha_plana="senha12345",
+                tipo_usuario="usuario",
+                ativo=True,
+                primeiro_login=True,
+                empresa_id=emp.id,
+            ),
+        )
+        user_id = user.id
+        from app.services import password_reset_service
+
+        token, _ = password_reset_service.gerar_e_enviar_reset_para_usuario(
+            db,
+            user,
+            motivo="solicitacao",
+            commit=True,
+        )
+    finally:
+        db.close()
+
+    r = client.post(
+        "/auth/redefinir-senha",
+        json={
+            "token": token,
+            "nova_senha": "novasenha1",
+            "confirmar_senha": "novasenha1",
+        },
+    )
+    assert r.status_code == 204
+
+    db_check = SessionLocal()
+    try:
+        refreshed = db_check.get(Usuario, user_id)
+        assert refreshed is not None
+        assert refreshed.primeiro_login is False
+    finally:
+        db_check.close()

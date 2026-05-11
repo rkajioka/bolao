@@ -1,5 +1,6 @@
 import secrets
 from datetime import UTC, datetime, timedelta
+from typing import Literal
 
 from fastapi import HTTPException, status
 from sqlalchemy import and_, select
@@ -9,11 +10,12 @@ from app.auth.password import hash_password
 from app.models.empresa import Empresa
 from app.models.password_reset import PasswordReset
 from app.models.usuario import Usuario
-from app.services import audit_log_service, email_service, usuario_service
+from app.services import audit_log_service, email_dispatch_service, email_service, usuario_service
 
 
 _TOKEN_BYTES = 48
 _EXPIRACAO_MINUTOS = 60
+MotivoResetEmail = Literal["solicitacao", "conta_criada"]
 
 
 def _gerar_token() -> str:
@@ -22,6 +24,78 @@ def _gerar_token() -> str:
 
 def _expiracao() -> datetime:
     return datetime.now(UTC) + timedelta(minutes=_EXPIRACAO_MINUTOS)
+
+
+def _empresa_nome(db: Session, empresa_id: int | None) -> str:
+    if empresa_id is None:
+        return "Bolão"
+    empresa = db.get(Empresa, empresa_id)
+    return empresa.nome if empresa is not None else "Bolão"
+
+
+def _invalidar_tokens_pendentes(db: Session, usuario_id: int) -> None:
+    tokens_antigos = list(
+        db.scalars(
+            select(PasswordReset).where(
+                and_(
+                    PasswordReset.usuario_id == usuario_id,
+                    PasswordReset.usado.is_(False),
+                )
+            )
+        ).all()
+    )
+    for token in tokens_antigos:
+        token.usado = True
+    db.flush()
+
+
+def _criar_token_reset(
+    db: Session,
+    usuario: Usuario,
+    *,
+    ip: str | None,
+    acao_auditoria: str,
+) -> str:
+    _invalidar_tokens_pendentes(db, usuario.id)
+    token = _gerar_token()
+    db.add(
+        PasswordReset(
+            usuario_id=usuario.id,
+            token=token,
+            expiracao=_expiracao(),
+        )
+    )
+    audit_log_service.log(
+        db,
+        acao=acao_auditoria,
+        usuario_id=usuario.id,
+        empresa_id=usuario.empresa_id,
+        ip=ip,
+    )
+    db.flush()
+    return token
+
+
+def gerar_e_enviar_reset_para_usuario(
+    db: Session,
+    usuario: Usuario,
+    *,
+    ip: str | None = None,
+    acao_auditoria: str = "password_reset.solicitado",
+    motivo: MotivoResetEmail = "solicitacao",
+    commit: bool = True,
+) -> tuple[str, email_dispatch_service.ResultadoEnvio]:
+    token = _criar_token_reset(db, usuario, ip=ip, acao_auditoria=acao_auditoria)
+    if commit:
+        db.commit()
+    resultado = email_service.tentar_enviar_reset_senha(
+        db,
+        usuario.email,
+        token,
+        _empresa_nome(db, usuario.empresa_id),
+        motivo=motivo,
+    )
+    return token, resultado
 
 
 def solicitar_reset(
@@ -38,45 +112,14 @@ def solicitar_reset(
     if usuario is None or not usuario.ativo:
         return None
 
-    # Invalida tokens anteriores do usuário
-    tokens_antigos = list(
-        db.scalars(
-            select(PasswordReset).where(
-                and_(
-                    PasswordReset.usuario_id == usuario.id,
-                    PasswordReset.usado.is_(False),
-                )
-            )
-        ).all()
-    )
-    for t in tokens_antigos:
-        t.usado = True
-    db.flush()
-
-    token = _gerar_token()
-    pr = PasswordReset(
-        usuario_id=usuario.id,
-        token=token,
-        expiracao=_expiracao(),
-    )
-    db.add(pr)
-
-    audit_log_service.log(
+    token, _ = gerar_e_enviar_reset_para_usuario(
         db,
-        acao="password_reset.solicitado",
-        usuario_id=usuario.id,
-        empresa_id=usuario.empresa_id,
+        usuario,
         ip=ip,
+        acao_auditoria="password_reset.solicitado",
+        motivo="solicitacao",
+        commit=True,
     )
-
-    empresa_nome = "Bolão"
-    if usuario.empresa_id is not None:
-        empresa = db.get(Empresa, usuario.empresa_id)
-        if empresa is not None:
-            empresa_nome = empresa.nome
-
-    db.commit()
-    email_service.tentar_enviar_reset_senha(db, email, token, empresa_nome)
     return token
 
 
@@ -110,6 +153,7 @@ def redefinir_senha(
         )
 
     usuario.senha_hash = hash_password(nova_senha)
+    usuario.primeiro_login = False
     pr.usado = True
 
     audit_log_service.log(

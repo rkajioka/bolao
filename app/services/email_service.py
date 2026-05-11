@@ -184,16 +184,28 @@ def tentar_enviar_reset_senha(
     destinatario: str,
     token: str,
     empresa_nome: str,
+    *,
+    motivo: str = "solicitacao",
 ) -> email_dispatch_service.ResultadoEnvio:
     del db
     link = f"{_public_base_url()}/redefinir-senha?token={token}"
-    assunto = f"Redefinição de senha — {empresa_nome}"
-    corpo_html = (
-        f"<p>Recebemos um pedido para redefinir a senha da sua conta no bolão "
-        f"<strong>{empresa_nome}</strong>.</p>"
-        f'<p><a href="{link}">Redefinir senha</a></p>'
-        "<p>O link expira em breve. Se não foi você, ignore este e-mail.</p>"
-    )
+    if motivo == "conta_criada":
+        assunto = f"Defina sua senha — {empresa_nome}"
+        corpo_html = (
+            f"<p>Sua conta no bolão <strong>{empresa_nome}</strong> foi criada.</p>"
+            f"<p>Use o link abaixo para definir sua senha de acesso com o e-mail "
+            f"<strong>{destinatario}</strong>.</p>"
+            f'<p><a href="{link}">Definir senha</a></p>'
+            "<p>O link expira em breve. Se você não esperava este acesso, ignore este e-mail.</p>"
+        )
+    else:
+        assunto = f"Redefinição de senha — {empresa_nome}"
+        corpo_html = (
+            f"<p>Recebemos um pedido para redefinir a senha da sua conta no bolão "
+            f"<strong>{empresa_nome}</strong>.</p>"
+            f'<p><a href="{link}">Redefinir senha</a></p>'
+            "<p>O link expira em breve. Se não foi você, ignore este e-mail.</p>"
+        )
     return _enviar_com_log(
         destinatario=destinatario,
         assunto=assunto,

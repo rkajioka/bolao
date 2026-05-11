@@ -1,3 +1,4 @@
+import secrets
 from dataclasses import dataclass
 
 from sqlalchemy import func, select
@@ -8,7 +9,7 @@ from app.auth.password import hash_password
 from app.core.password_defaults import SENHA_PADRAO_TEMPORARIA
 from app.models.usuario import Usuario
 from app.schemas.usuario import UsuarioCreate, UsuarioUpdate
-from app.services import email_dispatch_service, email_service, empresa_service
+from app.services import email_dispatch_service, email_service, empresa_service, password_reset_service
 
 
 def _validar_vinculo_empresa(tipo_usuario: str, empresa_id: int | None) -> None:
@@ -80,12 +81,13 @@ def _registrar_falha_email(
     )
 
 
-def _notificar_acesso_inicial(db: Session, usuario: Usuario, senha_plana: str) -> EmailEntregaResultado:
-    resultado = email_service.tentar_enviar_conta_criada_pelo_gestor(
+def _enviar_link_acesso_inicial(db: Session, usuario: Usuario) -> EmailEntregaResultado:
+    _, resultado = password_reset_service.gerar_e_enviar_reset_para_usuario(
         db,
-        destinatario=usuario.email,
-        empresa_nome=_empresa_nome(db, usuario.empresa_id),
-        senha_inicial=senha_plana,
+        usuario,
+        acao_auditoria="password_reset.solicitado_pos_criacao",
+        motivo="conta_criada",
+        commit=True,
     )
     if resultado.sucesso:
         return EmailEntregaResultado(
@@ -102,10 +104,11 @@ def _notificar_acesso_inicial(db: Session, usuario: Usuario, senha_plana: str) -
 
 def create_usuario(db: Session, data: UsuarioCreate) -> tuple[Usuario, EmailEntregaResultado | None]:
     _validar_vinculo_empresa(data.tipo_usuario, data.empresa_id)
+    senha_inicial = data.senha_plana or secrets.token_urlsafe(48)
     u = Usuario(
         nome=data.nome,
         email=str(data.email).strip().lower(),
-        senha_hash=hash_password(data.senha_plana),
+        senha_hash=hash_password(senha_inicial),
         funcao=data.funcao,
         imagem_perfil=data.imagem_perfil,
         tipo_usuario=data.tipo_usuario,
@@ -122,8 +125,8 @@ def create_usuario(db: Session, data: UsuarioCreate) -> tuple[Usuario, EmailEntr
     db.refresh(u)
 
     entrega: EmailEntregaResultado | None = None
-    if u.ativo and u.primeiro_login:
-        entrega = _notificar_acesso_inicial(db, u, data.senha_plana)
+    if u.ativo and u.primeiro_login and data.senha_plana is None:
+        entrega = _enviar_link_acesso_inicial(db, u)
     return u, entrega
 
 

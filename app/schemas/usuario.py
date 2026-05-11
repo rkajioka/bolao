@@ -30,7 +30,7 @@ class UsuarioBase(BaseModel):
 
 
 class UsuarioCreate(UsuarioBase):
-    senha_plana: str = Field(min_length=8, max_length=128)
+    senha_plana: str | None = Field(default=None, min_length=8, max_length=128)
 
 
 class UsuarioRead(UsuarioBase):
