@@ -1,4 +1,4 @@
-import { Suspense, type ReactNode } from 'react'
+import { Suspense, useState, type ReactNode } from 'react'
 import { NavLink, useLocation, useNavigate, useOutlet } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
@@ -18,6 +18,7 @@ import { useTheme } from '@/hooks/useTheme'
 import { useEmpresaTheme } from '@/hooks/useEmpresaTheme'
 import { cn } from '@/lib/utils'
 import { UserAvatar } from '@/components/UserAvatar'
+import { OwnerNavBlockedDialog } from '@/components/OwnerNavBlockedDialog'
 
 interface NavItem {
   to: string
@@ -25,6 +26,7 @@ interface NavItem {
   icon: ReactNode
   label: string
   visible?: boolean
+  disabledForOwner?: boolean
 }
 
 function PageFallback() {
@@ -39,12 +41,13 @@ function PageFallback() {
 }
 
 export function AppLayout() {
-  const { user, logout, canManageEquipe, canManageTorneio } = useAuth()
+  const { user, logout, canManageEquipe, canManageTorneio, isOwner } = useAuth()
   const { isDark, toggle } = useTheme()
   useEmpresaTheme()
   const navigate = useNavigate()
   const location = useLocation()
   const outlet = useOutlet({ key: location.pathname })
+  const [ownerBlockedSection, setOwnerBlockedSection] = useState<string | null>(null)
 
   const handleLogout = async () => {
     await logout()
@@ -53,10 +56,28 @@ export function AppLayout() {
 
   const navItems: NavItem[] = [
     { to: '/jogos', icon: <CalendarDays size={22} />, label: 'Palpites', visible: true },
-    { to: '/especiais', icon: <Star size={22} />, label: 'Especiais', visible: true },
-    { to: '/regras', icon: <ScrollText size={22} />, label: 'Regras', visible: true },
+    {
+      to: '/especiais',
+      icon: <Star size={22} />,
+      label: 'Especiais',
+      visible: true,
+      disabledForOwner: true,
+    },
+    {
+      to: '/regras',
+      icon: <ScrollText size={22} />,
+      label: 'Regras',
+      visible: true,
+      disabledForOwner: true,
+    },
     { to: '/ranking', icon: <Trophy size={22} />, label: 'Ranking', visible: true },
-    { to: '/equipe', icon: <Users size={22} />, label: 'Equipe', visible: !!canManageEquipe },
+    {
+      to: '/equipe',
+      icon: <Users size={22} />,
+      label: 'Equipe',
+      visible: !!canManageEquipe,
+      disabledForOwner: true,
+    },
     { to: '/admin', end: true, icon: <Shield size={22} />, label: 'Torneio', visible: !!canManageTorneio },
     {
       to: '/admin/config',
@@ -185,7 +206,34 @@ export function AppLayout() {
         }}
       >
         <div className="max-w-2xl mx-auto flex items-stretch h-16">
-          {visibleItems.map((item) => (
+          {visibleItems.map((item) => {
+            const isOwnerBlocked = isOwner && item.disabledForOwner
+
+            if (isOwnerBlocked) {
+              return (
+                <button
+                  key={item.to}
+                  type="button"
+                  aria-disabled="true"
+                  onClick={() => setOwnerBlockedSection(item.label)}
+                  className="flex-1 flex flex-col items-center justify-center gap-1 transition-all duration-150 relative opacity-50"
+                >
+                  <span className="flex flex-col items-center gap-1 blur-[1.5px] pointer-events-none">
+                    <span style={{ color: 'var(--text-muted)' }} className="transition-colors duration-150">
+                      {item.icon}
+                    </span>
+                    <span
+                      className="text-[10px] font-semibold tracking-wide"
+                      style={{ color: 'var(--text-muted)' }}
+                    >
+                      {item.label}
+                    </span>
+                  </span>
+                </button>
+              )
+            }
+
+            return (
             <NavLink
               key={item.to}
               to={item.to}
@@ -220,9 +268,17 @@ export function AppLayout() {
                 </>
               )}
             </NavLink>
-          ))}
+            )
+          })}
         </div>
       </nav>
+
+      {ownerBlockedSection && (
+        <OwnerNavBlockedDialog
+          sectionLabel={ownerBlockedSection}
+          onClose={() => setOwnerBlockedSection(null)}
+        />
+      )}
     </div>
   )
 }
