@@ -10,6 +10,7 @@ class EmpresaRead(BaseModel):
     nome: str
     codigo_empresa: str
     ativo: bool
+    marcadores_brasil_habilitado: bool
     created_at: datetime
     updated_at: datetime
 
@@ -22,8 +23,10 @@ class EmpresaCreate(BaseModel):
         max_length=64,
         pattern=r"^[A-Z0-9_-]+$",
     )
+    marcadores_brasil_habilitado: bool = False
 
 
 class EmpresaUpdate(BaseModel):
     nome: str | None = Field(default=None, min_length=1, max_length=255)
     ativo: bool | None = None
+    marcadores_brasil_habilitado: bool | None = None

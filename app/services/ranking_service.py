@@ -17,6 +17,7 @@ from app.models.marcador_brasil import MarcadorBrasilPalpite
 from app.models.palpite_especial import PalpiteEspecial
 from app.models.palpite_jogo import PalpiteJogo
 from app.models.usuario import Usuario
+from app.services import empresa_service
 
 
 @dataclass(frozen=True)
@@ -210,6 +211,9 @@ def obter_insights_periodo(
     destaques_placar = _top_por_metrica(
         db, jogo_ids, PalpiteJogo.pontuacao_placar, empresa_id=empresa_id
     )
+    marcadores_habilitados = empresa_id is None or empresa_service.marcadores_brasil_habilitado(
+        db, empresa_id
+    )
     condicoes_marcadores = [
         Usuario.ativo.is_(True),
         PalpiteJogo.jogo_id.in_(jogo_ids),
@@ -217,26 +221,29 @@ def obter_insights_periodo(
     ]
     if empresa_id is not None:
         condicoes_marcadores.append(Usuario.empresa_id == empresa_id)
-    destaque_marcadores = list(
-        db.execute(
-            select(
-                Usuario.id.label("usuario_id"),
-                Usuario.nome.label("nome"),
-                func.count(MarcadorBrasilPalpite.id).label("valor"),
-            )
-            .select_from(PalpiteJogo)
-            .join(Usuario, Usuario.id == PalpiteJogo.usuario_id)
-            .join(MarcadorBrasilPalpite, MarcadorBrasilPalpite.palpite_jogo_id == PalpiteJogo.id)
-            .where(and_(*condicoes_marcadores))
-            .group_by(Usuario.id, Usuario.nome)
-            .order_by(desc("valor"), Usuario.nome.asc())
-            .limit(3)
-        ).all()
-    )
-    destaques_marcadores = [
-        InsightDestaqueInterno(usuario_id=int(r.usuario_id), nome=str(r.nome), valor=int(r.valor or 0))
-        for r in destaque_marcadores
-    ]
+    if marcadores_habilitados:
+        destaque_marcadores = list(
+            db.execute(
+                select(
+                    Usuario.id.label("usuario_id"),
+                    Usuario.nome.label("nome"),
+                    func.count(MarcadorBrasilPalpite.id).label("valor"),
+                )
+                .select_from(PalpiteJogo)
+                .join(Usuario, Usuario.id == PalpiteJogo.usuario_id)
+                .join(MarcadorBrasilPalpite, MarcadorBrasilPalpite.palpite_jogo_id == PalpiteJogo.id)
+                .where(and_(*condicoes_marcadores))
+                .group_by(Usuario.id, Usuario.nome)
+                .order_by(desc("valor"), Usuario.nome.asc())
+                .limit(3)
+            ).all()
+        )
+        destaques_marcadores = [
+            InsightDestaqueInterno(usuario_id=int(r.usuario_id), nome=str(r.nome), valor=int(r.valor or 0))
+            for r in destaque_marcadores
+        ]
+    else:
+        destaques_marcadores = []
 
     meu = db.execute(
         select(
@@ -259,6 +266,6 @@ def obter_insights_periodo(
         meu_preenchidos=int(meu.preenchidos or 0),
         meu_acertos_resultado=int(meu.acertos_resultado or 0),
         meu_acertos_placar_exato=int(meu.acertos_placar or 0),
-        meu_bonus_marcadores_br=int(meu.bonus_br or 0),
+        meu_bonus_marcadores_br=int(meu.bonus_br or 0) if marcadores_habilitados else 0,
         meus_pontos_periodo=int(meu.pontos or 0),
     )

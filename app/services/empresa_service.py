@@ -14,6 +14,15 @@ def get_by_id(db: Session, empresa_id: int) -> Empresa | None:
     return db.get(Empresa, empresa_id)
 
 
+def marcadores_brasil_habilitado(db: Session, empresa_id: int | None) -> bool:
+    if empresa_id is None:
+        return False
+    empresa = get_by_id(db, empresa_id)
+    if empresa is None:
+        return False
+    return bool(empresa.marcadores_brasil_habilitado)
+
+
 def get_by_codigo(db: Session, codigo: str) -> Empresa | None:
     return db.scalar(
         select(Empresa).where(Empresa.codigo_empresa == codigo.upper())
@@ -54,6 +63,7 @@ def create_empresa(db: Session, data: EmpresaCreate) -> Empresa:
     empresa = Empresa(
         nome=data.nome,
         codigo_empresa=codigo,
+        marcadores_brasil_habilitado=data.marcadores_brasil_habilitado,
     )
     db.add(empresa)
     try:
@@ -67,10 +77,19 @@ def create_empresa(db: Session, data: EmpresaCreate) -> Empresa:
 
 
 def update_empresa(db: Session, empresa: Empresa, data: EmpresaUpdate) -> Empresa:
+    flag_anterior = bool(empresa.marcadores_brasil_habilitado)
     if data.nome is not None:
         empresa.nome = data.nome
     if data.ativo is not None:
         empresa.ativo = data.ativo
+    if data.marcadores_brasil_habilitado is not None:
+        empresa.marcadores_brasil_habilitado = data.marcadores_brasil_habilitado
     db.commit()
     db.refresh(empresa)
+    if data.marcadores_brasil_habilitado is not None and flag_anterior != bool(
+        empresa.marcadores_brasil_habilitado
+    ):
+        from app.services import pontuacao_service
+
+        pontuacao_service.recalcular_pontuacao_empresa(db, empresa.id)
     return empresa

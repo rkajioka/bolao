@@ -109,25 +109,29 @@ export function AdminSpecials({ success, error, variant, empresaId }: AdminSpeci
     [paises],
   )
 
+  const marcadoresBrasilHabilitado = Boolean(form?.marcadores_brasil_habilitado)
+
   const handleSaveConfiguracao = async () => {
     if (!form || empresaId == null) return
     setSavingConfig(true)
     try {
-      await adminService.updateConfig(
-        {
-          data_bloqueio_palpites_especiais: form.data_bloqueio_palpites_especiais,
-          pontos_campeao: form.pontos_campeao,
-          pontos_vice_campeao: form.pontos_vice_campeao,
-          pontos_terceiro_lugar: form.pontos_terceiro_lugar,
-          pontos_artilheiro_pais: form.pontos_artilheiro_pais,
-          pontos_placar_exato: form.pontos_placar_exato,
-          pontos_resultado_correto: form.pontos_resultado_correto,
-          pontos_classificado_mata_mata: form.pontos_classificado_mata_mata,
-          pontos_marcador_brasil: form.pontos_marcador_brasil,
-          pontos_marcador_brasil_com_quantidade: form.pontos_marcador_brasil_com_quantidade,
-        },
-        empresaId,
-      )
+      const payload: Parameters<typeof adminService.updateConfig>[0] = {
+        data_bloqueio_palpites_especiais: form.data_bloqueio_palpites_especiais,
+        pontos_campeao: form.pontos_campeao,
+        pontos_vice_campeao: form.pontos_vice_campeao,
+        pontos_terceiro_lugar: form.pontos_terceiro_lugar,
+        pontos_artilheiro_pais: form.pontos_artilheiro_pais,
+        pontos_placar_exato: form.pontos_placar_exato,
+        pontos_resultado_correto: form.pontos_resultado_correto,
+        pontos_classificado_mata_mata: form.pontos_classificado_mata_mata,
+        pontos_marcador_brasil: form.pontos_marcador_brasil,
+        pontos_marcador_brasil_com_quantidade: form.pontos_marcador_brasil_com_quantidade,
+      }
+      if (!marcadoresBrasilHabilitado) {
+        delete payload.pontos_marcador_brasil
+        delete payload.pontos_marcador_brasil_com_quantidade
+      }
+      await adminService.updateConfig(payload, empresaId)
       await adminService.updateFases(
         {
           itens: fases.map((f) => ({
@@ -455,6 +459,49 @@ export function AdminSpecials({ success, error, variant, empresaId }: AdminSpeci
             ))}
           </div>
         </div>
+
+        {marcadoresBrasilHabilitado && (
+          <div className="space-y-2">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                Bônus Brasil
+              </p>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                Pontos por acerto nos marcadores da seleção nos jogos do Brasil.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {(
+                [
+                  { key: 'pontos_marcador_brasil', label: 'Por marcador' },
+                  { key: 'pontos_marcador_brasil_com_quantidade', label: 'Com quantidade de gols' },
+                ] as const
+              ).map(({ key, label }) => (
+                <div
+                  key={key}
+                  className="rounded-xl p-3 space-y-2"
+                  style={{ background: 'var(--segmented-bg)', border: '1px solid var(--border)' }}
+                >
+                  <label htmlFor={`config-${key}`} className="block text-xs font-semibold" style={{ color: 'var(--text)' }}>
+                    {label}
+                  </label>
+                  <input
+                    id={`config-${key}`}
+                    type="number"
+                    min={0}
+                    inputMode="numeric"
+                    value={form ? form[key] : 0}
+                    onChange={(e) =>
+                      setForm((old) => (old ? { ...old, [key]: parseInt(e.target.value) || 0 } : old))
+                    }
+                    className={`${scoringInputClassName} text-center`}
+                    style={scoringFieldStyle}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <button
           type="button"

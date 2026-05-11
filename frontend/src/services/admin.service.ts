@@ -24,8 +24,8 @@ export interface UpdateConfigPayload {
   pontos_placar_exato: number
   pontos_resultado_correto: number
   pontos_classificado_mata_mata: number
-  pontos_marcador_brasil: number
-  pontos_marcador_brasil_com_quantidade: number
+  pontos_marcador_brasil?: number
+  pontos_marcador_brasil_com_quantidade?: number
 }
 
 export interface UpdateFasesPayload {

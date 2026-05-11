@@ -11,6 +11,7 @@ import { GroupStandingsTable } from '@/components/GroupStandingsTable'
 import { SegmentedControl } from '@/components/SegmentedControl'
 import { useToast } from '@/components/Toast'
 import type {
+  ConfiguracaoBolao,
   Jogo,
   PalpiteJogo,
   MarcadorCandidato,
@@ -60,10 +61,18 @@ export function JogosPage() {
     enabled: canParticipate,
   })
 
+  const { data: configBolao } = useQuery({
+    queryKey: ['configuracao-bolao', 'minha'],
+    queryFn: () => api.get<ConfiguracaoBolao>('/configuracao-bolao/minha'),
+    enabled: canParticipate,
+  })
+
+  const marcadoresBrasilHabilitado = Boolean(configBolao?.marcadores_brasil_habilitado)
+
   const { data: candidatos = [] } = useQuery({
     queryKey: ['marcadores', 'candidatos'],
     queryFn: () => api.get<MarcadorCandidato[]>('/marcadores-brasil/candidatos'),
-    enabled: canParticipate,
+    enabled: canParticipate && marcadoresBrasilHabilitado,
   })
 
   const { data: gruposDisponiveis = [] } = useQuery({
@@ -342,8 +351,9 @@ export function JogosPage() {
                     palpite={palpiteMap.get(jogo.id) ?? null}
                     todosJogos={jogosCrono}
                     onSave={handleSave}
-                    onSaveMarcadores={handleSaveMarcadores}
+                    onSaveMarcadores={marcadoresBrasilHabilitado ? handleSaveMarcadores : undefined}
                     candidatos={candidatos}
+                    marcadoresBrasilHabilitado={marcadoresBrasilHabilitado}
                   />
                 ))
               )}
@@ -423,8 +433,9 @@ export function JogosPage() {
                         palpite={palpiteMap.get(jogo.id) ?? null}
                         todosJogos={jogosCrono}
                         onSave={handleSave}
-                        onSaveMarcadores={handleSaveMarcadores}
+                        onSaveMarcadores={marcadoresBrasilHabilitado ? handleSaveMarcadores : undefined}
                         candidatos={candidatos}
+                        marcadoresBrasilHabilitado={marcadoresBrasilHabilitado}
                       />
                     ))}
                   </div>

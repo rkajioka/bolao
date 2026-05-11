@@ -18,6 +18,7 @@ interface GameCardProps {
   onSave: (jogoId: number, casa: number, fora: number, classificado?: number | null) => Promise<void>
   onSaveMarcadores?: (jogoId: number, marcadores: { nome_jogador: string; quantidade_gols: number }[]) => Promise<void>
   candidatos?: MarcadorCandidato[]
+  marcadoresBrasilHabilitado?: boolean
 }
 
 export function GameCard({
@@ -27,6 +28,7 @@ export function GameCard({
   onSave,
   onSaveMarcadores,
   candidatos = [],
+  marcadoresBrasilHabilitado = false,
 }: GameCardProps) {
   const bloqueado = jogoBloqueado(jogo, todosJogos)
   const brasil = isBrasil(jogo)
@@ -44,7 +46,7 @@ export function GameCard({
   const { data: marcadoresSalvos = [] } = useQuery({
     queryKey: ['marcadores-brasil', 'me', jogo.id],
     queryFn: () => api.get<MarcadorPalpite[]>(`/marcadores-brasil/me/${jogo.id}`),
-    enabled: brasil && temPalpite,
+    enabled: brasil && temPalpite && marcadoresBrasilHabilitado,
   })
 
   const marcadoresParaUi = useMemo(
@@ -201,7 +203,7 @@ export function GameCard({
         )}
 
         {/* Marcadores do Brasil */}
-        {brasil && temPalpite && onSaveMarcadores && (
+        {brasil && temPalpite && marcadoresBrasilHabilitado && onSaveMarcadores && (
           <BrazilScorers
             marcadores={marcadoresParaUi}
             candidatos={candidatos}
@@ -212,7 +214,7 @@ export function GameCard({
           />
         )}
 
-        {brasil && !temPalpite && (
+        {brasil && marcadoresBrasilHabilitado && !temPalpite && (
           <p className="mt-3 text-xs text-center" style={{ color: 'var(--text-muted)' }}>
             Salve o palpite para registrar marcadores.
           </p>

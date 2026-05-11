@@ -2,7 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import require_owner, require_participante_bolao, require_primeiro_login_concluido
+from app.auth.dependencies import (
+    get_current_active_user,
+    require_owner,
+    require_participante_bolao,
+    require_primeiro_login_concluido,
+)
 from app.database import get_db
 from app.models.candidato_marcador_brasil import CandidatoMarcadorBrasil
 from app.models.marcador_brasil import MarcadorBrasilPalpite, MarcadorBrasilResultado
@@ -30,6 +35,12 @@ def _http_value_error(exc: ValueError) -> HTTPException:
     return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
 
+def _http_marcadores_desabilitado(
+    exc: marcador_brasil_service.MarcadoresBrasilEmpresaDesabilitadoError,
+) -> HTTPException:
+    return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+
+
 @router.get("/candidatos/admin", response_model=list[CandidatoMarcadorBrasilRead])
 def get_candidatos_marcador_brasil_admin(
     db: Session = Depends(get_db),
@@ -42,9 +53,13 @@ def get_candidatos_marcador_brasil_admin(
 @router.get("/candidatos", response_model=list[CandidatoMarcadorBrasilRead])
 def get_candidatos_marcador_brasil(
     db: Session = Depends(get_db),
-    _user: Usuario = Depends(require_primeiro_login_concluido),
+    user: Usuario = Depends(get_current_active_user),
 ) -> list[CandidatoMarcadorBrasil]:
     """Lista nomes ativos para sugestão (dropdown) nos marcadores do Brasil."""
+    try:
+        marcador_brasil_service.exigir_marcadores_brasil_habilitado_empresa(db, user.empresa_id)
+    except marcador_brasil_service.MarcadoresBrasilEmpresaDesabilitadoError as e:
+        raise _http_marcadores_desabilitado(e) from e
     return candidato_marcador_brasil_service.listar_ativos(db)
 
 
@@ -86,9 +101,13 @@ def get_marcadores_me_jogo(
 ) -> list[MarcadorBrasilPalpite]:
     try:
         marcador_brasil_service.obter_jogo_que_envolve_brasil(db, jogo_id)
+        return marcador_brasil_service.listar_marcadores_palpite_usuario(
+            db, user.id, jogo_id, empresa_id=user.empresa_id
+        )
+    except marcador_brasil_service.MarcadoresBrasilEmpresaDesabilitadoError as e:
+        raise _http_marcadores_desabilitado(e) from e
     except ValueError as e:
         raise _http_value_error(e) from e
-    return marcador_brasil_service.listar_marcadores_palpite_usuario(db, user.id, jogo_id)
 
 
 @router.post("/{jogo_id}", response_model=list[MarcadorBrasilPalpiteRead])
@@ -99,7 +118,11 @@ def post_marcadores_jogo(
     user: Usuario = Depends(require_participante_bolao),
 ) -> list[MarcadorBrasilPalpite]:
     try:
-        return marcador_brasil_service.sincronizar_marcadores_palpite(db, user.id, jogo_id, body.marcadores)
+        return marcador_brasil_service.sincronizar_marcadores_palpite(
+            db, user.id, jogo_id, body.marcadores, empresa_id=user.empresa_id
+        )
+    except marcador_brasil_service.MarcadoresBrasilEmpresaDesabilitadoError as e:
+        raise _http_marcadores_desabilitado(e) from e
     except ValueError as e:
         raise _http_value_error(e) from e
     except IntegrityError as e:
@@ -117,7 +140,11 @@ def put_marcadores_jogo(
     user: Usuario = Depends(require_participante_bolao),
 ) -> list[MarcadorBrasilPalpite]:
     try:
-        return marcador_brasil_service.sincronizar_marcadores_palpite(db, user.id, jogo_id, body.marcadores)
+        return marcador_brasil_service.sincronizar_marcadores_palpite(
+            db, user.id, jogo_id, body.marcadores, empresa_id=user.empresa_id
+        )
+    except marcador_brasil_service.MarcadoresBrasilEmpresaDesabilitadoError as e:
+        raise _http_marcadores_desabilitado(e) from e
     except ValueError as e:
         raise _http_value_error(e) from e
     except IntegrityError as e:

@@ -12,6 +12,7 @@ interface AdminEmpresasProps {
 export function AdminEmpresas({ success, error }: AdminEmpresasProps) {
   const queryClient = useQueryClient()
   const [nome, setNome] = useState('')
+  const [marcadoresBrasilHabilitado, setMarcadoresBrasilHabilitado] = useState(false)
 
   const { data: empresas = [], isLoading } = useQuery({
     queryKey: ['empresas', 'owner'],
@@ -19,9 +20,14 @@ export function AdminEmpresas({ success, error }: AdminEmpresasProps) {
   })
 
   const criar = useMutation({
-    mutationFn: () => empresaService.criar({ nome: nome.trim() }),
+    mutationFn: () =>
+      empresaService.criar({
+        nome: nome.trim(),
+        marcadores_brasil_habilitado: marcadoresBrasilHabilitado,
+      }),
     onSuccess: async (empresa) => {
       setNome('')
+      setMarcadoresBrasilHabilitado(false)
       await queryClient.invalidateQueries({ queryKey: ['empresas', 'owner'] })
       success(
         `Empresa criada com o código ${empresa.codigo_empresa}. Cadastre o administrador em Usuários com a empresa vinculada.`,
@@ -75,6 +81,20 @@ export function AdminEmpresas({ success, error }: AdminEmpresasProps) {
             required
           />
         </label>
+        <label className="flex items-start gap-3 rounded-xl p-3 cursor-pointer" style={{ background: 'var(--segmented-bg)', border: '1px solid var(--border)' }}>
+          <input
+            type="checkbox"
+            checked={marcadoresBrasilHabilitado}
+            onChange={(e) => setMarcadoresBrasilHabilitado(e.target.checked)}
+            className="mt-0.5"
+          />
+          <span className="space-y-1">
+            <span className="block text-sm font-semibold">Bônus por marcadores do Brasil</span>
+            <span className="block text-xs" style={{ color: 'var(--text-muted)' }}>
+              A lista de jogadores candidatos é global (Torneio → Jogos). Com o bônus ativo, o admin da empresa define os pontos na configuração de pontuação.
+            </span>
+          </span>
+        </label>
         <button
           type="submit"
           disabled={criar.isPending}
@@ -90,12 +110,39 @@ export function AdminEmpresas({ success, error }: AdminEmpresasProps) {
         </button>
       </form>
 
-      <EmpresasList empresas={empresas} />
+      <EmpresasList empresas={empresas} success={success} error={error} />
     </div>
   )
 }
 
-function EmpresasList({ empresas }: { empresas: Empresa[] }) {
+function EmpresasList({
+  empresas,
+  success,
+  error,
+}: {
+  empresas: Empresa[]
+  success: (msg: string) => void
+  error: (msg: string) => void
+}) {
+  const queryClient = useQueryClient()
+
+  const atualizarMarcadores = useMutation({
+    mutationFn: ({ id, habilitado }: { id: number; habilitado: boolean }) =>
+      empresaService.atualizar(id, { marcadores_brasil_habilitado: habilitado }),
+    onSuccess: async (_empresa, { habilitado }) => {
+      await queryClient.invalidateQueries({ queryKey: ['empresas', 'owner'] })
+      await queryClient.invalidateQueries({ queryKey: ['configuracao-bolao'] })
+      success(
+        habilitado
+          ? 'Bônus de marcadores do Brasil ativado para a empresa.'
+          : 'Bônus de marcadores do Brasil desativado. O ranking será recalculado sem esse bônus.',
+      )
+    },
+    onError: (err) => {
+      error(err instanceof Error ? err.message : 'Erro ao atualizar empresa')
+    },
+  })
+
   if (empresas.length === 0) {
     return (
       <p className="text-sm text-center py-6" style={{ color: 'var(--text-muted)' }}>
@@ -109,7 +156,7 @@ function EmpresasList({ empresas }: { empresas: Empresa[] }) {
       {empresas.map((emp) => (
         <div
           key={emp.id}
-          className="glass rounded-2xl p-4 flex items-center justify-between gap-3"
+          className="glass rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
           role="listitem"
         >
           <div>
@@ -118,16 +165,48 @@ function EmpresasList({ empresas }: { empresas: Empresa[] }) {
               Código: {emp.codigo_empresa}
             </p>
           </div>
-          <span
-            className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0"
-            style={{
-              background: emp.ativo ? 'var(--accent-dim)' : 'var(--danger-dim)',
-              color: emp.ativo ? 'var(--accent)' : 'var(--danger)',
-              border: `1px solid ${emp.ativo ? 'rgba(53,208,127,0.3)' : 'rgba(255,92,122,0.3)'}`,
-            }}
-          >
-            {emp.ativo ? 'Ativa' : 'Inativa'}
-          </span>
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <span
+              className="text-xs px-2 py-0.5 rounded-full font-medium"
+              style={{
+                background: emp.ativo ? 'var(--accent-dim)' : 'var(--danger-dim)',
+                color: emp.ativo ? 'var(--accent)' : 'var(--danger)',
+                border: `1px solid ${emp.ativo ? 'rgba(53,208,127,0.3)' : 'rgba(255,92,122,0.3)'}`,
+              }}
+            >
+              {emp.ativo ? 'Ativa' : 'Inativa'}
+            </span>
+            <span
+              className="text-xs px-2 py-0.5 rounded-full font-medium"
+              style={{
+                background: emp.marcadores_brasil_habilitado ? 'rgba(53,208,127,0.12)' : 'rgba(255,255,255,0.06)',
+                color: emp.marcadores_brasil_habilitado ? 'var(--accent)' : 'var(--text-muted)',
+                border: `1px solid ${emp.marcadores_brasil_habilitado ? 'rgba(53,208,127,0.25)' : 'rgba(255,255,255,0.10)'}`,
+              }}
+            >
+              Marcadores BR: {emp.marcadores_brasil_habilitado ? 'Ativo' : 'Inativo'}
+            </span>
+            <button
+              type="button"
+              disabled={atualizarMarcadores.isPending}
+              onClick={() => {
+                const proximo = !emp.marcadores_brasil_habilitado
+                const msg = proximo
+                  ? 'Ativar o bônus de marcadores do Brasil para esta empresa?'
+                  : 'Desativar o bônus? O ranking será recalculado e os pontos de marcadores deixarão de contar.'
+                if (!window.confirm(msg)) return
+                atualizarMarcadores.mutate({ id: emp.id, habilitado: proximo })
+              }}
+              className="text-xs px-2.5 py-1 rounded-lg font-semibold"
+              style={{
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.10)',
+                color: 'var(--text)',
+              }}
+            >
+              {emp.marcadores_brasil_habilitado ? 'Desligar bônus BR' : 'Ligar bônus BR'}
+            </button>
+          </div>
         </div>
       ))}
     </div>

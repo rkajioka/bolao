@@ -10,7 +10,8 @@ import { imgUrl } from '@/lib/utils'
 import { UserAvatar } from '@/components/UserAvatar'
 import { CountryFlag } from '@/components/CountryFlag'
 import { rankingService } from '@/services/ranking.service'
-import type { Pais, RankingLinha } from '@/types'
+import type { ConfiguracaoBolao, Pais, RankingLinha } from '@/types'
+import { regrasService } from '@/services/regras.service'
 import { api } from '@/lib/api'
 import { useAuth } from '@/features/auth/AuthContext'
 import { OwnerEmpresaPicker } from '@/components/OwnerEmpresaPicker'
@@ -112,6 +113,14 @@ export function RankingPage() {
     queryFn: () => rankingService.getInsights(needsOwnerEmpresaPick ? effectiveEmpresaId : undefined),
     enabled: rankingEnabled,
   })
+  const { data: configBolao } = useQuery({
+    queryKey: ['configuracao-bolao', 'minha'],
+    queryFn: () => regrasService.getConfigMinha(),
+    enabled: !needsOwnerEmpresaPick,
+  })
+  const marcadoresBrasilHabilitado = needsOwnerEmpresaPick
+    ? empresas.find((e) => e.id === effectiveEmpresaId)?.marcadores_brasil_habilitado ?? false
+    : Boolean(configBolao?.marcadores_brasil_habilitado)
 
   const linhas = data?.linhas ?? []
 
@@ -329,7 +338,7 @@ export function RankingPage() {
                     <p className="font-black text-base tabular-nums">{pts}</p>
                     <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
                       {sortBy === 'total'
-                        ? `J:${linha.pontos_jogos} E:${linha.pontos_especiais}${linha.bonus_brasil > 0 ? ` BR:${linha.bonus_brasil}` : ''}`
+                        ? `J:${linha.pontos_jogos} E:${linha.pontos_especiais}${marcadoresBrasilHabilitado && linha.bonus_brasil > 0 ? ` BR:${linha.bonus_brasil}` : ''}`
                         : sortLabel}
                     </p>
                   </div>
@@ -428,7 +437,7 @@ export function RankingPage() {
                         </span>
                       </div>
                     )}
-                    {insights.destaques_marcadores_br[0] && (
+                    {marcadoresBrasilHabilitado && insights.destaques_marcadores_br[0] && (
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Bônus marcadores BR</span>
                         <span className="text-xs font-semibold">
@@ -469,7 +478,7 @@ export function RankingPage() {
                     </div>
                   ))}
                 </div>
-                {insights.meu_bonus_marcadores_br > 0 && (
+                {marcadoresBrasilHabilitado && insights.meu_bonus_marcadores_br > 0 && (
                   <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
                     Bônus marcadores Brasil: +{insights.meu_bonus_marcadores_br}
                   </p>
@@ -481,7 +490,11 @@ export function RankingPage() {
                   Legenda
                 </p>
                 <div className="space-y-1">
-                  {['J: Pontos de jogos', 'E: Pontos de especiais', 'BR: Bônus marcadores Brasil'].map((label) => (
+                  {[
+                    'J: Pontos de jogos',
+                    'E: Pontos de especiais',
+                    ...(marcadoresBrasilHabilitado ? ['BR: Bônus marcadores Brasil'] : []),
+                  ].map((label) => (
                     <p key={label} className="text-xs" style={{ color: 'var(--text-muted)' }}>{label}</p>
                   ))}
                 </div>

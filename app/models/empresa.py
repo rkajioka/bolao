@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, String, text
+from sqlalchemy import Boolean, DateTime, String, false, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -13,6 +13,9 @@ class Empresa(Base):
     nome: Mapped[str] = mapped_column(String(255), nullable=False)
     codigo_empresa: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
     ativo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    marcadores_brasil_habilitado: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=false()
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("CURRENT_TIMESTAMP"), nullable=False
     )

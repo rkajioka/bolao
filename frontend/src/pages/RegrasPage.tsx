@@ -198,7 +198,7 @@ export function RegrasPage() {
         </p>
       </div>
 
-      {/* Bônus Brasil */}
+      {config?.marcadores_brasil_habilitado ? (
       <div className="glass rounded-2xl p-4">
         <SectionTitle icon={<span style={{ fontSize: '14px', lineHeight: 1 }}>🇧🇷</span>} label="Bônus Brasil" color="var(--accent)" />
         <div
@@ -210,16 +210,21 @@ export function RegrasPage() {
             Nos jogos do Brasil, você pode palpitar quais jogadores marcarão gols. Acertos rendem bônus extras de pontos.
             Os nomes disponíveis são definidos por uma lista de candidatos cadastrada no sistema.
           </p>
-          {config && (
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              Pontos por marcador (configuração atual):{' '}
-              <strong style={{ color: 'var(--accent)' }}>{config.pontos_marcador_brasil}</strong>
-              {' '}· com quantidade de gols:{' '}
-              <strong style={{ color: 'var(--accent)' }}>{config.pontos_marcador_brasil_com_quantidade}</strong>
-            </p>
-          )}
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            Pontos por marcador (configuração atual):{' '}
+            <strong style={{ color: 'var(--accent)' }}>{config.pontos_marcador_brasil}</strong>
+            {' '}· com quantidade de gols:{' '}
+            <strong style={{ color: 'var(--accent)' }}>{config.pontos_marcador_brasil_com_quantidade}</strong>
+          </p>
         </div>
       </div>
+      ) : (
+        config && (
+          <p className="text-xs px-1" style={{ color: 'var(--text-muted)' }}>
+            Seu bolão não usa bônus por marcadores do Brasil.
+          </p>
+        )
+      )}
     </div>
   )
 }

@@ -21,6 +21,7 @@ class ConfiguracaoBolaoRead(ConfiguracaoBolaoBase):
 
     id: int
     empresa_id: int
+    marcadores_brasil_habilitado: bool
     created_at: datetime
     updated_at: datetime
 

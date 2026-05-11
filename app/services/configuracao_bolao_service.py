@@ -11,13 +11,26 @@ from sqlalchemy.orm import Session
 
 from app.models.configuracao_bolao import ConfiguracaoBolao
 from app.models.jogo import Jogo
-from app.schemas.configuracao_bolao import ConfiguracaoBolaoWrite
+from app.schemas.configuracao_bolao import ConfiguracaoBolaoRead, ConfiguracaoBolaoWrite
+from app.services import empresa_service
 
 
 def get_configuracao_empresa(db: Session, empresa_id: int) -> ConfiguracaoBolao | None:
     return db.scalar(
         select(ConfiguracaoBolao).where(ConfiguracaoBolao.empresa_id == empresa_id).limit(1)
     )
+
+
+def configuracao_para_read(db: Session, config: ConfiguracaoBolao) -> ConfiguracaoBolaoRead:
+    attrs = {
+        name: getattr(config, name)
+        for name in ConfiguracaoBolaoRead.model_fields
+        if name != "marcadores_brasil_habilitado" and hasattr(config, name)
+    }
+    attrs["marcadores_brasil_habilitado"] = empresa_service.marcadores_brasil_habilitado(
+        db, config.empresa_id
+    )
+    return ConfiguracaoBolaoRead(**attrs)
 
 
 def ensure_configuracao_empresa(db: Session, empresa_id: int) -> ConfiguracaoBolao:
@@ -55,8 +68,9 @@ def atualizar_configuracao_empresa(
     c.pontos_placar_exato = data.pontos_placar_exato
     c.pontos_resultado_correto = data.pontos_resultado_correto
     c.pontos_classificado_mata_mata = data.pontos_classificado_mata_mata
-    c.pontos_marcador_brasil = data.pontos_marcador_brasil
-    c.pontos_marcador_brasil_com_quantidade = data.pontos_marcador_brasil_com_quantidade
+    if empresa_service.marcadores_brasil_habilitado(db, empresa_id):
+        c.pontos_marcador_brasil = data.pontos_marcador_brasil
+        c.pontos_marcador_brasil_com_quantidade = data.pontos_marcador_brasil_com_quantidade
     db.commit()
     db.refresh(c)
     return c

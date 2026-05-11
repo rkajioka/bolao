@@ -18,7 +18,14 @@ from app.services import empresa_service, jogo_service, pais_service, pontuacao_
 
 
 def seed_empresa(db: Session, codigo: str = "TESTE") -> Empresa:
-    return empresa_service.create_empresa(db, EmpresaCreate(nome="Empresa Teste", codigo_empresa=codigo))
+    return empresa_service.create_empresa(
+        db,
+        EmpresaCreate(
+            nome="Empresa Teste",
+            codigo_empresa=codigo,
+            marcadores_brasil_habilitado=True,
+        ),
+    )
 
 
 def seed_config_com_bloqueio_especiais(db: Session, empresa_id: int) -> ConfiguracaoBolao:

@@ -17,6 +17,7 @@ export interface Empresa {
   nome: string
   codigo_empresa: string
   ativo: boolean
+  marcadores_brasil_habilitado: boolean
   created_at: string
   updated_at: string
 }
@@ -214,6 +215,8 @@ export interface TabelaGrupoResponse {
 
 export interface ConfiguracaoBolao {
   id: number
+  empresa_id?: number
+  marcadores_brasil_habilitado?: boolean
   data_bloqueio_palpites_especiais: string | null
   pontos_campeao: number
   pontos_vice_campeao: number

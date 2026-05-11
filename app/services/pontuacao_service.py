@@ -21,7 +21,7 @@ from app.models.palpite_jogo import PalpiteJogo
 from app.models.resultado_especial import ResultadoEspecial
 from app.models.usuario import Usuario
 from app.jogo_fases import fase_mata_mata_slug_ou_none
-from app.services import configuracao_bolao_service, jogo_service
+from app.services import configuracao_bolao_service, empresa_service, jogo_service
 from app.services import pontuacao_fase_service
 from app.utils.texto import normalizar_texto_palpite
 
@@ -258,6 +258,7 @@ def _atualizar_um_palpite_jogo(
         and jogo.placar_casa is not None
         and jogo.placar_fora is not None
         and jogo_service.jogo_envolve_brasil(db, jogo)
+        and empresa_service.marcadores_brasil_habilitado(db, empresa_id)
     ):
         linhas_p = [(m.nome_jogador, m.quantidade_gols) for m in palpite.marcadores_brasil]
         linhas_r = _resultado_marcadores_tuples(db, jogo.id)

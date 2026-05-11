@@ -15,7 +15,18 @@ from app.models.jogo import Jogo
 from app.models.marcador_brasil import MarcadorBrasilPalpite, MarcadorBrasilResultado
 from app.models.palpite_jogo import PalpiteJogo
 from app.schemas.marcador_brasil import MarcadorBrasilPalpiteItem, MarcadoresBrasilResultadoSync
-from app.services import candidato_marcador_brasil_service, jogo_service, palpite_jogo_service
+from app.services import candidato_marcador_brasil_service, empresa_service, jogo_service, palpite_jogo_service
+
+MARCADORES_BRASIL_EMPRESA_DESABILITADO = "Bônus de marcadores desabilitado para esta empresa."
+
+
+class MarcadoresBrasilEmpresaDesabilitadoError(Exception):
+    """Empresa sem bônus de marcadores do Brasil habilitado."""
+
+
+def exigir_marcadores_brasil_habilitado_empresa(db: Session, empresa_id: int | None) -> None:
+    if not empresa_service.marcadores_brasil_habilitado(db, empresa_id):
+        raise MarcadoresBrasilEmpresaDesabilitadoError(MARCADORES_BRASIL_EMPRESA_DESABILITADO)
 
 
 def _agora_utc() -> datetime:
@@ -60,8 +71,9 @@ def obter_jogo_que_envolve_brasil(db: Session, jogo_id: int) -> Jogo:
 
 
 def listar_marcadores_palpite_usuario(
-    db: Session, usuario_id: int, jogo_id: int
+    db: Session, usuario_id: int, jogo_id: int, *, empresa_id: int | None
 ) -> list[MarcadorBrasilPalpite]:
+    exigir_marcadores_brasil_habilitado_empresa(db, empresa_id)
     palpite = palpite_jogo_service.get_by_usuario_jogo(db, usuario_id, jogo_id)
     if palpite is None:
         return []
@@ -74,8 +86,14 @@ def listar_marcadores_palpite_usuario(
 
 
 def sincronizar_marcadores_palpite(
-    db: Session, usuario_id: int, jogo_id: int, marcadores: list[MarcadorBrasilPalpiteItem]
+    db: Session,
+    usuario_id: int,
+    jogo_id: int,
+    marcadores: list[MarcadorBrasilPalpiteItem],
+    *,
+    empresa_id: int | None,
 ) -> list[MarcadorBrasilPalpite]:
+    exigir_marcadores_brasil_habilitado_empresa(db, empresa_id)
     jogo = obter_jogo_que_envolve_brasil(db, jogo_id)
     _assert_jogo_editavel_marcadores_usuario(db, jogo)
 
@@ -127,7 +145,7 @@ def sincronizar_marcadores_palpite(
             )
         )
     db.commit()
-    return listar_marcadores_palpite_usuario(db, usuario_id, jogo_id)
+    return listar_marcadores_palpite_usuario(db, usuario_id, jogo_id, empresa_id=empresa_id)
 
 
 def listar_marcadores_resultado_admin(db: Session, jogo_id: int) -> list[MarcadorBrasilResultado]:

@@ -15,7 +15,8 @@ def get_configuracao_bolao(
     db: Session = Depends(get_db),
     empresa_id: int = Depends(get_resolved_empresa_id),
 ) -> ConfiguracaoBolaoRead:
-    return configuracao_bolao_service.ensure_configuracao_empresa(db, empresa_id)
+    config = configuracao_bolao_service.ensure_configuracao_empresa(db, empresa_id)
+    return configuracao_bolao_service.configuracao_para_read(db, config)
 
 
 @router.get("/minha", response_model=ConfiguracaoBolaoRead)
@@ -25,7 +26,8 @@ def get_configuracao_bolao_minha(
 ) -> ConfiguracaoBolaoRead:
     if user.empresa_id is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Usuário sem empresa")
-    return configuracao_bolao_service.ensure_configuracao_empresa(db, user.empresa_id)
+    config = configuracao_bolao_service.ensure_configuracao_empresa(db, user.empresa_id)
+    return configuracao_bolao_service.configuracao_para_read(db, config)
 
 
 @router.put("", response_model=ConfiguracaoBolaoRead)
@@ -46,4 +48,4 @@ def put_configuracao_bolao(
         status="success",
         detalhes={"empresa_id": empresa_id},
     )
-    return row
+    return configuracao_bolao_service.configuracao_para_read(db, row)
