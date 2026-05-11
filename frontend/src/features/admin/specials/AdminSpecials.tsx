@@ -34,6 +34,12 @@ const scoringInputClassName =
 const phaseInputClassName =
   'w-full min-h-9 rounded-lg px-2 py-1.5 text-sm font-semibold tabular-nums text-center outline-none transition-[border-color,box-shadow] focus:border-[var(--accent)]'
 
+const FASES_SEM_PONTOS_CLASSIFICADO = new Set([
+  'grupo_rodada_1',
+  'grupo_rodada_2',
+  'grupo_rodada_3',
+])
+
 export function AdminSpecials({ success, error, variant, empresaId }: AdminSpecialsProps) {
   const queryClient = useQueryClient()
   const [form, setForm] = useState<ConfiguracaoBolao | null>(null)
@@ -421,20 +427,30 @@ export function AdminSpecials({ success, error, variant, empresaId }: AdminSpeci
                   className={`col-span-2 ${phaseInputClassName}`}
                   style={scoringFieldStyle}
                 />
-                <input
-                  type="number"
-                  min={0}
-                  inputMode="numeric"
-                  aria-label={`${f.label} - classificado mata-mata`}
-                  value={f.pontos_classificado_mata_mata}
-                  onChange={(e) =>
-                    setFases((old) =>
-                      old.map((x) => x.fase_key === f.fase_key ? { ...x, pontos_classificado_mata_mata: parseInt(e.target.value) || 0 } : x),
-                    )
-                  }
-                  className={`col-span-3 ${phaseInputClassName}`}
-                  style={scoringFieldStyle}
-                />
+                {FASES_SEM_PONTOS_CLASSIFICADO.has(f.fase_key) ? (
+                  <span
+                    className="col-span-3 text-sm font-semibold text-center tabular-nums"
+                    style={{ color: 'var(--text-muted)' }}
+                    aria-hidden="true"
+                  >
+                    -
+                  </span>
+                ) : (
+                  <input
+                    type="number"
+                    min={0}
+                    inputMode="numeric"
+                    aria-label={`${f.label} - classificado mata-mata`}
+                    value={f.pontos_classificado_mata_mata}
+                    onChange={(e) =>
+                      setFases((old) =>
+                        old.map((x) => x.fase_key === f.fase_key ? { ...x, pontos_classificado_mata_mata: parseInt(e.target.value) || 0 } : x),
+                      )
+                    }
+                    className={`col-span-3 ${phaseInputClassName}`}
+                    style={scoringFieldStyle}
+                  />
+                )}
               </div>
             ))}
           </div>

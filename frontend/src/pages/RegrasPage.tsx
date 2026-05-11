@@ -4,6 +4,12 @@ import { Clock, Trophy, Star, Zap, CheckCircle, ChevronRight } from 'lucide-reac
 import { formatDate } from '@/lib/utils'
 import { regrasService } from '@/services/regras.service'
 
+const FASES_SEM_PONTOS_CLASSIFICADO = new Set([
+  'grupo_rodada_1',
+  'grupo_rodada_2',
+  'grupo_rodada_3',
+])
+
 function SectionTitle({ icon, label, color }: { icon: React.ReactNode; label: string; color: string }) {
   return (
     <div className="flex items-center gap-2 mb-3">
@@ -150,7 +156,7 @@ export function RegrasPage() {
                 <span className="text-sm font-black text-center tabular-nums" style={{ color: 'var(--highlight)' }}>{row.pontos_placar_exato}</span>
                 <span className="text-sm font-black text-center tabular-nums" style={{ color: 'var(--accent)' }}>{row.pontos_resultado_correto}</span>
                 <span className="text-sm font-semibold text-center tabular-nums" style={{ color: 'var(--text-muted)' }}>
-                  {row.pontos_classificado_mata_mata}
+                  {FASES_SEM_PONTOS_CLASSIFICADO.has(row.fase_key) ? '-' : row.pontos_classificado_mata_mata}
                 </span>
               </div>
             ))
