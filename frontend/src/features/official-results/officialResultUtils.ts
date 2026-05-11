@@ -1,4 +1,14 @@
+import { labelFaseMataPorSlug, normalizeFaseSlug } from '@/lib/utils'
 import type { Jogo } from '@/types'
+
+const ORDEM_FASES_MATA = [
+  'dezesseis_avos',
+  'oitavas',
+  'quartas',
+  'semi',
+  'terceiro_lugar',
+  'final',
+] as const
 
 export function dataChaveLocal(iso: string): string {
   const d = new Date(iso)
@@ -56,6 +66,46 @@ export function ordenarChavesGrupo(chaves: string[]): string[] {
     if (b === 'MATA-MATA' && a !== 'MATA-MATA') return -1
     return a.localeCompare(b)
   })
+}
+
+export function chaveFiltroFaseOficial(jogo: Jogo): string {
+  if (jogo.tipo_fase === 'grupos') return 'grupos'
+  const slug = normalizeFaseSlug(jogo.fase)
+  if (slug) return `mata:${slug}`
+  const raw = jogo.fase.trim().toLowerCase().replace(/\s+/g, '_')
+  return `mata:raw:${raw}`
+}
+
+export function labelFiltroFaseOficial(chave: string): string {
+  if (chave === 'grupos') return 'Fase de grupos'
+  if (!chave.startsWith('mata:')) return chave
+  const slug = chave.slice(5)
+  if (slug.startsWith('raw:')) return slug.slice(4).replace(/_/g, ' ')
+  return labelFaseMataPorSlug(slug)
+}
+
+export function ordenarChavesFaseOficial(chaves: string[]): string[] {
+  const ordem = (chave: string) => {
+    if (chave === 'grupos') return -1
+    if (!chave.startsWith('mata:')) return 1_000
+    const slug = chave.slice(5)
+    const idx = ORDEM_FASES_MATA.indexOf(slug as (typeof ORDEM_FASES_MATA)[number])
+    return idx === -1 ? 999 : idx
+  }
+  return [...chaves].sort((a, b) => {
+    const diff = ordem(a) - ordem(b)
+    return diff !== 0 ? diff : a.localeCompare(b)
+  })
+}
+
+export function gruposDisponiveisParaFiltro(jogos: Jogo[]): string[] {
+  const grupos = new Set<string>()
+  for (const jogo of jogos) {
+    if (jogo.tipo_fase === 'grupos' && jogo.grupo) {
+      grupos.add(jogo.grupo.toUpperCase())
+    }
+  }
+  return ordenarChavesGrupo([...grupos])
 }
 
 export function agruparJogosPorGrupo(jogos: Jogo[]): [string, Jogo[]][] {

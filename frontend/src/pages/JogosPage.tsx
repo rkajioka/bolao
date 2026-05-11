@@ -259,6 +259,7 @@ export function JogosPage() {
             readOnly={filtroStatus === 'fechados'}
             showFlags={false}
             showDateFilter={filtroStatus === 'abertos'}
+            showFaseFilter={filtroStatus === 'abertos'}
             showGrupoFilter={filtroStatus === 'abertos'}
             groupByGrupo={filtroStatus === 'abertos'}
             emptyMessage={

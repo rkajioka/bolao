@@ -53,7 +53,11 @@ const FASE_MATA_LABELS: Record<string, string> = {
   final: 'Final',
 }
 
-function normalizeFaseSlug(fase: string): string | null {
+export function labelFaseMataPorSlug(slug: string): string {
+  return FASE_MATA_LABELS[slug] || slug
+}
+
+export function normalizeFaseSlug(fase: string): string | null {
   const t = fase.trim().toLowerCase().replace(/\s+/g, '_')
   const aliases: Record<string, string> = {
     semifinal: 'semi',

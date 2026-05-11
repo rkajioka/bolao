@@ -4,11 +4,13 @@ import type { Jogo } from '@/types'
 import { OfficialGameResultCard } from '@/features/official-results/OfficialGameResultCard'
 import {
   agruparJogosPorGrupo,
-  chaveGrupoSecao,
+  chaveFiltroFaseOficial,
   dataChaveLocal,
+  gruposDisponiveisParaFiltro,
   labelDataCabecalho,
   labelDataFiltro,
-  ordenarChavesGrupo,
+  labelFiltroFaseOficial,
+  ordenarChavesFaseOficial,
   tituloSecaoGrupo,
 } from '@/features/official-results/officialResultUtils'
 
@@ -17,6 +19,7 @@ interface OfficialResultsPanelProps {
   readOnly?: boolean
   showFlags?: boolean
   showDateFilter?: boolean
+  showFaseFilter?: boolean
   showGrupoFilter?: boolean
   groupByGrupo?: boolean
   title?: string
@@ -30,6 +33,7 @@ export function OfficialResultsPanel({
   readOnly = false,
   showFlags = false,
   showDateFilter = true,
+  showFaseFilter = false,
   showGrupoFilter = false,
   groupByGrupo = false,
   title,
@@ -38,6 +42,7 @@ export function OfficialResultsPanel({
   onError,
 }: OfficialResultsPanelProps) {
   const [filtroData, setFiltroData] = useState<string>('todas')
+  const [filtroFase, setFiltroFase] = useState<string>('todas')
   const [filtroGrupo, setFiltroGrupo] = useState<string>('todos')
 
   const datas = useMemo(() => {
@@ -52,10 +57,18 @@ export function OfficialResultsPanel({
     }
   }, [filtroData, datas])
 
-  const grupos = useMemo(
-    () => ordenarChavesGrupo([...new Set(jogos.map((jogo) => chaveGrupoSecao(jogo)))]),
+  const fases = useMemo(
+    () => ordenarChavesFaseOficial([...new Set(jogos.map((jogo) => chaveFiltroFaseOficial(jogo)))]),
     [jogos],
   )
+
+  const grupos = useMemo(() => gruposDisponiveisParaFiltro(jogos), [jogos])
+
+  useEffect(() => {
+    if (filtroFase !== 'todas' && !fases.includes(filtroFase)) {
+      setFiltroFase('todas')
+    }
+  }, [filtroFase, fases])
 
   useEffect(() => {
     if (filtroGrupo !== 'todos' && !grupos.includes(filtroGrupo)) {
@@ -63,18 +76,42 @@ export function OfficialResultsPanel({
     }
   }, [filtroGrupo, grupos])
 
+  useEffect(() => {
+    if (filtroFase !== 'grupos' && filtroGrupo !== 'todos') {
+      setFiltroGrupo('todos')
+    }
+  }, [filtroFase, filtroGrupo])
+
+  const exibirFiltroGrupo = showGrupoFilter && filtroFase === 'grupos' && grupos.length > 0
+
   const jogosFiltrados = useMemo(() => {
     let lista = jogos
-    if (showGrupoFilter && filtroGrupo !== 'todos') {
-      lista = lista.filter((jogo) => chaveGrupoSecao(jogo) === filtroGrupo)
+    if (showFaseFilter && filtroFase !== 'todas') {
+      lista = lista.filter((jogo) => chaveFiltroFaseOficial(jogo) === filtroFase)
+    }
+    if (exibirFiltroGrupo && filtroGrupo !== 'todos') {
+      lista = lista.filter(
+        (jogo) => jogo.tipo_fase === 'grupos' && (jogo.grupo || '').toUpperCase() === filtroGrupo,
+      )
     }
     if (showDateFilter && filtroData !== 'todas') {
       lista = lista.filter((jogo) => dataChaveLocal(jogo.data_jogo) === filtroData)
     }
     return lista
-  }, [jogos, filtroData, filtroGrupo, showDateFilter, showGrupoFilter])
+  }, [
+    jogos,
+    filtroData,
+    filtroFase,
+    filtroGrupo,
+    showDateFilter,
+    showFaseFilter,
+    exibirFiltroGrupo,
+  ])
 
-  const exibirSecoesGrupo = groupByGrupo && (!showGrupoFilter || filtroGrupo === 'todos')
+  const exibirSecoesGrupo =
+    groupByGrupo &&
+    (filtroFase === 'todas' || filtroFase === 'grupos') &&
+    (!exibirFiltroGrupo || filtroGrupo === 'todos')
 
   const jogosPorData = useMemo(() => {
     const grupos = new Map<string, Jogo[]>()
@@ -95,6 +132,14 @@ export function OfficialResultsPanel({
     [datas],
   )
 
+  const opcoesFiltroFase = useMemo(
+    () => [
+      { value: 'todas', label: 'Todas as fases' },
+      ...fases.map((fase) => ({ value: fase, label: labelFiltroFaseOficial(fase) })),
+    ],
+    [fases],
+  )
+
   const opcoesFiltroGrupo = useMemo(
     () => [
       { value: 'todos', label: 'Todos os grupos' },
@@ -104,7 +149,9 @@ export function OfficialResultsPanel({
   )
 
   const exibirFiltros =
-    (showDateFilter && datas.length > 0) || (showGrupoFilter && grupos.length > 0)
+    (showFaseFilter && fases.length > 0) ||
+    exibirFiltroGrupo ||
+    (showDateFilter && datas.length > 0)
 
   return (
     <div className="glass rounded-2xl p-4 space-y-3">
@@ -117,6 +164,26 @@ export function OfficialResultsPanel({
           )}
           {exibirFiltros && (
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:justify-end">
+              {showFaseFilter && fases.length > 0 && (
+                <div className="w-full sm:w-48">
+                  <SelectInput
+                    value={filtroFase}
+                    onChange={(value) => setFiltroFase(value)}
+                    options={opcoesFiltroFase}
+                    placeholder="Fase"
+                  />
+                </div>
+              )}
+              {exibirFiltroGrupo && (
+                <div className="w-full sm:w-48">
+                  <SelectInput
+                    value={filtroGrupo}
+                    onChange={(value) => setFiltroGrupo(value)}
+                    options={opcoesFiltroGrupo}
+                    placeholder="Grupo"
+                  />
+                </div>
+              )}
               {showDateFilter && datas.length > 0 && (
                 <div className="w-full sm:w-48">
                   <SelectInput
@@ -124,16 +191,6 @@ export function OfficialResultsPanel({
                     onChange={(value) => setFiltroData(value)}
                     options={opcoesFiltroData}
                     placeholder="Data"
-                  />
-                </div>
-              )}
-              {showGrupoFilter && grupos.length > 0 && (
-                <div className="w-full sm:w-48">
-                  <SelectInput
-                    value={filtroGrupo}
-                    onChange={(value) => setFiltroGrupo(value)}
-                    options={opcoesFiltroGrupo}
-                    placeholder="Grupo"
                   />
                 </div>
               )}
