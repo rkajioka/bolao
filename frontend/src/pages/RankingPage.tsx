@@ -65,13 +65,13 @@ function RankingEspeciaisFlags({
     .filter((x): x is { ord: string; p: Pais } => x !== null)
   if (items.length === 0) return null
   return (
-    <div className="flex items-center gap-0.5 shrink-0" aria-label="Palpites especiais: pódio">
+    <motion.div className="flex items-center gap-0.5 shrink-0" aria-label="Palpites especiais: pódio">
       {items.map(({ ord, p }) => (
         <span key={`${ord}-${p.id}`} title={`${ord} lugar: ${p.nome}`} className="leading-none">
           <CountryFlag pais={p} size="xs" />
         </span>
       ))}
-    </div>
+    </motion.div>
   )
 }
 
@@ -140,14 +140,26 @@ export function RankingPage() {
   const getPais = (id?: number | null) => paises.find((p) => p.id === id) ?? null
   const liderPts = top3[0] ? sortValue(top3[0], sortBy) : 0
 
-  const insightSemConteudo =
-    !!insights &&
-    insights.jogos_periodo === 0 &&
-    insights.destaques_resultado.length === 0 &&
-    insights.destaques_placar_exato.length === 0 &&
-    insights.destaques_marcadores_br.length === 0
-
   const sortLabel = sortBy === 'jogos' ? 'pts jogos' : sortBy === 'especiais' ? 'pts especiais' : 'pts'
+
+  const formatMetricaEmpresa = (metrica: { valor: number; total?: number | null }) => {
+    if (metrica.total != null && metrica.total > 0 && metrica.total !== 100) {
+      return `${metrica.valor} de ${metrica.total}`
+    }
+    if (metrica.total === 100) {
+      return `${metrica.valor}%`
+    }
+    return String(metrica.valor)
+  }
+
+  const destaqueSecoes = insights
+    ? [
+        { titulo: 'Mais pontos no bloco', itens: insights.destaques_usuarios.pontos_bloco, cor: 'var(--accent)' },
+        { titulo: 'Mais placares exatos', itens: insights.destaques_usuarios.placar_exato, cor: 'var(--highlight)' },
+        { titulo: 'Mais resultados corretos', itens: insights.destaques_usuarios.resultado, cor: 'var(--accent)' },
+        { titulo: 'Mais classificados corretos', itens: insights.destaques_usuarios.classificado, cor: 'var(--highlight)' },
+      ].filter((secao) => secao.itens.length > 0)
+    : []
 
   return (
     <div className="space-y-4">
@@ -186,7 +198,7 @@ export function RankingPage() {
             </span>
           </div>
           <RankingRowAvatar src={linhaUsuario.imagem_perfil} alt={linhaUsuario.nome} />
-          <div className="flex-1 min-w-0">
+          <motion.div className="flex-1 min-w-0">
             <p className="text-sm font-semibold truncate">{linhaUsuario.nome}</p>
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
               {posicaoUsuario === 1
@@ -195,7 +207,7 @@ export function RankingPage() {
                   : 'Líder'
                 : `${liderPts - sortValue(linhaUsuario, sortBy)} pts atrás do líder`}
             </p>
-          </div>
+          </motion.div>
           <RankingEspeciaisFlags linha={linhaUsuario} getPais={getPais} />
           <div className="text-right shrink-0">
             <p className="text-2xl font-black tabular-nums" style={{ color: 'var(--accent)' }}>
@@ -369,7 +381,7 @@ export function RankingPage() {
                   <RankingRowAvatar src={linhaUsuarioSorted.imagem_perfil} alt={linhaUsuarioSorted.nome} />
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm truncate">
-                      {linhaUsuarioSorted.nome} <span style={{ color: 'var(--accent)' }}>· Você</span>
+                      {linhaUsuarioSorted.nome} <span style={{ color: 'var(--accent)' }}> · Você</span>
                     </p>
                     <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
                       {liderPts - sortValue(linhaUsuarioSorted, sortBy) > 0
@@ -378,10 +390,10 @@ export function RankingPage() {
                     </p>
                   </div>
                   <RankingEspeciaisFlags linha={linhaUsuarioSorted} getPais={getPais} />
-                  <div className="text-right shrink-0">
+                  <motion.div className="text-right shrink-0">
                     <p className="font-black text-base tabular-nums">{sortValue(linhaUsuarioSorted, sortBy)}</p>
                     <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{sortLabel}</p>
-                  </div>
+                  </motion.div>
                 </motion.div>
               </>
             )}
@@ -405,8 +417,25 @@ export function RankingPage() {
                 Insights indisponíveis no momento.
               </p>
             </div>
+          ) : insights.periodo_status === 'aguardando_primeiro_bloco' ? (
+            <EmptyState
+              icon={<TrendingUp size={28} style={{ color: 'var(--text-muted)' }} />}
+              title="Aguardando o primeiro bloco"
+              description="Os insights aparecerão quando a primeira rodada ou fase do torneio for totalmente encerrada."
+            />
           ) : (
             <>
+              {insights.periodo_status === 'bloco_em_andamento' && insights.periodo_em_andamento_label && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="rounded-2xl px-4 py-3 text-sm"
+                  style={{ background: 'rgba(255,193,7,0.08)', border: '1px solid rgba(255,193,7,0.25)' }}
+                >
+                  O bloco {insights.periodo_em_andamento_label} ainda está em andamento. Os números abaixo refletem o último bloco totalmente encerrado.
+                </motion.div>
+              )}
+
               <div className="glass rounded-2xl p-4 space-y-3">
                 <div className="flex items-center gap-2">
                   <TrendingUp size={14} style={{ color: 'var(--accent)' }} />
@@ -417,42 +446,48 @@ export function RankingPage() {
                     {insights.jogos_periodo} jogo{insights.jogos_periodo !== 1 ? 's' : ''}
                   </span>
                 </div>
-                {!insightSemConteudo ? (
-                  <div className="space-y-2">
-                    {insights.destaques_resultado[0] && (
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Mais resultados</span>
-                        <span className="text-xs font-semibold">
-                          {insights.destaques_resultado[0].nome}
-                          <span style={{ color: 'var(--accent)' }}> {insights.destaques_resultado[0].valor}</span>
-                        </span>
-                      </div>
-                    )}
-                    {insights.destaques_placar_exato[0] && (
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Mais placares exatos</span>
-                        <span className="text-xs font-semibold">
-                          {insights.destaques_placar_exato[0].nome}
-                          <span style={{ color: 'var(--highlight)' }}> {insights.destaques_placar_exato[0].valor}</span>
-                        </span>
-                      </div>
-                    )}
-                    {marcadoresBrasilHabilitado && insights.destaques_marcadores_br[0] && (
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Bônus marcadores BR</span>
-                        <span className="text-xs font-semibold">
-                          {insights.destaques_marcadores_br[0].nome}
-                          <span style={{ color: 'var(--highlight)' }}> {insights.destaques_marcadores_br[0].valor}</span>
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                    Ainda não há jogos finalizados no período atual para gerar destaques.
-                  </p>
-                )}
               </div>
+
+              {insights.metricas_empresa.length > 0 && (
+                <div className="glass rounded-2xl p-4 space-y-3">
+                  <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                    Empresa
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {insights.metricas_empresa.map((metrica) => (
+                      <div
+                        key={metrica.chave}
+                        className="rounded-xl p-3"
+                        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
+                      >
+                        <p className="text-lg font-black tabular-nums">{formatMetricaEmpresa(metrica)}</p>
+                        <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>{metrica.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {destaqueSecoes.length > 0 && (
+                <div className="glass rounded-2xl p-4 space-y-3">
+                  <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                    Destaques
+                  </p>
+                  {destaqueSecoes.map((secao) => (
+                    <div key={secao.titulo} className="space-y-2">
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{secao.titulo}</p>
+                      {secao.itens.map((item) => (
+                        <div key={`${secao.titulo}-${item.usuario_id}`} className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-semibold truncate">{item.nome}</span>
+                          <span className="text-xs font-semibold tabular-nums" style={{ color: secao.cor }}>
+                            {item.valor}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <div className="glass rounded-2xl p-4 space-y-3">
                 <div className="flex items-center gap-2">
@@ -460,13 +495,19 @@ export function RankingPage() {
                   <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--highlight)' }}>
                     Meu período
                   </p>
+                  {insights.minha_posicao_periodo != null && (
+                    <span className="text-xs ml-auto font-semibold tabular-nums" style={{ color: 'var(--accent)' }}>
+                      #{insights.minha_posicao_periodo} no bloco
+                    </span>
+                  )}
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    { value: insights.meus_pontos_periodo, label: 'pts no período', color: 'var(--accent)' },
+                    { value: insights.meus_pontos_periodo, label: 'pts no bloco', color: 'var(--accent)' },
                     { value: insights.meu_preenchidos, label: 'palpites', color: 'var(--text)' },
                     { value: insights.meu_acertos_placar_exato, label: 'placar exato', color: 'var(--highlight)' },
                     { value: insights.meu_acertos_resultado, label: 'resultados', color: 'var(--text)' },
+                    { value: insights.meus_acertos_classificado, label: 'classificados', color: 'var(--highlight)' },
                   ].map(({ value, label, color }) => (
                     <div
                       key={label}
@@ -476,26 +517,6 @@ export function RankingPage() {
                       <p className="text-lg font-black tabular-nums" style={{ color }}>{value}</p>
                       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{label}</p>
                     </div>
-                  ))}
-                </div>
-                {marcadoresBrasilHabilitado && insights.meu_bonus_marcadores_br > 0 && (
-                  <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
-                    Bônus marcadores Brasil: +{insights.meu_bonus_marcadores_br}
-                  </p>
-                )}
-              </div>
-
-              <div className="glass rounded-2xl p-4">
-                <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>
-                  Legenda
-                </p>
-                <div className="space-y-1">
-                  {[
-                    'J: Pontos de jogos',
-                    'E: Pontos de especiais',
-                    ...(marcadoresBrasilHabilitado ? ['BR: Bônus marcadores Brasil'] : []),
-                  ].map((label) => (
-                    <p key={label} className="text-xs" style={{ color: 'var(--text-muted)' }}>{label}</p>
                   ))}
                 </div>
               </div>

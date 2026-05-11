@@ -153,12 +153,12 @@ def test_insights_respeitam_empresa_id(client) -> None:
 
     r_a = client.get(f"/ranking/insights?empresa_id={empresa_a_id}", headers=ho)
     assert r_a.status_code == 200
-    nomes_a = {d["nome"] for d in r_a.json()["destaques_resultado"]}
+    nomes_a = {d["nome"] for d in r_a.json()["destaques_usuarios"]["resultado"]}
     assert "Usuário B" not in nomes_a
 
     r_b = client.get(f"/ranking/insights?empresa_id={empresa_b_id}", headers=ho)
     assert r_b.status_code == 200
-    nomes_b = {d["nome"] for d in r_b.json()["destaques_resultado"]}
+    nomes_b = {d["nome"] for d in r_b.json()["destaques_usuarios"]["resultado"]}
     assert "Usuário Teste" not in nomes_b
 
 

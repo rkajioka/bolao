@@ -12,12 +12,9 @@ from dataclasses import dataclass
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.orm import Session
 
-from app.models.jogo import Jogo
-from app.models.marcador_brasil import MarcadorBrasilPalpite
 from app.models.palpite_especial import PalpiteEspecial
 from app.models.palpite_jogo import PalpiteJogo
 from app.models.usuario import Usuario
-from app.services import empresa_service
 
 
 @dataclass(frozen=True)
@@ -34,28 +31,6 @@ class LinhaRankingInterna:
     pontos_especiais: int
     bonus_brasil: int
     pontos_totais: int
-
-
-@dataclass(frozen=True)
-class InsightDestaqueInterno:
-    usuario_id: int
-    nome: str
-    valor: int
-
-
-@dataclass(frozen=True)
-class RankingInsightsInterno:
-    periodo_label: str
-    periodo_tipo: str
-    jogos_periodo: int
-    destaques_resultado: list[InsightDestaqueInterno]
-    destaques_placar_exato: list[InsightDestaqueInterno]
-    destaques_marcadores_br: list[InsightDestaqueInterno]
-    meu_preenchidos: int
-    meu_acertos_resultado: int
-    meu_acertos_placar_exato: int
-    meu_bonus_marcadores_br: int
-    meus_pontos_periodo: int
 
 
 def listar_ranking(db: Session, empresa_id: int | None = None) -> list[LinhaRankingInterna]:
@@ -131,141 +106,7 @@ def listar_ranking(db: Session, empresa_id: int | None = None) -> list[LinhaRank
     ]
 
 
-def _resolver_periodo_atual(db: Session) -> tuple[str, str, list[int]]:
-    jogos_finalizados = list(
-        db.scalars(
-            select(Jogo)
-            .where(Jogo.finalizado.is_(True))
-            .order_by(Jogo.data_jogo.desc())
-            .limit(300)
-        ).all()
-    )
-    if not jogos_finalizados:
-        return ("sem_periodo", "Sem jogos finalizados ainda", [])
+def obter_insights_periodo(db: Session, usuario_id: int, empresa_id: int | None = None):
+    from app.services import ranking_insights_service
 
-    referencia = jogos_finalizados[0]
-    if referencia.tipo_fase == "grupos" and referencia.rodada is not None:
-        rodada = int(referencia.rodada)
-        ids = [j.id for j in jogos_finalizados if j.tipo_fase == "grupos" and int(j.rodada or 0) == rodada]
-        return ("rodada_grupos", f"Rodada {rodada} (grupos)", ids)
-
-    fase = str(referencia.fase)
-    ids = [j.id for j in jogos_finalizados if j.tipo_fase == "mata_mata" and str(j.fase) == fase]
-    return ("fase_mata_mata", f"Fase {fase}", ids)
-
-
-def _top_por_metrica(
-    db: Session,
-    jogo_ids: list[int],
-    expr,
-    empresa_id: int | None = None,
-    limit: int = 3,
-) -> list[InsightDestaqueInterno]:
-    if not jogo_ids:
-        return []
-    condicoes = [Usuario.ativo.is_(True), PalpiteJogo.jogo_id.in_(jogo_ids)]
-    if empresa_id is not None:
-        condicoes.append(Usuario.empresa_id == empresa_id)
-    rows = db.execute(
-        select(
-            Usuario.id.label("usuario_id"),
-            Usuario.nome.label("nome"),
-            func.coalesce(func.sum(expr), 0).label("valor"),
-        )
-        .select_from(PalpiteJogo)
-        .join(Usuario, Usuario.id == PalpiteJogo.usuario_id)
-        .where(and_(*condicoes))
-        .group_by(Usuario.id, Usuario.nome)
-        .order_by(desc("valor"), Usuario.nome.asc())
-        .limit(limit)
-    ).all()
-    return [
-        InsightDestaqueInterno(usuario_id=int(r.usuario_id), nome=str(r.nome), valor=int(r.valor or 0))
-        for r in rows
-        if int(r.valor or 0) > 0
-    ]
-
-
-def obter_insights_periodo(
-    db: Session, usuario_id: int, empresa_id: int | None = None
-) -> RankingInsightsInterno:
-    periodo_tipo, periodo_label, jogo_ids = _resolver_periodo_atual(db)
-    if not jogo_ids:
-        return RankingInsightsInterno(
-            periodo_label=periodo_label,
-            periodo_tipo=periodo_tipo,
-            jogos_periodo=0,
-            destaques_resultado=[],
-            destaques_placar_exato=[],
-            destaques_marcadores_br=[],
-            meu_preenchidos=0,
-            meu_acertos_resultado=0,
-            meu_acertos_placar_exato=0,
-            meu_bonus_marcadores_br=0,
-            meus_pontos_periodo=0,
-        )
-
-    destaques_resultado = _top_por_metrica(
-        db, jogo_ids, PalpiteJogo.pontuacao_resultado, empresa_id=empresa_id
-    )
-    destaques_placar = _top_por_metrica(
-        db, jogo_ids, PalpiteJogo.pontuacao_placar, empresa_id=empresa_id
-    )
-    marcadores_habilitados = empresa_id is None or empresa_service.marcadores_brasil_habilitado(
-        db, empresa_id
-    )
-    condicoes_marcadores = [
-        Usuario.ativo.is_(True),
-        PalpiteJogo.jogo_id.in_(jogo_ids),
-        MarcadorBrasilPalpite.pontuacao > 0,
-    ]
-    if empresa_id is not None:
-        condicoes_marcadores.append(Usuario.empresa_id == empresa_id)
-    if marcadores_habilitados:
-        destaque_marcadores = list(
-            db.execute(
-                select(
-                    Usuario.id.label("usuario_id"),
-                    Usuario.nome.label("nome"),
-                    func.count(MarcadorBrasilPalpite.id).label("valor"),
-                )
-                .select_from(PalpiteJogo)
-                .join(Usuario, Usuario.id == PalpiteJogo.usuario_id)
-                .join(MarcadorBrasilPalpite, MarcadorBrasilPalpite.palpite_jogo_id == PalpiteJogo.id)
-                .where(and_(*condicoes_marcadores))
-                .group_by(Usuario.id, Usuario.nome)
-                .order_by(desc("valor"), Usuario.nome.asc())
-                .limit(3)
-            ).all()
-        )
-        destaques_marcadores = [
-            InsightDestaqueInterno(usuario_id=int(r.usuario_id), nome=str(r.nome), valor=int(r.valor or 0))
-            for r in destaque_marcadores
-        ]
-    else:
-        destaques_marcadores = []
-
-    meu = db.execute(
-        select(
-            func.count(PalpiteJogo.id).label("preenchidos"),
-            func.coalesce(func.sum(PalpiteJogo.pontuacao_resultado), 0).label("acertos_resultado"),
-            func.coalesce(func.sum(PalpiteJogo.pontuacao_placar), 0).label("acertos_placar"),
-            func.coalesce(func.sum(PalpiteJogo.pontuacao_marcadores_brasil), 0).label("bonus_br"),
-            func.coalesce(func.sum(PalpiteJogo.pontuacao_total), 0).label("pontos"),
-        )
-        .where(and_(PalpiteJogo.usuario_id == usuario_id, PalpiteJogo.jogo_id.in_(jogo_ids)))
-    ).one()
-
-    return RankingInsightsInterno(
-        periodo_label=periodo_label,
-        periodo_tipo=periodo_tipo,
-        jogos_periodo=len(jogo_ids),
-        destaques_resultado=destaques_resultado,
-        destaques_placar_exato=destaques_placar,
-        destaques_marcadores_br=destaques_marcadores,
-        meu_preenchidos=int(meu.preenchidos or 0),
-        meu_acertos_resultado=int(meu.acertos_resultado or 0),
-        meu_acertos_placar_exato=int(meu.acertos_placar or 0),
-        meu_bonus_marcadores_br=int(meu.bonus_br or 0) if marcadores_habilitados else 0,
-        meus_pontos_periodo=int(meu.pontos or 0),
-    )
+    return ranking_insights_service.obter_insights_periodo(db, usuario_id, empresa_id=empresa_id)

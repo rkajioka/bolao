@@ -163,18 +163,37 @@ export interface InsightDestaque {
   valor: number
 }
 
+export interface InsightMetricaEmpresa {
+  chave: string
+  label: string
+  valor: number
+  total?: number | null
+}
+
+export interface DestaquesUsuarios {
+  pontos_bloco: InsightDestaque[]
+  placar_exato: InsightDestaque[]
+  resultado: InsightDestaque[]
+  classificado: InsightDestaque[]
+}
+
 export interface RankingInsights {
+  periodo_chave: string | null
   periodo_label: string
   periodo_tipo: 'rodada_grupos' | 'fase_mata_mata' | 'sem_periodo'
+  periodo_status: 'aguardando_primeiro_bloco' | 'disponivel' | 'bloco_em_andamento'
+  periodo_em_andamento_label: string | null
   jogos_periodo: number
-  destaques_resultado: InsightDestaque[]
-  destaques_placar_exato: InsightDestaque[]
-  destaques_marcadores_br: InsightDestaque[]
+  participantes_empresa: number
+  participantes_com_palpite_no_bloco: number
+  metricas_empresa: InsightMetricaEmpresa[]
+  destaques_usuarios: DestaquesUsuarios
   meu_preenchidos: number
   meu_acertos_resultado: number
   meu_acertos_placar_exato: number
-  meu_bonus_marcadores_br: number
+  meus_acertos_classificado: number
   meus_pontos_periodo: number
+  minha_posicao_periodo: number | null
 }
 
 export interface MarcadorPalpite {

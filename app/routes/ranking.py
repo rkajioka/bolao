@@ -4,10 +4,38 @@ from sqlalchemy.orm import Session
 from app.auth.dependencies import get_current_active_user, get_ranking_empresa_id
 from app.database import get_db
 from app.models.usuario import Usuario
-from app.schemas.ranking import RankingInsightsRead, RankingLinhaRead, RankingResponse
+from app.schemas.ranking import (
+    DestaquesUsuariosRead,
+    InsightDestaqueRead,
+    InsightMetricaEmpresaRead,
+    RankingInsightsRead,
+    RankingLinhaRead,
+    RankingResponse,
+)
 from app.services import ranking_service
 
 router = APIRouter(prefix="/ranking", tags=["ranking"])
+
+
+def _destaques_read(destaques) -> DestaquesUsuariosRead:
+    return DestaquesUsuariosRead(
+        pontos_bloco=[
+            InsightDestaqueRead(usuario_id=d.usuario_id, nome=d.nome, valor=d.valor)
+            for d in destaques.pontos_bloco
+        ],
+        placar_exato=[
+            InsightDestaqueRead(usuario_id=d.usuario_id, nome=d.nome, valor=d.valor)
+            for d in destaques.placar_exato
+        ],
+        resultado=[
+            InsightDestaqueRead(usuario_id=d.usuario_id, nome=d.nome, valor=d.valor)
+            for d in destaques.resultado
+        ],
+        classificado=[
+            InsightDestaqueRead(usuario_id=d.usuario_id, nome=d.nome, valor=d.valor)
+            for d in destaques.classificado
+        ],
+    )
 
 
 @router.get("", response_model=RankingResponse)
@@ -46,15 +74,28 @@ def get_ranking_insights(
 ) -> RankingInsightsRead:
     data = ranking_service.obter_insights_periodo(db, user.id, empresa_id=empresa_id)
     return RankingInsightsRead(
+        periodo_chave=data.periodo_chave,
         periodo_label=data.periodo_label,
         periodo_tipo=data.periodo_tipo,
+        periodo_status=data.periodo_status,
+        periodo_em_andamento_label=data.periodo_em_andamento_label,
         jogos_periodo=data.jogos_periodo,
-        destaques_resultado=data.destaques_resultado,
-        destaques_placar_exato=data.destaques_placar_exato,
-        destaques_marcadores_br=data.destaques_marcadores_br,
+        participantes_empresa=data.participantes_empresa,
+        participantes_com_palpite_no_bloco=data.participantes_com_palpite_no_bloco,
+        metricas_empresa=[
+            InsightMetricaEmpresaRead(
+                chave=m.chave,
+                label=m.label,
+                valor=m.valor,
+                total=m.total,
+            )
+            for m in data.metricas_empresa
+        ],
+        destaques_usuarios=_destaques_read(data.destaques_usuarios),
         meu_preenchidos=data.meu_preenchidos,
         meu_acertos_resultado=data.meu_acertos_resultado,
         meu_acertos_placar_exato=data.meu_acertos_placar_exato,
-        meu_bonus_marcadores_br=data.meu_bonus_marcadores_br,
+        meus_acertos_classificado=data.meus_acertos_classificado,
         meus_pontos_periodo=data.meus_pontos_periodo,
+        minha_posicao_periodo=data.minha_posicao_periodo,
     )
