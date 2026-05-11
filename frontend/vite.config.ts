@@ -64,7 +64,7 @@ export default defineConfig({
       '/grupos': apiProxy('/grupos'),
       '/usuarios': { target: API_TARGET, changeOrigin: true },
       '/configuracao-bolao': { target: API_TARGET, changeOrigin: true },
-      '/pontuacao-fase': { target: API_TARGET, changeOrigin: true },
+      '/configuracao-pontuacao-fase': { target: API_TARGET, changeOrigin: true },
       '/resultados-especiais': { target: API_TARGET, changeOrigin: true },
       '/empresas': { target: API_TARGET, changeOrigin: true },
       '/equipe': apiProxy('/equipe'),

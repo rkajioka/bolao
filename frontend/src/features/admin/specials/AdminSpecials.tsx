@@ -37,12 +37,21 @@ export function AdminSpecials({ success, error, variant, empresaId }: AdminSpeci
 
   const scoringEnabled = variant === 'scoring' && empresaId != null
 
-  const { data: config } = useQuery({
+  const {
+    data: config,
+    isLoading: loadConfig,
+    isError: errConfig,
+  } = useQuery({
     queryKey: ['configuracao-bolao', variant, empresaId],
     queryFn: () => adminService.getConfig(empresaId),
     enabled: scoringEnabled,
   })
-  const { data: fasesData = [] } = useQuery({
+  const {
+    data: fasesData = [],
+    isLoading: loadFases,
+    isError: errFases,
+    isFetching: fetchingFases,
+  } = useQuery({
     queryKey: ['configuracao-pontuacao-fase', variant, empresaId],
     queryFn: () => adminService.getFases(empresaId),
     enabled: scoringEnabled,
@@ -114,8 +123,10 @@ export function AdminSpecials({ success, error, variant, empresaId }: AdminSpeci
         },
         empresaId,
       )
-      await queryClient.invalidateQueries({ queryKey: ['configuracao-bolao'] })
-      await queryClient.invalidateQueries({ queryKey: ['configuracao-pontuacao-fase'] })
+      await queryClient.invalidateQueries({ queryKey: ['configuracao-bolao', variant, empresaId] })
+      await queryClient.invalidateQueries({ queryKey: ['configuracao-pontuacao-fase', variant, empresaId] })
+      await queryClient.invalidateQueries({ queryKey: ['configuracao-bolao', 'minha'] })
+      await queryClient.invalidateQueries({ queryKey: ['configuracao-pontuacao-fase', 'minha'] })
       success('Configuração salva')
     } catch (err) {
       error(err instanceof Error ? err.message : 'Erro ao salvar configuração')
@@ -161,6 +172,9 @@ export function AdminSpecials({ success, error, variant, empresaId }: AdminSpeci
       </p>
     )
   }
+
+  const fasesProntas = !loadFases && !fetchingFases && !errFases && fases.length > 0
+  const podeSalvarConfig = Boolean(form) && fasesProntas && !loadConfig && !errConfig
 
   if (variant === 'results') {
     return (
@@ -299,6 +313,21 @@ export function AdminSpecials({ success, error, variant, empresaId }: AdminSpeci
           <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
             Pontuação por fase
           </p>
+          {(loadFases || fetchingFases) && (
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              Carregando pontuação por fase…
+            </p>
+          )}
+          {errFases && (
+            <p className="text-xs" style={{ color: 'var(--danger)' }}>
+              Não foi possível carregar a pontuação por fase. Verifique a conexão com o servidor.
+            </p>
+          )}
+          {!loadFases && !fetchingFases && !errFases && fases.length === 0 && (
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              Nenhuma fase configurada para esta empresa.
+            </p>
+          )}
           <div className="grid grid-cols-12 gap-1 mb-1">
             <span className="col-span-5 text-xs" style={{ color: 'var(--text-muted)' }} />
             <span className="col-span-2 text-xs text-center" style={{ color: 'var(--text-muted)' }}>Exato</span>
@@ -354,7 +383,7 @@ export function AdminSpecials({ success, error, variant, empresaId }: AdminSpeci
         <button
           type="button"
           onClick={() => void handleSaveConfiguracao()}
-          disabled={savingConfig}
+          disabled={savingConfig || !podeSalvarConfig}
           className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-40"
           style={{ background: 'var(--accent)', color: '#070A12' }}
         >
