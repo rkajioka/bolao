@@ -259,6 +259,7 @@ export function JogosPage() {
             readOnly={filtroStatus === 'fechados'}
             showFlags={false}
             showDateFilter={filtroStatus === 'abertos'}
+            groupByGrupo={filtroStatus === 'abertos'}
             emptyMessage={
               filtroStatus === 'abertos'
                 ? 'Nenhum jogo pendente de finalização.'

@@ -18,6 +18,8 @@ from app.models.jogo import Jogo
 from app.schemas.jogo import JogoCreate, JogoResultadoPatch, JogoUpdate
 from app.services import pais_service
 
+HORAS_MINIMAS_APOS_INICIO_PARA_FINALIZAR = 2
+
 
 def _jogo_list_loaders():
     return (
@@ -347,9 +349,22 @@ def patch_resultado(db: Session, jogo: Jogo, data: JogoResultadoPatch) -> Jogo:
     return get_by_id(db, jogo.id)  # type: ignore[return-value]
 
 
+def _assert_pode_finalizar_por_horario(jogo: Jogo) -> None:
+    inicio = jogo.data_jogo
+    if inicio.tzinfo is None:
+        inicio = inicio.replace(tzinfo=UTC)
+    liberacao = inicio + timedelta(hours=HORAS_MINIMAS_APOS_INICIO_PARA_FINALIZAR)
+    if datetime.now(UTC) < liberacao:
+        raise ValueError(
+            "Só é possível finalizar a partida 2 horas após o início do jogo"
+        )
+
+
 def patch_finalizar(db: Session, jogo: Jogo) -> Jogo:
     if jogo.finalizado:
         raise ValueError("Jogo já está finalizado")
+
+    _assert_pode_finalizar_por_horario(jogo)
 
     if jogo.tipo_fase == "mata_mata":
         if jogo.classificado_id is None:

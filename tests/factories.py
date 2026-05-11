@@ -128,6 +128,27 @@ def seed_jogo_grupo_em_breve(db: Session, casa_id: int, fora_id: int) -> Jogo:
     )
 
 
+def seed_jogo_grupo_iniciado_ha_horas(
+    db: Session,
+    casa_id: int,
+    fora_id: int,
+    horas: float = 3,
+) -> Jogo:
+    """Jogo já iniciado há algumas horas — permite finalização oficial."""
+    return jogo_service.create_jogo(
+        db,
+        JogoCreate(
+            fase="Grupo Z",
+            grupo="Z",
+            tipo_fase="grupos",
+            rodada=1,
+            pais_casa_id=casa_id,
+            pais_fora_id=fora_id,
+            data_jogo=datetime.now(UTC) - timedelta(hours=horas),
+        ),
+    )
+
+
 def seed_jogo_grupo_passado(db: Session, casa_id: int, fora_id: int) -> Jogo:
     """Jogo ontem — palpite bloqueado por horário."""
     return jogo_service.create_jogo(
@@ -158,12 +179,20 @@ def seed_jogo_mata_mata(db: Session, casa_id: int, fora_id: int) -> Jogo:
     )
 
 
+def _backdate_jogo_para_finalizacao(db: Session, jogo: Jogo, horas_desde_inicio: float = 3) -> Jogo:
+    jogo.data_jogo = datetime.now(UTC) - timedelta(hours=horas_desde_inicio)
+    db.commit()
+    db.refresh(jogo)
+    return jogo
+
+
 def finalizar_jogo(db: Session, jogo: Jogo, casa: int, fora: int) -> Jogo:
     jogo = jogo_service.patch_resultado(
         db,
         jogo,
         JogoResultadoPatch(placar_casa=casa, placar_fora=fora),
     )
+    jogo = _backdate_jogo_para_finalizacao(db, jogo)
     return jogo_service.patch_finalizar(db, jogo)
 
 
@@ -187,4 +216,5 @@ def finalizar_jogo_mata_mata_com_penaltis(
             classificado_id=classificado_id,
         ),
     )
+    jogo = _backdate_jogo_para_finalizacao(db, jogo)
     return jogo_service.patch_finalizar(db, jogo)

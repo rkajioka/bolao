@@ -2,8 +2,22 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
+
 from app.database import SessionLocal
+from app.models.jogo import Jogo
 from tests.factories import seed_admin_e_usuario, seed_dois_paises, seed_jogo_grupo_em_breve
+
+
+def _tornar_jogo_finalizavel(jogo_id: int, horas_desde_inicio: float = 3) -> None:
+    db = SessionLocal()
+    try:
+        jogo = db.get(Jogo, jogo_id)
+        assert jogo is not None
+        jogo.data_jogo = datetime.now(UTC) - timedelta(hours=horas_desde_inicio)
+        db.commit()
+    finally:
+        db.close()
 
 
 def _login(client, email: str, senha: str) -> str:
@@ -26,6 +40,8 @@ def test_finalizar_jogo_atualiza_pontuacao_placar(client) -> None:
     uh = {"Authorization": f"Bearer {ut}"}
     r0 = client.post("/palpites-jogos", headers=uh, json={"jogo_id": jid, "palpite_casa": 2, "palpite_fora": 1})
     assert r0.status_code == 201, r0.text
+
+    _tornar_jogo_finalizavel(jid)
 
     at = _login(client, "owner-etapa13@example.com", "senhaowner1")
     ah = {"Authorization": f"Bearer {at}"}
@@ -55,6 +71,8 @@ def test_alterar_resultado_apos_finalizar_recalcula(client) -> None:
     ut = _login(client, "user-etapa13@example.com", "senhausuario1")
     uh = {"Authorization": f"Bearer {ut}"}
     assert client.post("/palpites-jogos", headers=uh, json={"jogo_id": jid, "palpite_casa": 1, "palpite_fora": 0}).status_code == 201
+
+    _tornar_jogo_finalizavel(jid)
 
     at = _login(client, "owner-etapa13@example.com", "senhaowner1")
     ah = {"Authorization": f"Bearer {at}"}

@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CountryFlag } from '@/components/CountryFlag'
 import { faseLabel, formatDate } from '@/lib/utils'
+import {
+  momentoLiberacaoFinalizacaoOficial,
+  podeFinalizarResultadoOficial,
+} from '@/features/official-results/officialResultUtils'
 import { gamesService, type UpdateResultadoPayload } from '@/services/games.service'
 import type { Jogo } from '@/types'
 
@@ -43,9 +47,19 @@ export function OfficialGameResultCard({
   const [penaltisCasa, setPenaltisCasa] = useState<number | null>(jogo.penaltis_casa)
   const [penaltisFora, setPenaltisFora] = useState<number | null>(jogo.penaltis_fora)
   const [saving, setSaving] = useState(false)
+  const [agora, setAgora] = useState(() => Date.now())
 
   const isMataMata = jogo.tipo_fase === 'mata_mata'
   const empatado = placarCasa === placarFora
+
+  useEffect(() => {
+    if (readOnly || jogo.finalizado) return
+    const id = window.setInterval(() => setAgora(Date.now()), 60_000)
+    return () => window.clearInterval(id)
+  }, [readOnly, jogo.finalizado, jogo.id])
+
+  const podeFinalizar = podeFinalizarResultadoOficial(jogo.data_jogo, agora)
+  const liberacaoFinalizacao = momentoLiberacaoFinalizacaoOficial(jogo.data_jogo)
 
   useEffect(() => {
     setPlacarCasa(jogo.placar_casa ?? 0)
@@ -78,6 +92,10 @@ export function OfficialGameResultCard({
 
   const handleSalvar = async () => {
     if (readOnly || jogo.finalizado) return
+    if (!podeFinalizar) {
+      onError?.('Só é possível finalizar a partida 2 horas após o início do jogo.')
+      return
+    }
 
     const classificadoFinal = isMataMata
       ? classificadoId ?? classificadoInferido
@@ -286,15 +304,26 @@ export function OfficialGameResultCard({
       )}
 
       {!readOnly && !jogo.finalizado && (
-        <button
-          type="button"
-          onClick={handleSalvar}
-          disabled={saving}
-          className="w-full py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
-          style={{ background: 'var(--accent)', color: '#070A12' }}
-        >
-          {saving ? 'Salvando…' : 'Salvar e finalizar'}
-        </button>
+        <div className="space-y-2">
+          {!podeFinalizar && Number.isFinite(liberacaoFinalizacao) && (
+            <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
+              Finalização liberada às{' '}
+              {new Date(liberacaoFinalizacao).toLocaleTimeString('pt-BR', {
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={handleSalvar}
+            disabled={saving || !podeFinalizar}
+            className="w-full py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
+            style={{ background: 'var(--accent)', color: '#070A12' }}
+          >
+            {saving ? 'Salvando…' : 'Salvar e finalizar'}
+          </button>
+        </div>
       )}
     </div>
   )

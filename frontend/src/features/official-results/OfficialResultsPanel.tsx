@@ -3,9 +3,11 @@ import { SelectInput } from '@/components/SelectInput'
 import type { Jogo } from '@/types'
 import { OfficialGameResultCard } from '@/features/official-results/OfficialGameResultCard'
 import {
+  agruparJogosPorGrupo,
   dataChaveLocal,
   labelDataCabecalho,
   labelDataFiltro,
+  tituloSecaoGrupo,
 } from '@/features/official-results/officialResultUtils'
 
 interface OfficialResultsPanelProps {
@@ -13,6 +15,7 @@ interface OfficialResultsPanelProps {
   readOnly?: boolean
   showFlags?: boolean
   showDateFilter?: boolean
+  groupByGrupo?: boolean
   title?: string
   emptyMessage?: string
   onSaved?: () => void | Promise<void>
@@ -24,6 +27,7 @@ export function OfficialResultsPanel({
   readOnly = false,
   showFlags = false,
   showDateFilter = true,
+  groupByGrupo = false,
   title,
   emptyMessage = 'Nenhum jogo nesta lista.',
   onSaved,
@@ -103,18 +107,45 @@ export function OfficialResultsPanel({
               >
                 {labelDataCabecalho(lista[0].data_jogo)}
               </h3>
-              <div className="space-y-3">
-                {lista.map((jogo) => (
-                  <OfficialGameResultCard
-                    key={jogo.id}
-                    jogo={jogo}
-                    readOnly={readOnly || jogo.finalizado}
-                    showFlags={showFlags}
-                    onSaved={onSaved}
-                    onError={onError}
-                  />
-                ))}
-              </div>
+              {groupByGrupo ? (
+                <div className="space-y-4">
+                  {agruparJogosPorGrupo(lista).map(([grupo, jogosGrupo]) => (
+                    <div key={`${dataKey}-${grupo}`} className="space-y-2">
+                      <h4
+                        className="text-[11px] font-semibold uppercase tracking-wide px-0.5"
+                        style={{ color: 'var(--text-muted)' }}
+                      >
+                        {tituloSecaoGrupo(grupo)}
+                      </h4>
+                      <div className="space-y-3">
+                        {jogosGrupo.map((jogo) => (
+                          <OfficialGameResultCard
+                            key={jogo.id}
+                            jogo={jogo}
+                            readOnly={readOnly || jogo.finalizado}
+                            showFlags={showFlags}
+                            onSaved={onSaved}
+                            onError={onError}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {lista.map((jogo) => (
+                    <OfficialGameResultCard
+                      key={jogo.id}
+                      jogo={jogo}
+                      readOnly={readOnly || jogo.finalizado}
+                      showFlags={showFlags}
+                      onSaved={onSaved}
+                      onError={onError}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>

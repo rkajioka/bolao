@@ -7,6 +7,7 @@ from tests.factories import (
     seed_admin_e_usuario,
     seed_dois_paises,
     seed_jogo_grupo_em_breve,
+    seed_jogo_grupo_iniciado_ha_horas,
     seed_owner_admin_e_usuario,
 )
 
@@ -107,12 +108,37 @@ def test_owner_nao_pode_criar_palpite_jogo(client) -> None:
     assert r.status_code == 403
 
 
-def test_owner_pode_lancar_resultado_oficial(client) -> None:
+def test_owner_nao_finaliza_antes_de_2h(client) -> None:
     db = SessionLocal()
     try:
         seed_owner_admin_e_usuario(db)
         casa_id, fora_id = seed_dois_paises(db)
         jogo = seed_jogo_grupo_em_breve(db, casa_id, fora_id)
+        jogo_id = jogo.id
+    finally:
+        db.close()
+
+    token = _login(client, "owner-etapa13@example.com", "senhaowner1")
+    h = {"Authorization": f"Bearer {token}"}
+    assert (
+        client.patch(
+            f"/jogos/{jogo_id}/resultado",
+            headers=h,
+            json={"placar_casa": 2, "placar_fora": 1},
+        ).status_code
+        == 200
+    )
+    r = client.patch(f"/jogos/{jogo_id}/finalizar", headers=h, json={})
+    assert r.status_code == 400
+    assert "2 horas" in r.json()["detail"]
+
+
+def test_owner_pode_lancar_resultado_oficial(client) -> None:
+    db = SessionLocal()
+    try:
+        seed_owner_admin_e_usuario(db)
+        casa_id, fora_id = seed_dois_paises(db)
+        jogo = seed_jogo_grupo_iniciado_ha_horas(db, casa_id, fora_id)
         jogo_id = jogo.id
     finally:
         db.close()
