@@ -121,10 +121,10 @@ export function PerfilPage() {
           <Building2 size={18} style={{ color: 'var(--accent)' }} />
           <div>
             <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
-              Empresa
+              Bolão
             </p>
             <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
-              {user.empresa_nome ?? `Empresa #${user.empresa_id}`}
+              {user.empresa_nome ?? 'Bolão'}
             </p>
           </div>
         </div>

@@ -62,7 +62,7 @@ function mensagemEntregaEmail(entrega: UsuarioEmailEntrega | undefined, sucessoP
     return sucessoPadrao
   }
   if (entrega?.email_enviado === false) {
-    const alerta = entrega.alerta_admins_enviado ? ' Os administradores da empresa foram alertados por e-mail.' : ''
+    const alerta = entrega.alerta_admins_enviado ? ' Os administradores foram alertados por e-mail.' : ''
     return `Operação concluída, mas o e-mail não foi entregue.${alerta}`
   }
   return sucessoPadrao

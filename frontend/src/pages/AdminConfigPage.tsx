@@ -56,7 +56,7 @@ export function AdminConfigPage() {
       <div>
         <h1 className="text-lg font-bold">Configuração do bolão</h1>
         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-          Pontuação e cores do bolão da empresa
+          {needsOwnerEmpresaPick ? 'Pontuação e cores por bolão' : 'Ajuste pontuação e cores do bolão'}
         </p>
       </div>
 
@@ -66,7 +66,7 @@ export function AdminConfigPage() {
 
       {!needsOwnerEmpresaPick && effectiveEmpresaId == null && (
         <p className="text-sm px-1" style={{ color: 'var(--danger)' }}>
-          Sua conta não está vinculada a uma empresa.
+          Sua conta ainda não participa do bolão.
         </p>
       )}
 

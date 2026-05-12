@@ -33,7 +33,7 @@ def _loaders():
 
 def _assert_nao_bloqueado(db: Session, empresa_id: int | None) -> None:
     if empresa_id is None:
-        raise ValueError("Participação requer vínculo com uma empresa")
+        raise ValueError("Participação no bolão não disponível")
     if configuracao_bolao_service.palpites_especiais_esta_bloqueado(db, empresa_id):
         raise ValueError("Palpites especiais bloqueados após o início da primeira rodada")
 

@@ -244,6 +244,7 @@ export interface ConfiguracaoBolao {
   empresa_id?: number
   marcadores_brasil_habilitado?: boolean
   data_bloqueio_palpites_especiais: string | null
+  data_bloqueio_palpites_especiais_efetiva?: string | null
   pontos_campeao: number
   pontos_vice_campeao: number
   pontos_terceiro_lugar: number

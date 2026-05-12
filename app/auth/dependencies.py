@@ -116,12 +116,12 @@ def resolve_empresa_id(
     if user.empresa_id is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Administrador não está vinculado a uma empresa",
+            detail="Administrador sem bolão vinculado",
         )
     if empresa_id is not None and empresa_id != user.empresa_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Acesso restrito à própria empresa",
+            detail="Acesso restrito ao seu bolão",
         )
     return user.empresa_id
 
@@ -152,7 +152,7 @@ def require_participante_bolao(user: Usuario = Depends(require_primeiro_login_co
     if user.empresa_id is None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Usuário não está vinculado a uma empresa",
+            detail="Participação no bolão indisponível nesta conta",
         )
     return user
 
@@ -162,7 +162,7 @@ def get_empresa_id(user: Usuario = Depends(get_current_active_user)) -> int:
     if user.empresa_id is None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Usuário não está vinculado a uma empresa",
+            detail="Participação no bolão indisponível nesta conta",
         )
     return user.empresa_id
 
@@ -176,6 +176,6 @@ def get_ranking_empresa_id(
     if user.empresa_id is None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Usuário não está vinculado a uma empresa",
+            detail="Participação no bolão indisponível nesta conta",
         )
     return user.empresa_id

@@ -261,9 +261,9 @@ export function AdminAppearance({ empresaId }: AdminAppearanceProps) {
       await adminService.putEmpresaTema(empresaId, { tokens_dark: dark, tokens_light: light })
       await queryClient.invalidateQueries({ queryKey: ['empresa-tema', empresaId] })
       await queryClient.invalidateQueries({ queryKey: ['tema-ui'] })
-      success('Cores da empresa salvas')
+      success(isOwner ? 'Cores da empresa salvas' : 'Cores do bolão salvas')
     } catch (e) {
-      error(e instanceof Error ? e.message : 'Erro ao salvar cores da empresa')
+      error(e instanceof Error ? e.message : isOwner ? 'Erro ao salvar cores da empresa' : 'Erro ao salvar cores do bolão')
     } finally {
       setSavingEmpresa(false)
     }
@@ -297,7 +297,7 @@ export function AdminAppearance({ empresaId }: AdminAppearanceProps) {
       description={
         isOwner
           ? 'Vale para todos os participantes da empresa selecionada acima. A sua conta de proprietário mantém o visual padrão da plataforma.'
-          : 'Vale para todos os participantes da sua empresa assim que eles entrarem no bolão.'
+          : 'Aplicado a todos os participantes do bolão.'
       }
       dark={dark}
       light={light}
@@ -307,7 +307,7 @@ export function AdminAppearance({ empresaId }: AdminAppearanceProps) {
       }}
       onSave={handleSaveEmpresa}
       saving={savingEmpresa}
-      saveLabel="Salvar cores da empresa"
+      saveLabel={isOwner ? 'Salvar cores da empresa' : 'Salvar cores do bolão'}
     />
   )
 

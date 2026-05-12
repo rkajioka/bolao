@@ -284,11 +284,11 @@ function InviteForm({
           ? ' Os proprietários da plataforma foram alertados por e-mail.'
           : ''
         toastError(
-          `${resumo.bloqueados_limite} convite(s) bloqueados por limite de usuários da empresa.${alertaOwner}`,
+          `${resumo.bloqueados_limite} convite(s) bloqueados por limite de participantes.${alertaOwner}`,
         )
       } else if (resumo.falhas > 0) {
         const alerta = resumo.alerta_admins_enviado
-          ? ' Os administradores da empresa foram alertados por e-mail.'
+          ? ' Os administradores foram alertados por e-mail.'
           : ''
         toastError(
           `${resumo.falhas} convite(s) não foram entregues por e-mail.${alerta}`,
@@ -389,7 +389,7 @@ function InviteForm({
                       : result.status === 'convite_pendente'
                         ? 'Convite pendente'
                         : result.status === 'limite_usuarios'
-                          ? 'Limite de usuários da empresa atingido'
+                          ? 'Limite de participantes atingido'
                           : result.token
                           ? 'Convite criado — copie o link'
                           : 'Processado'}
@@ -560,8 +560,8 @@ export function EquipePage() {
     <div className="pb-24 pt-2 flex flex-col gap-6">
       <ConfirmDialog
         open={usuarioRemoverId !== null}
-        title="Remover membro da empresa?"
-        description="O usuário deixa de participar do bolão desta empresa. Para voltar, será necessário um novo convite."
+        title="Remover participante?"
+        description="O usuário deixa de participar do bolão. Para voltar, será necessário um novo convite."
         confirmLabel="Remover"
         tone="danger"
         confirming={removerMutation.isPending}
@@ -579,7 +579,7 @@ export function EquipePage() {
 
       {!needsOwnerEmpresaPick && authEmpresaId == null && (
         <p className="text-sm" style={{ color: 'var(--danger)' }}>
-          Sua conta não está vinculada a uma empresa.
+          Sua conta ainda não participa do bolão.
         </p>
       )}
 

@@ -55,12 +55,12 @@ export function RegrasPage() {
       <SectionHeader title="Regras" subtitle="Como funciona o bolão e a pontuação" />
 
       {(loadCfg || loadFases) && (
-        <p className="text-xs px-1" style={{ color: 'var(--text-muted)' }}>Carregando regras da sua empresa…</p>
+        <p className="text-xs px-1" style={{ color: 'var(--text-muted)' }}>Carregando regras…</p>
       )}
 
       {(errCfg || errFases) && (
         <p className="text-xs px-1" style={{ color: 'var(--danger)' }}>
-          Não foi possível carregar todas as regras. Verifique se você está vinculado a uma empresa.
+          Não foi possível carregar todas as regras.
         </p>
       )}
 
@@ -112,7 +112,7 @@ export function RegrasPage() {
               +{primeiraFase?.pontos_placar_exato ?? '—'}
             </p>
             <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-              {primeiraFase ? `na fase: ${primeiraFase.label}` : 'valores da sua empresa'}
+              {primeiraFase ? `na fase: ${primeiraFase.label}` : 'valores do bolão'}
             </p>
           </div>
           <div className="flex-1 rounded-xl p-3 text-center" style={toneSurfaceStyle('accent')}>
@@ -124,7 +124,7 @@ export function RegrasPage() {
               +{primeiraFase?.pontos_resultado_correto ?? '—'}
             </p>
             <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-              {primeiraFase ? `na fase: ${primeiraFase.label}` : 'valores da sua empresa'}
+              {primeiraFase ? `na fase: ${primeiraFase.label}` : 'valores do bolão'}
             </p>
           </div>
         </div>
@@ -194,7 +194,7 @@ export function RegrasPage() {
           ))}
         </div>
         <p className="text-xs mt-3 px-1" style={{ color: 'var(--text-muted)' }}>
-          Os valores seguem a configuração do bolão da sua empresa. Palpites especiais podem ter data de bloqueio própria.
+          Os valores seguem a configuração do bolão. Palpites especiais podem ter data de bloqueio própria.
         </p>
       </div>
 

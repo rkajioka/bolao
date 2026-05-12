@@ -1,14 +1,15 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { Star, Lock } from 'lucide-react'
+import { Star, Lock, Clock } from 'lucide-react'
 import { api } from '@/lib/api'
-import { mensagemPodioRepetidoEspeciais } from '@/lib/utils'
+import { formatDate, mensagemPodioRepetidoEspeciais } from '@/lib/utils'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useToast } from '@/components/Toast'
 import { SectionHeader } from '@/components/SectionHeader'
 import { CountryFlag } from '@/components/CountryFlag'
 import { CountrySelect } from '@/components/CountrySelect'
+import { regrasService } from '@/services/regras.service'
 import type { PalpiteEspecial, Pais } from '@/types'
 
 export function EspeciaisPage() {
@@ -24,6 +25,12 @@ export function EspeciaisPage() {
   const { data: paises = [] } = useQuery({
     queryKey: ['paises'],
     queryFn: () => api.get<Pais[]>('/paises'),
+  })
+
+  const { data: config } = useQuery({
+    queryKey: ['configuracao-bolao', 'minha'],
+    queryFn: () => regrasService.getConfigMinha(),
+    enabled: !isOwner,
   })
 
   const [form, setForm] = useState({
@@ -49,6 +56,24 @@ export function EspeciaisPage() {
   const bloqueado = palpite?.bloqueado ?? false
   const somenteConsulta = isOwner
   const bloqueadoEdicao = bloqueado || somenteConsulta || loadingPalpite
+  const prazoUltimaEdicao = config?.data_bloqueio_palpites_especiais_efetiva
+    ?? config?.data_bloqueio_palpites_especiais
+    ?? null
+
+  const valoresSalvos = useMemo(
+    () => ({
+      campeao_id: palpite?.campeao_id ? String(palpite.campeao_id) : '',
+      vice_campeao_id: palpite?.vice_campeao_id ? String(palpite.vice_campeao_id) : '',
+      terceiro_lugar_id: palpite?.terceiro_lugar_id ? String(palpite.terceiro_lugar_id) : '',
+      artilheiro_pais_id: palpite?.artilheiro_pais_id ? String(palpite.artilheiro_pais_id) : '',
+    }),
+    [palpite],
+  )
+
+  const campoConsolidado = (key: keyof typeof form) =>
+    !bloqueadoEdicao
+    && valoresSalvos[key] !== ''
+    && form[key] === valoresSalvos[key]
 
   const handleSave = async () => {
     if (loadingPalpite) {
@@ -105,6 +130,28 @@ export function EspeciaisPage() {
             : 'Defina seus palpites para o torneio'
         }
       />
+
+      {!somenteConsulta && (
+        <div
+          className="flex items-start gap-3 px-4 py-3 rounded-2xl"
+          style={{ background: 'var(--glass)', border: '1px solid var(--border)' }}
+        >
+          <Clock size={16} className="mt-0.5 shrink-0" style={{ color: 'var(--text-muted)' }} />
+          <div>
+            <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
+              {bloqueado ? 'Prazo encerrado' : 'Prazo para última edição'}
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+              {prazoUltimaEdicao
+                ? formatDate(prazoUltimaEdicao)
+                : 'O prazo será definido quando o calendário da Copa estiver disponível.'}
+              {!bloqueado && palpite
+                ? ' Palpites já salvos podem ser alterados até esse horário.'
+                : null}
+            </p>
+          </div>
+        </div>
+      )}
 
       {somenteConsulta && (
         <div
@@ -203,6 +250,7 @@ export function EspeciaisPage() {
                 onChange={(val) => setForm((f) => ({ ...f, [key]: val }))}
                 placeholder={placeholder}
                 disabled={bloqueadoEdicao}
+                secured={campoConsolidado(key as keyof typeof form)}
                 excludedCountryIds={excludedCountryIds}
               />
             </div>

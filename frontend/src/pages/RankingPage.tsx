@@ -451,7 +451,7 @@ export function RankingPage() {
               {insights.metricas_empresa.length > 0 && (
                 <div className="glass rounded-2xl p-4 space-y-3">
                   <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                    Empresa
+                    Bolão
                   </p>
                   <div className="grid grid-cols-2 gap-2">
                     {insights.metricas_empresa.map((metrica) => (

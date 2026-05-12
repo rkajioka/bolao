@@ -100,7 +100,7 @@ def remover_usuario(
     if usuario.id == solicitante_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Você não pode remover a si mesmo da empresa",
+            detail="Você não pode remover a si mesmo",
         )
     usuario.empresa_id = None
     audit_log_service.log(
@@ -122,7 +122,7 @@ def get_usuario_empresa(db: Session, empresa_id: int, usuario_id: int) -> Usuari
     if usuario is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Usuário não encontrado nesta empresa",
+            detail="Usuário não encontrado",
         )
     return usuario
 

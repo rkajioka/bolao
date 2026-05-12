@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronDown, Check } from 'lucide-react'
+import { ChevronDown, Check, Lock } from 'lucide-react'
 import { CountryFlag } from '@/components/CountryFlag'
 import { dropdownOptionStyle, dropdownPanelStyle, fieldControlStyle } from '@/lib/fieldStyles'
 import type { Pais } from '@/types'
@@ -10,6 +10,7 @@ interface CountrySelectProps {
   onChange: (value: string) => void
   placeholder: string
   disabled?: boolean
+  secured?: boolean
   excludedCountryIds?: number[]
 }
 
@@ -19,6 +20,7 @@ export function CountrySelect({
   onChange,
   placeholder,
   disabled = false,
+  secured = false,
   excludedCountryIds = [],
 }: CountrySelectProps) {
   const [open, setOpen] = useState(false)
@@ -77,7 +79,15 @@ export function CountrySelect({
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
         className="w-full px-3 py-3 rounded-xl text-sm transition-all duration-150 disabled:opacity-40 flex items-center gap-2"
-        style={fieldControlStyle}
+        style={{
+          ...fieldControlStyle,
+          ...(secured
+            ? {
+                background: 'var(--segmented-bg)',
+                border: '1px solid var(--border)',
+              }
+            : {}),
+        }}
       >
         {selected ? (
           <>
@@ -87,14 +97,19 @@ export function CountrySelect({
         ) : (
           <span style={{ color: 'var(--text-muted)' }}>{placeholder}</span>
         )}
-        <ChevronDown
-          size={16}
-          className="ml-auto transition-transform duration-200"
-          style={{
-            transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
-            color: 'var(--text-muted)',
-          }}
-        />
+        <span className="ml-auto flex items-center gap-1.5 shrink-0">
+          {secured ? (
+            <Lock size={14} style={{ color: 'var(--text-muted)' }} aria-hidden />
+          ) : null}
+          <ChevronDown
+            size={16}
+            className="transition-transform duration-200"
+            style={{
+              transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+              color: 'var(--text-muted)',
+            }}
+          />
+        </span>
       </button>
 
       {open && (

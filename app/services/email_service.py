@@ -114,7 +114,7 @@ def tentar_enviar_convite(
     link = f"{_public_base_url()}/ativar-conta?token={token}"
     assunto = f"Convite para o Bolão — {empresa_nome}"
     corpo_html = (
-        f"<p>Você foi convidado para o bolão da empresa <strong>{empresa_nome}</strong>.</p>"
+        f"<p>Você foi convidado para o bolão <strong>{empresa_nome}</strong>.</p>"
         f'<p><a href="{link}">Ativar minha conta</a></p>'
         "<p>Se você não esperava este convite, ignore este e-mail.</p>"
     )

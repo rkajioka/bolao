@@ -22,6 +22,7 @@ class ConfiguracaoBolaoRead(ConfiguracaoBolaoBase):
     id: int
     empresa_id: int
     marcadores_brasil_habilitado: bool
+    data_bloqueio_palpites_especiais_efetiva: datetime | None = None
     created_at: datetime
     updated_at: datetime
 

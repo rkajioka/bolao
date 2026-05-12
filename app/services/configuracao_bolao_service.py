@@ -43,9 +43,17 @@ def configuracao_para_read(db: Session, config: ConfiguracaoBolao) -> Configurac
     attrs = {
         name: getattr(config, name)
         for name in ConfiguracaoBolaoRead.model_fields
-        if name != "marcadores_brasil_habilitado" and hasattr(config, name)
+        if name
+        not in {
+            "marcadores_brasil_habilitado",
+            "data_bloqueio_palpites_especiais_efetiva",
+        }
+        and hasattr(config, name)
     }
     attrs["marcadores_brasil_habilitado"] = empresa_service.marcadores_brasil_habilitado(
+        db, config.empresa_id
+    )
+    attrs["data_bloqueio_palpites_especiais_efetiva"] = get_data_bloqueio_palpites_especiais_efetiva(
         db, config.empresa_id
     )
     return ConfiguracaoBolaoRead(**attrs)

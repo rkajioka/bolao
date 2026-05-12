@@ -16,7 +16,7 @@ from app.schemas.marcador_brasil import MarcadorBrasilPalpiteItem, MarcadoresBra
 from app.services import candidato_marcador_brasil_service, empresa_service, jogo_service, palpite_jogo_service
 from app.services.regra_negocio import assert_jogo_nao_finalizado, assert_palpite_aberto, obter_jogo_para_edicao_palpite
 
-MARCADORES_BRASIL_EMPRESA_DESABILITADO = "Bônus de marcadores desabilitado para esta empresa."
+MARCADORES_BRASIL_EMPRESA_DESABILITADO = "Bônus de marcadores desabilitado no bolão."
 
 
 class MarcadoresBrasilEmpresaDesabilitadoError(Exception):

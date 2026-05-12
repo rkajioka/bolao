@@ -361,7 +361,7 @@ export function AdminSpecials({ success, error, variant, empresaId }: AdminSpeci
               Palpites especiais
             </p>
             <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-              Informe quantos pontos cada acerto nos palpites especiais vale para a sua empresa.
+              Informe quantos pontos vale cada acerto nos palpites especiais.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -416,7 +416,7 @@ export function AdminSpecials({ success, error, variant, empresaId }: AdminSpeci
           )}
           {!loadFases && !fetchingFases && !errFases && fases.length === 0 && (
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              Nenhuma fase configurada para esta empresa.
+              Nenhuma fase configurada.
             </p>
           )}
           <div
