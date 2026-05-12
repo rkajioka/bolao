@@ -1,3 +1,4 @@
+import logging
 import secrets
 import time
 from datetime import UTC, datetime, timedelta
@@ -12,6 +13,8 @@ from app.models.empresa import Empresa
 from app.models.usuario import Usuario
 from app.schemas.convite import BulkConviteRequest, BulkConviteResponse, ConviteResumoEnvio, ConviteResultadoItem
 from app.services import audit_log_service, email_dispatch_service, email_service, empresa_quota_service
+
+logger = logging.getLogger(__name__)
 
 
 _TOKEN_BYTES = 48
@@ -152,9 +155,9 @@ def criar_bulk_convites(
                     erro=resultado_envio.erro or "Falha desconhecida",
                 )
             )
-            print(
-                f"[bolao:email] convite criado para {email}: reenvie o convite por e-mail",
-                flush=True,
+            logger.warning(
+                "Convite criado para %s, mas o e-mail não foi enviado; reenvie o convite por e-mail",
+                email,
             )
 
         resultados.append(item)

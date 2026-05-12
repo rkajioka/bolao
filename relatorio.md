@@ -1076,7 +1076,9 @@ Redirect se sem token.
 **Exemplo de direção técnica:**
 Navigate to /login.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** Guard dedicado em PrimeiroAcessoPage e fluxo de login com next preservam acesso autenticado ao primeiro acesso.
 
 ### [FLUX-002] Sessões paralelas após troca de senha
 
@@ -1108,7 +1110,9 @@ Alinhar com SEC-012.
 **Exemplo de direção técnica:**
 Revogar todos refresh do usuário.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** Verificado em auth_service.py: change_password revoga refresh tokens do usuario antes do commit.
 
 ### [FLUX-003] Erros mascarados em palpites especiais
 
@@ -1140,7 +1144,9 @@ Surface isError.
 **Exemplo de direção técnica:**
 React Query throwOnError.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** EspeciaisPage remove catch silencioso e exibe erro com retry na query de palpite especial.
 
 ### [FLUX-004] Login não redireciona sessão existente
 
@@ -1172,7 +1178,9 @@ Redirect para /jogos.
 **Exemplo de direção técnica:**
 if (isAuthenticated) Navigate.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** LoginPage redireciona sessao existente e honra o parametro next apos autenticacao.
 
 ### [FLUX-005] Troca de empresa durante convites
 
@@ -1204,7 +1212,9 @@ Travar tenant no início.
 **Exemplo de direção técnica:**
 useRef tenantLock.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** EquipePage fixa empresa_id no envio em lote e bloqueia troca de tenant durante o progresso.
 
 ### [FLUX-006] Avatar órfão na pré-ativação
 
@@ -1236,7 +1246,9 @@ Limpeza periódica.
 **Exemplo de direção técnica:**
 Job remove não referenciados.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** Script scripts/cleanup_orphan_avatars.py remove avatares orfaos em disco com dry-run e idade minima.
 
 ### [NAV-001] GruposPage órfã
 
@@ -1268,7 +1280,9 @@ Remover ou restaurar rota.
 **Exemplo de direção técnica:**
 Integrar em JogosPage.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** GruposPage.tsx removida; redirect /grupos para /jogos mantido em App.tsx.
 
 ### [NAV-002] Wildcard sem preservar destino
 
@@ -1300,7 +1314,9 @@ Guardar next no login.
 **Exemplo de direção técnica:**
 /login?next=...
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** ProtectedRoute e wildcard gravam next; LoginPage retorna ao destino seguro apos login.
 
 ### [NAV-003] Owner acessa rotas bloqueadas na nav
 
@@ -1332,7 +1348,9 @@ Guard ou redirect owner.
 **Exemplo de direção técnica:**
 OwnerRoute em rotas de participante.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** ParticipantRoute em App.tsx redireciona owner das rotas /especiais, /regras e /equipe.
 
 ### [UX-001] Bloqueio de clipboard no login
 
@@ -1364,7 +1382,9 @@ Remover bloqueios.
 **Exemplo de direção técnica:**
 Permitir colar.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** LoginPage remove bloqueios de clipboard nos campos de e-mail e senha.
 
 ### [UX-002] Perfil sem validação de senha no cliente
 
@@ -1396,7 +1416,9 @@ Validar como primeiro acesso.
 **Exemplo de direção técnica:**
 validarSenhaSegura local.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** PerfilPage valida senha com validarSenhaSegura antes de alterar senha.
 
 ### [UX-003] Toasts sem dismiss manual
 
@@ -1428,7 +1450,9 @@ Botão fechar.
 **Exemplo de direção técnica:**
 duration configurável.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** Toast.tsx adiciona fechar manual; erros sem auto-dismiss.
 
 ### [UX-004] Feedback duplicado ao salvar palpite
 
@@ -1460,7 +1484,9 @@ Unificar feedback.
 **Exemplo de direção técnica:**
 Só toast ou só inline.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** JogosPage deixa falha de palpite apenas no feedback inline do GameCard.
 
 ### [UX-005] Esqueci senha com sucesso genérico
 
@@ -1492,7 +1518,9 @@ Mensagem neutra clara.
 **Exemplo de direção técnica:**
 Distinguir 429.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** EsqueciSenhaPage distingue 429, indisponibilidade e sucesso de envio.
 
 ### [A11Y-001] Labels sem htmlFor
 
@@ -1524,7 +1552,9 @@ Associar id/htmlFor.
 **Exemplo de direção técnica:**
 htmlFor=id.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** Formularios de perfil e autenticacao associam labels com htmlFor/id onde aplicavel.
 
 ### [A11Y-002] Abas e SegmentedControl incompletos
 
@@ -1556,7 +1586,9 @@ ARIA tablist completo.
 **Exemplo de direção técnica:**
 role=tab tabpanel.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** SegmentedControl e AdminConfigPage com tablist, aria-controls e teclado.
 
 ### [A11Y-003] Nav inferior sem aria-current
 
@@ -1588,7 +1620,9 @@ aria-current=page.
 **Exemplo de direção técnica:**
 NavLink aria-current.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** AppLayout define aria-current=page nos links ativos da navegacao inferior.
 
 ### [A11Y-004] Toggle de senha sem aria-label
 
@@ -1620,7 +1654,9 @@ aria-label em português.
 **Exemplo de direção técnica:**
 aria-label Mostrar senha.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** Toggle de senha em PerfilPage com aria-label em portugues.
 
 ### [A11Y-005] Sem skip link e toasts polite
 
@@ -1652,7 +1688,9 @@ assertive para erro.
 **Exemplo de direção técnica:**
 skip link no layout.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** Skip link no AppLayout e toasts de erro com role=alert e aria-live assertive.
 
 ### [CFG-001] .env.example incompleto
 
@@ -1684,7 +1722,9 @@ Documentar todas as vars.
 **Exemplo de direção técnica:**
 Espelhar Settings.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** .env.example documenta refresh, rate limits, Graph, e-mail e REDIS_URL.
 
 ### [CFG-002] Uploads de avatar versionados
 
@@ -1716,7 +1756,9 @@ Ignorar uploads.
 **Exemplo de direção técnica:**
 static/uploads/** no gitignore.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** .gitignore ignora static/uploads/**.
 
 ### [CFG-003] Ausência de Docker e CI
 
@@ -1780,7 +1822,9 @@ Backend Redis.
 **Exemplo de direção técnica:**
 Redis INCR janela.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** rate_limit_service usa Redis opcional via REDIS_URL com fallback em memoria.
 
 ### [CFG-005] Catch-all SPA em produção
 
@@ -1812,7 +1856,9 @@ Registrar routers antes do catch-all.
 **Exemplo de direção técnica:**
 Excluir prefixos /api.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** main.py serve index.html apenas para paths SPA listados; demais retornam 404 JSON.
 
 ### [DEP-001] requirements.txt com versões abertas
 
@@ -1844,7 +1890,9 @@ Fixar versões ou lock.
 **Exemplo de direção técnica:**
 pip-tools compile.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** requirements.txt fixa versoes compatíveis com a suíte atual.
 
 ### [DEP-002] Biblioteca xlsx no frontend
 
@@ -1876,7 +1924,9 @@ Preferir CSV validado.
 **Exemplo de direção técnica:**
 limitar tamanho/linhas.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** Dependencia xlsx removida; convites por CSV/TXT em inviteEmails e EquipePage.
 
 ### [TEST-001] Cobertura frontend mínima
 
@@ -1908,7 +1958,9 @@ Testes RTL e api mock.
 **Exemplo de direção técnica:**
 vitest + MSW.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** Vitest cobre apiFetch com refresh e AuthContext.adoptSession.
 
 ### [TEST-002] Suíte backend com 104 testes
 
@@ -1940,7 +1992,9 @@ Manter e expandir.
 **Exemplo de direção técnica:**
 py -m pytest.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** Baseline pytest com 111 testes coletados e suíte verde.
 
 ### [TEST-003] Lacunas de rotas sem teste
 
@@ -1972,7 +2026,9 @@ Matriz rota-teste.
 **Exemplo de direção técnica:**
 pytest por router.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** Novos testes para /health, /perfil/, /plataforma/tema, ativar-conta e GET /empresas/.
 
 ### [TEST-004] SQLite em testes ≠ produção
 
@@ -2036,7 +2092,9 @@ Ajustar expectativa ou regra.
 **Exemplo de direção técnica:**
 Rever mensagem de validação quantidade marcadores.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** test_security_toctou ajusta payload de marcadores para validar 409 no prazo.
 
 ### [MAN-001] Código morto no frontend
 
@@ -2068,7 +2126,9 @@ Remover arquivos.
 **Exemplo de direção técnica:**
 delete unused.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** Removidos GruposPage.tsx e predictions.service.ts.
 
 ### [MAN-002] ApiError duplicado
 
@@ -2100,7 +2160,9 @@ Unificar export.
 **Exemplo de direção técnica:**
 só class ApiError exportada.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** ApiError unificado em frontend/src/lib/api.ts; duplicata removida de types.
 
 ### [MAN-003] print em fluxo de convite
 
@@ -2132,7 +2194,9 @@ logging sem dados sensíveis.
 **Exemplo de direção técnica:**
 logger.info sem token.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** convite_service.py usa logging em falha de envio de e-mail.
 
 ### [MAN-004] Script wipe destrutivo
 
@@ -2164,7 +2228,9 @@ Dry-run default; dupla confirmação.
 **Exemplo de direção técnica:**
 exigir --i-understand.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** wipe_operational_data.py exige --confirm; sem flag imprime dry-run e sai com codigo 1.
 
 ### [MAN-005] seed_configuracao_bolao desalinhado
 
@@ -2196,7 +2262,9 @@ Atualizar para tenant.
 **Exemplo de direção técnica:**
 empresa_id obrigatório no seed.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** seed_configuracao_bolao.py exige empresa_id na configuracao inserida.
 
 
 ---
@@ -2210,9 +2278,9 @@ empresa_id obrigatório no seed.
 | SEC-003 | ALTA | Segurança | app/routes/auth.py | Reset em debug | Corrigido |
 | SEC-008 | ALTA | Segurança | equipe.py / convite_service | Tokens de convite | Corrigido |
 | BUG-004 | ALTA | Bug | AuthContext / AtivarConta | Sessão quebrada pós-ativação | Corrigido |
-| TEST-001 | ALTA | Testes | frontend/src/lib | Sem testes de fluxo | P0 |
-| TEST-003 | ALTA | Testes | tests/ | Rotas críticas sem teste | P0 |
-| MAN-004 | ALTA | Manutenção | scripts/wipe_operational_data.py | Perda de dados | P0 |
+| TEST-001 | ALTA | Testes | frontend/src/lib | Sem testes de fluxo | Corrigido |
+| TEST-003 | ALTA | Testes | tests/ | Rotas críticas sem teste | Corrigido |
+| MAN-004 | ALTA | Manutenção | scripts/wipe_operational_data.py | Perda de dados | Corrigido |
 | SEC-004 | MÉDIA | Segurança | frontend/src/lib/api.ts | XSS → token | Corrigido |
 | SEC-005 | MÉDIA | Segurança | config / auth | Cookie sem Secure | Corrigido |
 | SEC-006 | MÉDIA | Segurança | app/main.py | CORS/headers | Corrigido |
@@ -2227,29 +2295,29 @@ empresa_id obrigatório no seed.
 | BUG-002 | MÉDIA | Bug | equipe.service.ts | Convites falsos OK | Corrigido |
 | BUG-003 | MÉDIA | Bug | api.ts | Multipart 401 | Corrigido |
 | BUG-007 | BAIXA | Bug | equipe.service.ts | URL listar equipe | Corrigido |
-| FLUX-001 | MÉDIA | Fluxo | App.tsx | Primeiro acesso | P1 |
-| FLUX-003 | MÉDIA | Fluxo | EspeciaisPage.tsx | Erros mascarados | P1 |
-| CFG-001 | MÉDIA | Configuração | .env.example | Env incompleto | P1 |
-| CFG-002 | MÉDIA | Configuração | static/ | Uploads no git | P1 |
-| CFG-004 | MÉDIA | Configuração | rate_limit_service | Multi-instância | P1 |
+| FLUX-001 | MÉDIA | Fluxo | App.tsx | Primeiro acesso | Corrigido |
+| FLUX-003 | MÉDIA | Fluxo | EspeciaisPage.tsx | Erros mascarados | Corrigido |
+| CFG-001 | MÉDIA | Configuração | .env.example | Env incompleto | Corrigido |
+| CFG-002 | MÉDIA | Configuração | static/ | Uploads no git | Corrigido |
+| CFG-004 | MÉDIA | Configuração | rate_limit_service | Multi-instância | Corrigido |
 | BUG-005 | MÉDIA | Bug | RankingPage.tsx | Métrica líder | Corrigido |
 | BUG-006 | MÉDIA | Bug | Jogos/Ranking | isError | Corrigido |
 | BUG-008 | MÉDIA | Bug | GameCard | Race autosave | Corrigido |
-| NAV-003 | MÉDIA | Navegação | AppLayout.tsx | URL owner | P2 |
-| UX-005 | MÉDIA | Usabilidade | EsqueciSenhaPage | Sucesso genérico | P2 |
-| CFG-005 | MÉDIA | Configuração | main.py | Catch-all SPA | P2 |
+| NAV-003 | MÉDIA | Navegação | AppLayout.tsx | URL owner | Corrigido |
+| UX-005 | MÉDIA | Usabilidade | EsqueciSenhaPage | Sucesso genérico | Corrigido |
+| CFG-005 | MÉDIA | Configuração | main.py | Catch-all SPA | Corrigido |
 | TEST-004 | MÉDIA | Testes | conftest.py | SQLite ≠ prod | P2 |
-| TEST-005 | MÉDIA | Testes | test_security_toctou.py | 1 falha pytest | P2 |
-| MAN-005 | MÉDIA | Manutenção | seed_configuracao_bolao | Multi-tenant | P2 |
+| TEST-005 | MÉDIA | Testes | test_security_toctou.py | 1 falha pytest | Corrigido |
+| MAN-005 | MÉDIA | Manutenção | seed_configuracao_bolao | Multi-tenant | Corrigido |
 | SEC-013 | INFORMATIVA | Segurança | palpites_especiais | Owner global | P3 |
 | SEC-014 | BAIXA | Segurança | main.py | CSP/frame | Corrigido |
 | SEC-017 | MÉDIA | Segurança | tema.py | Tema público | Corrigido |
 | SEC-018 | BAIXA | Segurança | usuario.py | Senha fraca create | Corrigido |
 | SEC-019 | INFORMATIVA | Segurança | main.py | OpenAPI /docs | Corrigido |
-| NAV-001/002 | BAIXA | Navegação | App.tsx | Redirects | P3 |
-| UX/A11Y baixos | BAIXA | UX/A11y | várias | Polish | P3 |
-| DEP-001/002 | BAIXA | Dependências | requirements/package | Versões | P3 |
-| MAN-001/002/003 | BAIXA | Manutenção | várias | Dívida | P3 |
+| NAV-001 | BAIXA | Navegação | App.tsx | Redirects | Corrigido |
+| UX-001 | BAIXA | Usabilidade | LoginPage.tsx | Clipboard login | Corrigido |
+| DEP-001 | BAIXA | Dependências | requirements/package | Versões | Corrigido |
+| MAN-001 | BAIXA | Manutenção | várias | Dívida | Corrigido |
 
 ---
 

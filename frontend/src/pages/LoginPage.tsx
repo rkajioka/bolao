@@ -1,21 +1,15 @@
-import { useState, type ClipboardEvent, type FormEvent, type KeyboardEvent } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useEffect, useState, type FormEvent } from 'react'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useToast } from '@/components/Toast'
 import { ApiError } from '@/lib/api'
 
-const blockLoginClipboardShortcut = (event: KeyboardEvent<HTMLInputElement>) => {
-  if (!(event.ctrlKey || event.metaKey)) return
-  const key = event.key.toLowerCase()
-  if (key === 'c' || key === 'v' || key === 'x') {
-    event.preventDefault()
-  }
-}
-
-const blockLoginClipboardAction = (event: ClipboardEvent<HTMLInputElement>) => {
-  event.preventDefault()
+function safeNextPath(next: string | null): string | null {
+  if (!next || !next.startsWith('/') || next.startsWith('//')) return null
+  if (next.includes('://')) return null
+  return next
 }
 
 export function LoginPage() {
@@ -23,16 +17,34 @@ export function LoginPage() {
   const [senha, setSenha] = useState('')
   const [loading, setLoading] = useState(false)
   const [showSenha, setShowSenha] = useState(false)
-  const { login } = useAuth()
+  const { login, isAuthenticated, user, isLoading } = useAuth()
   const { error } = useToast()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+
+  useEffect(() => {
+    if (isLoading || !isAuthenticated) return
+    const next = safeNextPath(searchParams.get('next'))
+    if (next) {
+      navigate(next, { replace: true })
+      return
+    }
+    navigate(user?.primeiro_login ? '/primeiro-acesso' : '/jogos', { replace: true })
+  }, [isAuthenticated, isLoading, navigate, searchParams, user?.primeiro_login])
+
+  if (!isLoading && isAuthenticated) {
+    return null
+  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setLoading(true)
     try {
       const { primeiro_login } = await login(email, senha)
-      if (primeiro_login) {
+      const next = safeNextPath(searchParams.get('next'))
+      if (next) {
+        navigate(next, { replace: true })
+      } else if (primeiro_login) {
         navigate('/primeiro-acesso')
       } else {
         navigate('/jogos')
@@ -118,10 +130,6 @@ export function LoginPage() {
                 onBlur={(e) =>
                   (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)')
                 }
-                onKeyDown={blockLoginClipboardShortcut}
-                onCopy={blockLoginClipboardAction}
-                onCut={blockLoginClipboardAction}
-                onPaste={blockLoginClipboardAction}
               />
             </div>
           </div>
@@ -160,10 +168,6 @@ export function LoginPage() {
                 onBlur={(e) =>
                   (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)')
                 }
-                onKeyDown={blockLoginClipboardShortcut}
-                onCopy={blockLoginClipboardAction}
-                onCut={blockLoginClipboardAction}
-                onPaste={blockLoginClipboardAction}
               />
               <button
                 type="button"

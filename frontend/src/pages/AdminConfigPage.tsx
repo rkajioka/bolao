@@ -82,6 +82,8 @@ export function AdminConfigPage() {
                 key={t.key}
                 role="tab"
                 aria-selected={activeTab === t.key}
+                aria-controls={`tabpanel-${t.key}`}
+                id={`tab-${t.key}`}
                 onClick={() => setActiveTab(t.key)}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-150"
                 style={{
@@ -96,7 +98,7 @@ export function AdminConfigPage() {
             ))}
           </div>
 
-          <div id={`tabpanel-${activeTab}`} role="tabpanel">
+          <div id={`tabpanel-${activeTab}`} role="tabpanel" aria-labelledby={`tab-${activeTab}`}>
             <Suspense fallback={<TabFallback />}>
               {activeTab === 'pontuacao' && (
                 <AdminSpecials

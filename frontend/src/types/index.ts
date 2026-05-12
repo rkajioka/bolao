@@ -285,10 +285,6 @@ export interface AtivarContaResponse {
   token_type: string
 }
 
-export interface ApiError {
-  detail: string
-}
-
 /** Resposta de tema da plataforma ou overlay por empresa (tokens CSS). */
 export interface TemaTokensResponse {
   tokens_dark: Record<string, string>

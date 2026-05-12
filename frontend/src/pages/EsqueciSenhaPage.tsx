@@ -21,9 +21,19 @@ export function EsqueciSenhaPage() {
     } catch (err) {
       if (err instanceof ApiError && err.status === 429) {
         setError('Muitas tentativas. Aguarde alguns minutos.')
+        setSent(false)
+      } else if (
+        err instanceof TypeError
+        || (err instanceof ApiError && (err.status === 0 || err.status >= 500))
+      ) {
+        setError('Serviço indisponível no momento. Verifique sua conexão e tente novamente.')
+        setSent(false)
+      } else if (err instanceof ApiError && err.status >= 400) {
+        setError('Não foi possível processar a solicitação. Tente novamente.')
+        setSent(false)
       } else {
-        // Sempre mostrar mensagem de sucesso para não revelar existência do e-mail
-        setSent(true)
+        setError('Não foi possível processar a solicitação. Tente novamente.')
+        setSent(false)
       }
     } finally {
       setLoading(false)

@@ -124,13 +124,22 @@ app.mount("/static", StaticFiles(directory=str(_static_root)), name="static")
 if _frontend_dist.exists():
     app.mount("/assets", StaticFiles(directory=str(_frontend_dist / "assets")), name="frontend-assets")
 
-    @app.get("/", include_in_schema=False)
-    @app.get("/{full_path:path}", include_in_schema=False)
-    def serve_spa(full_path: str = "") -> FileResponse:
+    def _spa_index_response() -> FileResponse | JSONResponse:
         index = _frontend_dist / "index.html"
         if index.exists():
             return FileResponse(str(index))
         return JSONResponse({"detail": "Frontend build not found"}, status_code=404)
+
+    @app.get("/", include_in_schema=False, response_model=None)
+    def serve_spa_root() -> FileResponse | JSONResponse:
+        return _spa_index_response()
+
+    @app.get("/{full_path:path}", include_in_schema=False, response_model=None)
+    def serve_spa(full_path: str) -> FileResponse | JSONResponse:
+        path = f"/{full_path}".rstrip("/") or "/"
+        if path not in _SPA_HTML_PATHS:
+            return JSONResponse({"detail": "Not Found"}, status_code=404)
+        return _spa_index_response()
 else:
     @app.get("/", include_in_schema=False)
     def root_unavailable() -> JSONResponse:

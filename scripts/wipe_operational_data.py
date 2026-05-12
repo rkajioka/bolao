@@ -277,7 +277,21 @@ def main() -> None:
     args = parser.parse_args()
 
     if not args.confirm:
-        print("Abortado: use --confirm para executar o reset.", file=sys.stderr)
+        print(
+            "Modo dry-run: nenhum dado será apagado. Use --confirm para executar o reset irreversível.",
+            file=sys.stderr,
+        )
+        print("Seriam executados: TRUNCATE das tabelas operacionais e limpeza conforme flags informadas.")
+        if args.keep_only_paises:
+            print("  modo: --keep-only-paises (preserva apenas paises)")
+        elif args.keep_all_users:
+            print("  modo: --keep-all-users")
+        elif args.replace_owner:
+            print("  modo: --replace-owner")
+        elif args.keep_email:
+            print(f"  modo: manter usuário {args.keep_email}")
+        else:
+            print("  modo: reset operacional padrão")
         sys.exit(1)
 
     db: Session = SessionLocal()

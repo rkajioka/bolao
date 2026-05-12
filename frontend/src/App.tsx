@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useAuth } from '@/features/auth/AuthContext'
 import { AppLayout } from '@/layouts/AppLayout'
 
@@ -59,11 +59,25 @@ function RouteFallback() {
   )
 }
 
+function loginPathWithNext(pathname: string, search: string) {
+  const next = `${pathname}${search}`
+  return `/login?next=${encodeURIComponent(next)}`
+}
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading, user } = useAuth()
+  const location = useLocation()
   if (isLoading) return <LoadingScreen />
-  if (!isAuthenticated) return <Navigate to="/login" replace />
+  if (!isAuthenticated) {
+    return <Navigate to={loginPathWithNext(location.pathname, location.search)} replace />
+  }
   if (user?.primeiro_login) return <Navigate to="/primeiro-acesso" replace />
+  return <>{children}</>
+}
+
+function ParticipantRoute({ children }: { children: React.ReactNode }) {
+  const { isOwner } = useAuth()
+  if (isOwner) return <Navigate to="/jogos" replace />
   return <>{children}</>
 }
 
@@ -79,6 +93,16 @@ function OwnerRoute({ children }: { children: React.ReactNode }) {
   const { canManageTorneio } = useAuth()
   if (!canManageTorneio) return <Navigate to="/jogos" replace />
   return <>{children}</>
+}
+
+function WildcardRedirect() {
+  const { isAuthenticated, isLoading } = useAuth()
+  const location = useLocation()
+  if (isLoading) return <LoadingScreen />
+  if (!isAuthenticated) {
+    return <Navigate to={loginPathWithNext(location.pathname, location.search)} replace />
+  }
+  return <Navigate to="/jogos" replace />
 }
 
 function AppShell() {
@@ -148,17 +172,21 @@ export default function App() {
         <Route
           path="/especiais"
           element={
-            <Suspense fallback={<RouteFallback />}>
-              <EspeciaisPage />
-            </Suspense>
+            <ParticipantRoute>
+              <Suspense fallback={<RouteFallback />}>
+                <EspeciaisPage />
+              </Suspense>
+            </ParticipantRoute>
           }
         />
         <Route
           path="/regras"
           element={
-            <Suspense fallback={<RouteFallback />}>
-              <RegrasPage />
-            </Suspense>
+            <ParticipantRoute>
+              <Suspense fallback={<RouteFallback />}>
+                <RegrasPage />
+              </Suspense>
+            </ParticipantRoute>
           }
         />
         <Route path="/grupos" element={<Navigate to="/jogos" replace />} />
@@ -201,15 +229,17 @@ export default function App() {
         <Route
           path="/equipe"
           element={
-            <AdminRoute>
-              <Suspense fallback={<RouteFallback />}>
-                <EquipePage />
-              </Suspense>
-            </AdminRoute>
+            <ParticipantRoute>
+              <AdminRoute>
+                <Suspense fallback={<RouteFallback />}>
+                  <EquipePage />
+                </Suspense>
+              </AdminRoute>
+            </ParticipantRoute>
           }
         />
       </Route>
-      <Route path="*" element={<Navigate to="/jogos" replace />} />
+      <Route path="*" element={<WildcardRedirect />} />
     </Routes>
   )
 }

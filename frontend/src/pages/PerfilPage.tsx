@@ -5,6 +5,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useAuth } from '@/features/auth/AuthContext'
 import { perfilService, PERFIL_AVATAR_MAX_BYTES } from '@/services/perfil.service'
 import { ApiError } from '@/lib/api'
+import { validarSenhaSegura } from '@/lib/passwordPolicy'
 import { UserAvatar } from '@/components/UserAvatar'
 
 export function PerfilPage() {
@@ -262,6 +263,7 @@ export function PerfilPage() {
                   type="button"
                   onClick={() => setShowSenha((v) => !v)}
                   style={{ color: 'var(--text-muted)' }}
+                  aria-label={showSenha ? 'Ocultar senha' : 'Mostrar senha'}
                 >
                   {showSenha ? <EyeOff size={13} /> : <Eye size={13} />}
                 </button>
@@ -277,7 +279,19 @@ export function PerfilPage() {
         )}
 
         <motion.button
-          onClick={() => alterarSenhaMutation.mutate()}
+          onClick={() => {
+            const validacao = validarSenhaSegura(novaSenha)
+            if (validacao) {
+              setSenhaError(validacao)
+              return
+            }
+            if (novaSenha !== confirmarSenha) {
+              setSenhaError('A confirmação de senha não confere.')
+              return
+            }
+            setSenhaError(null)
+            alterarSenhaMutation.mutate()
+          }}
           disabled={alterarSenhaMutation.isPending || !senhaAtual || !novaSenha || !confirmarSenha}
           whileTap={{ scale: 0.97 }}
           className="flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-sm disabled:opacity-50"

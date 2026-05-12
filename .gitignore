@@ -22,3 +22,6 @@ build/
 # SQLite local / artefatos de geração de migration
 *.db
 _migration_gen.db
+
+# Uploads locais (avatars)
+static/uploads/**

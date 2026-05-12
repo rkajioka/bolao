@@ -183,9 +183,11 @@ function MemberCard({
 function InviteForm({
   empresaId,
   onSuccess,
+  onBusyChange,
 }: {
   empresaId: number | undefined
   onSuccess: (payload: BulkConviteResponse) => void
+  onBusyChange?: (busy: boolean) => void
 }) {
   const { success, error: toastError } = useToast()
   const [text, setText] = useState('')
@@ -226,11 +228,13 @@ function InviteForm({
       return
     }
     setLoading(true)
+    onBusyChange?.(true)
     setError(null)
     setLiveResults([])
     setProgress({ processed: 0, total: emails.length })
     try {
-      const payload = await equipeService.enviarConvitesEmLotes(emails, empresaId, (processed, total, partial) => {
+      const lockedEmpresaId = empresaId
+      const payload = await equipeService.enviarConvitesEmLotes(emails, lockedEmpresaId, (processed, total, partial) => {
         setProgress({ processed, total })
         setLiveResults((current) => [...current, ...partial])
       })
@@ -259,6 +263,7 @@ function InviteForm({
     } finally {
       setLoading(false)
       setProgress(null)
+      onBusyChange?.(false)
     }
   }
 
@@ -281,7 +286,7 @@ function InviteForm({
           }}
         />
         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-          Um e-mail por linha, separados por vírgula/ponto-e-vírgula, ou importe CSV/Excel com os e-mails na coluna A
+          Um e-mail por linha, separados por vírgula/ponto-e-vírgula, ou importe CSV/TXT com os e-mails na primeira coluna
         </p>
         <div className="flex flex-wrap items-center gap-2 pt-1">
           <label
@@ -294,10 +299,10 @@ function InviteForm({
             }}
           >
             <Upload size={14} />
-            {importingFile ? 'Lendo arquivo…' : 'Importar CSV/Excel'}
+            {importingFile ? 'Lendo arquivo…' : 'Importar CSV/TXT'}
             <input
               type="file"
-              accept=".csv,.txt,.xlsx,.xls,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
+              accept=".csv,.txt,text/csv"
               onChange={handleFileImport}
               disabled={importingFile || loading}
               className="sr-only"
@@ -438,6 +443,7 @@ export function EquipePage() {
   const { empresaId: authEmpresaId } = useAuth()
   const { resolvedEmpresaId, setOwnerEmpresaId, needsOwnerEmpresaPick } = useResolvedEmpresaForAdmin()
   const [showInvite, setShowInvite] = useState(false)
+  const [inviteBusy, setInviteBusy] = useState(false)
   const [inviteResults, setInviteResults] = useState<ConviteResultado[] | null>(null)
   const [inviteResumo, setInviteResumo] = useState<ConviteResumoEnvio | null>(null)
   const [usuarioRemoverId, setUsuarioRemoverId] = useState<number | null>(null)
@@ -518,7 +524,9 @@ export function EquipePage() {
         }}
       />
       {needsOwnerEmpresaPick && (
-        <OwnerEmpresaPicker value={resolvedEmpresaId} onChange={setOwnerEmpresaId} />
+        <div className={inviteBusy ? 'pointer-events-none opacity-60' : undefined}>
+          <OwnerEmpresaPicker value={resolvedEmpresaId} onChange={setOwnerEmpresaId} />
+        </div>
       )}
 
       {!needsOwnerEmpresaPick && authEmpresaId == null && (
@@ -584,7 +592,11 @@ export function EquipePage() {
                       }}
                     />
                   ) : (
-                    <InviteForm empresaId={effectiveEmpresaId} onSuccess={handleInviteSuccess} />
+                    <InviteForm
+                      empresaId={effectiveEmpresaId}
+                      onSuccess={handleInviteSuccess}
+                      onBusyChange={setInviteBusy}
+                    />
                   )}
                 </div>
               </motion.div>

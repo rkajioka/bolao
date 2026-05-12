@@ -90,6 +90,6 @@ def test_marcadores_revalida_prazo_no_commit(client) -> None:
         r = client.put(
             f"/marcadores-brasil/{jid}",
             headers=h,
-            json={"marcadores": [{"nome_jogador": "Jogador A", "quantidade_gols": 1}]},
+            json={"marcadores": [{"nome_jogador": "Jogador A", "quantidade_gols": 1}, {"nome_jogador": "Jogador A", "quantidade_gols": 1}]},
         )
     assert r.status_code == 409, r.text

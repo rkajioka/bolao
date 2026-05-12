@@ -7,6 +7,7 @@ import { formatDate, mensagemPodioRepetidoEspeciais } from '@/lib/utils'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useToast } from '@/components/Toast'
 import { SectionHeader } from '@/components/SectionHeader'
+import { EmptyState } from '@/components/EmptyState'
 import { CountryFlag } from '@/components/CountryFlag'
 import { CountrySelect } from '@/components/CountrySelect'
 import { regrasService } from '@/services/regras.service'
@@ -17,9 +18,9 @@ export function EspeciaisPage() {
   const queryClient = useQueryClient()
   const { isOwner } = useAuth()
 
-  const { data: palpite, isLoading: loadingPalpite } = useQuery({
+  const { data: palpite, isLoading: loadingPalpite, isError: palpiteError, refetch: refetchPalpite } = useQuery({
     queryKey: ['palpites-especiais', 'me'],
-    queryFn: () => api.get<PalpiteEspecial>('/palpites-especiais/me').catch(() => null),
+    queryFn: () => api.get<PalpiteEspecial>('/palpites-especiais/me'),
   })
 
   const { data: paises = [] } = useQuery({
@@ -131,6 +132,28 @@ export function EspeciaisPage() {
         }
       />
 
+      {loadingPalpite ? (
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+          Carregando palpites especiais…
+        </p>
+      ) : palpiteError ? (
+        <EmptyState
+          icon={<Star size={28} style={{ color: 'var(--text-muted)' }} />}
+          title="Não foi possível carregar os palpites especiais"
+          description="Verifique sua conexão e tente novamente."
+          action={
+            <button
+              type="button"
+              onClick={() => void refetchPalpite()}
+              className="text-sm font-medium"
+              style={{ color: 'var(--accent)' }}
+            >
+              Tentar novamente
+            </button>
+          }
+        />
+      ) : (
+        <>
       {!somenteConsulta && (
         <div
           className="flex items-start gap-3 px-4 py-3 rounded-2xl"
@@ -177,17 +200,7 @@ export function EspeciaisPage() {
         </div>
       )}
 
-      {loadingPalpite ? (
-        <div className="space-y-3">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="glass rounded-2xl p-4 animate-pulse">
-              <div className="h-4 w-24 rounded mb-3" style={{ background: 'rgba(255,255,255,0.08)' }} />
-              <div className="h-12 rounded-xl" style={{ background: 'rgba(255,255,255,0.06)' }} />
-            </div>
-          ))}
-        </div>
-      ) : (
-        <motion.div
+      <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           className="glass rounded-2xl p-5 space-y-5"
@@ -321,6 +334,7 @@ export function EspeciaisPage() {
             </div>
           )}
         </motion.div>
+        </>
       )}
     </div>
   )

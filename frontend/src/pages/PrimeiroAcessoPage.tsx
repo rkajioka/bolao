@@ -1,5 +1,5 @@
 import { useState, useEffect, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useMutation } from '@tanstack/react-query'
 import { User, Briefcase, Lock, CheckCircle2 } from 'lucide-react'
@@ -13,7 +13,20 @@ import { perfilService, PERFIL_AVATAR_MAX_BYTES } from '@/services/perfil.servic
 import { UserAvatar } from '@/components/UserAvatar'
 
 export function PrimeiroAcessoPage() {
-  const { user, refreshUser } = useAuth()
+  const { user, refreshUser, isLoading, token } = useAuth()
+
+  if (isLoading) {
+    return (
+      <div className="min-h-dvh flex items-center justify-center" style={{ background: 'var(--bg)' }}>
+        <div
+          className="w-10 h-10 rounded-full border-2 animate-spin"
+          style={{ borderColor: 'rgba(53,208,127,0.3)', borderTopColor: 'var(--accent)' }}
+        />
+      </div>
+    )
+  }
+  if (!token) return <Navigate to="/login" replace />
+  if (user && !user.primeiro_login) return <Navigate to="/jogos" replace />
 
   useEffect(() => {
     if (getToken()) void refreshUser()

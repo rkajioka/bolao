@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { CheckCircle, XCircle } from 'lucide-react'
+import { CheckCircle, X, XCircle } from 'lucide-react'
 
 interface Toast {
   id: string
@@ -40,6 +40,8 @@ const TOAST_STYLES: Record<
   },
 }
 
+const AUTO_DISMISS_MS = 4000
+
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
 
@@ -50,7 +52,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const toast = useCallback((message: string, type: Toast['type'] = 'info') => {
     const id = Math.random().toString(36).slice(2)
     setToasts((prev) => [...prev.slice(-2), { id, message, type }])
-    setTimeout(() => remove(id), 4000)
+    if (type !== 'error') {
+      window.setTimeout(() => remove(id), AUTO_DISMISS_MS)
+    }
   }, [remove])
 
   const success = useCallback((message: string) => toast(message, 'success'), [toast])
@@ -59,7 +63,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ toast, success, error }}>
       {children}
-      <motion.div
+      <div
         className="fixed inset-x-0 z-[200] flex flex-col items-center gap-2 px-4 pointer-events-none"
         style={{ top: 'calc(var(--safe-top) + 4.25rem)' }}
         aria-live="polite"
@@ -69,16 +73,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           {toasts.map((t) => {
             const style = TOAST_STYLES[t.type]
             const Icon = style.icon
+            const isError = t.type === 'error'
 
             return (
               <motion.div
                 key={t.id}
-                role="status"
+                role={isError ? 'alert' : 'status'}
+                aria-live={isError ? 'assertive' : 'polite'}
                 initial={{ opacity: 0, y: -10, scale: 0.98 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -8, scale: 0.98 }}
                 transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
-                className="pointer-events-none flex w-full max-w-md items-center gap-3 rounded-2xl px-3.5 py-3 shadow-lg"
+                className="pointer-events-auto flex w-full max-w-md items-center gap-3 rounded-2xl px-3.5 py-3 shadow-lg"
                 style={{
                   background: 'var(--topbar-bg)',
                   border: `1px solid ${style.border}`,
@@ -96,11 +102,20 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                   <Icon size={16} style={{ color: style.iconColor }} />
                 </span>
                 <p className="min-w-0 flex-1 text-sm font-medium leading-snug">{t.message}</p>
+                <button
+                  type="button"
+                  onClick={() => remove(t.id)}
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+                  style={{ color: 'var(--text-muted)' }}
+                  aria-label="Fechar notificação"
+                >
+                  <X size={16} />
+                </button>
               </motion.div>
             )
           })}
         </AnimatePresence>
-      </motion.div>
+      </div>
     </ToastContext.Provider>
   )
 }

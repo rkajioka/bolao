@@ -128,7 +128,6 @@ export function JogosPage() {
       await queryClient.invalidateQueries({ queryKey: ['palpites'] })
       await queryClient.invalidateQueries({ queryKey: ['marcadores-brasil', 'me', jogoId] })
     } catch (err) {
-      error(err instanceof Error ? err.message : 'Erro ao salvar palpite')
       throw err
     }
   }

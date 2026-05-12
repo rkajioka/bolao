@@ -98,6 +98,12 @@ export function AppLayout() {
 
   return (
     <div className="min-h-dvh flex flex-col" style={{ background: 'var(--bg)', transition: 'background 200ms ease' }}>
+      <a
+        href="#conteudo-principal"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-black focus:px-3 focus:py-2 focus:text-sm focus:text-white"
+      >
+        Pular para o conteúdo
+      </a>
       {/* Topbar */}
       <header
         className="sticky top-0 z-50 flex-shrink-0"
@@ -192,7 +198,7 @@ export function AppLayout() {
       </header>
 
       {/* Main content */}
-      <main className="flex-1 max-w-2xl w-full mx-auto px-4 pt-4 safe-bottom">
+      <main id="conteudo-principal" className="flex-1 max-w-2xl w-full mx-auto px-4 pt-4 safe-bottom">
         <Suspense key={location.pathname} fallback={<PageFallback />}>
           {outlet}
         </Suspense>
@@ -243,6 +249,7 @@ export function AppLayout() {
               key={item.to}
               to={item.to}
               end={item.end}
+              aria-current="page"
               className={({ isActive }) =>
                 cn(
                   'flex-1 flex flex-col items-center justify-center gap-1 transition-all duration-150 relative',

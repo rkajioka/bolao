@@ -37,27 +37,6 @@ function parseInviteEmailsFromDelimitedText(content: string): string[] {
   return dedupeEmails(emails)
 }
 
-async function parseInviteEmailsFromSpreadsheet(file: File): Promise<string[]> {
-  const XLSX = await import('xlsx')
-  const buffer = await file.arrayBuffer()
-  const workbook = XLSX.read(buffer, { type: 'array' })
-  const sheetName = workbook.SheetNames[0]
-  if (!sheetName) return []
-
-  const rows = XLSX.utils.sheet_to_json<(string | number | boolean | null | undefined)[]>(
-    workbook.Sheets[sheetName],
-    { header: 1, defval: '' },
-  )
-
-  const emails: string[] = []
-  for (const row of rows) {
-    const raw = row?.[0]
-    const candidate = normalizeInviteEmail(String(raw ?? ''))
-    if (candidate) emails.push(candidate)
-  }
-  return dedupeEmails(emails)
-}
-
 export async function parseInviteEmailsFromFile(file: File): Promise<string[]> {
   if (file.size > INVITE_FILE_MAX_BYTES) {
     throw new Error('O arquivo deve ter no máximo 2 MB')
@@ -67,9 +46,6 @@ export async function parseInviteEmailsFromFile(file: File): Promise<string[]> {
   if (name.endsWith('.csv') || name.endsWith('.txt')) {
     return parseInviteEmailsFromDelimitedText(await file.text())
   }
-  if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
-    return parseInviteEmailsFromSpreadsheet(file)
-  }
 
-  throw new Error('Use um arquivo CSV ou Excel (.csv, .xlsx, .xls)')
+  throw new Error('Use um arquivo CSV ou TXT (.csv, .txt)')
 }
