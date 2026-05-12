@@ -804,7 +804,10 @@ Adicionar proxy `/plataforma` para `API_TARGET`.
 **Exemplo de direção técnica:**
 `'/plataforma': { target: API_TARGET, changeOrigin: true }`
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** O proxy de desenvolvimento em `frontend/vite.config.ts` encaminha `/plataforma` para o backend com `changeOrigin: true`, permitindo carregar e salvar o tema da plataforma no Vite dev.
+
 ### [BUG-002] Lote de convites marca sucesso em falha HTTP
 
 **Gravidade:** MÉDIA
@@ -835,7 +838,9 @@ Usar status de falha de requisição.
 **Exemplo de direção técnica:**
 status: 'falha_requisicao'.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** Em `enviarConvitesEmLotes`, falhas HTTP do chunk passam a gerar `status: 'falha_requisicao'` e o resumo incrementa `falhas`; a UI em `EquipePage.tsx` e o tipo `ConviteResultado` distinguem esse caso de convite criado.
 
 ### [BUG-003] Multipart sem retry após refresh 401
 
@@ -867,7 +872,9 @@ Reutilizar refresh de apiFetch.
 **Exemplo de direção técnica:**
 Repetir fetch após novo Bearer.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** `apiPostMultipart` em `frontend/src/lib/api.ts` tenta `tryRefreshToken` em 401 autenticado e repete o POST uma vez com o mesmo `FormData` antes de encerrar a sessão.
 
 ### [BUG-004] Token no storage sem estado React
 
@@ -899,7 +906,9 @@ Expor adoptSession no contexto.
 **Exemplo de direção técnica:**
 setTokenState após setToken.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** `adoptSession` foi exposto no `AuthContext`; `AtivarContaPage` e `RedefinirSenhaPage` adotam o access token no estado React antes de `refreshUser`, sem chamar `setToken` diretamente.
 
 ### [BUG-005] Métrica incorreta para líder no ranking
 
@@ -931,7 +940,9 @@ Comparar com top50[1].
 **Exemplo de direção técnica:**
 sortValue(top50[1], sortBy).
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** No card “Sua posição” em `RankingPage.tsx`, o líder compara com `top50[1]` (distância ao 2º) ou exibe “Líder” quando não há segundo colocado.
 
 ### [BUG-006] Falhas de query parecem lista vazia
 
@@ -963,7 +974,9 @@ Padrão de erro como em RegrasPage.
 **Exemplo de direção técnica:**
 if (isError) EmptyState com retry.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** `JogosPage.tsx` e `RankingPage.tsx` tratam `isError` nas queries de jogos cronológicos, tabela de grupo e ranking com mensagem e botão “Tentar novamente”, antes do estado vazio.
 
 ### [BUG-007] URL de equipe com barra antes da query
 
@@ -995,7 +1008,9 @@ Normalizar para /equipe?empresa_id=.
 **Exemplo de direção técnica:**
 api.get(`/equipe${empresaQs}`).
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** `listarEquipe` em `equipe.service.ts` chama `GET /equipe${empresaQs(empresaId)}`, sem barra entre o path e a query string.
 
 ### [BUG-008] Autosave de palpite fora de ordem
 
@@ -1027,7 +1042,9 @@ Ignorar respostas antigas.
 **Exemplo de direção técnica:**
 if (seq !== latestSeq) return.
 
-**Status:** Pendente
+**Status:** Corrigido
+
+**Correção aplicada:** `GameCard` usa `saveSeqRef` em `persistPalpite` para ignorar respostas de autosave fora de ordem e não reverter o placar exibido.
 
 ### [FLUX-001] Primeiro acesso sem guard no cliente
 
@@ -2192,7 +2209,7 @@ empresa_id obrigatório no seed.
 | SEC-002 | ALTA | Segurança | .env.example | Credencial em exemplo | P0 |
 | SEC-003 | ALTA | Segurança | app/routes/auth.py | Reset em debug | Corrigido |
 | SEC-008 | ALTA | Segurança | equipe.py / convite_service | Tokens de convite | Corrigido |
-| BUG-004 | ALTA | Bug | AuthContext / AtivarConta | Sessão quebrada pós-ativação | P0 |
+| BUG-004 | ALTA | Bug | AuthContext / AtivarConta | Sessão quebrada pós-ativação | Corrigido |
 | TEST-001 | ALTA | Testes | frontend/src/lib | Sem testes de fluxo | P0 |
 | TEST-003 | ALTA | Testes | tests/ | Rotas críticas sem teste | P0 |
 | MAN-004 | ALTA | Manutenção | scripts/wipe_operational_data.py | Perda de dados | P0 |
@@ -2206,17 +2223,18 @@ empresa_id obrigatório no seed.
 | SEC-012 | MÉDIA | Segurança | auth_service | Sessão pós-senha | Corrigido |
 | SEC-015 | MÉDIA | Segurança | password_defaults | Senha padrão | Corrigido |
 | SEC-016 | MÉDIA | Segurança | equipe_service | Admin vs admin | Corrigido |
-| BUG-001 | MÉDIA | Bug | vite.config.ts | Tema owner dev | P1 |
-| BUG-002 | MÉDIA | Bug | equipe.service.ts | Convites falsos OK | P1 |
-| BUG-003 | MÉDIA | Bug | api.ts | Multipart 401 | P1 |
+| BUG-001 | MÉDIA | Bug | vite.config.ts | Tema owner dev | Corrigido |
+| BUG-002 | MÉDIA | Bug | equipe.service.ts | Convites falsos OK | Corrigido |
+| BUG-003 | MÉDIA | Bug | api.ts | Multipart 401 | Corrigido |
+| BUG-007 | BAIXA | Bug | equipe.service.ts | URL listar equipe | Corrigido |
 | FLUX-001 | MÉDIA | Fluxo | App.tsx | Primeiro acesso | P1 |
 | FLUX-003 | MÉDIA | Fluxo | EspeciaisPage.tsx | Erros mascarados | P1 |
 | CFG-001 | MÉDIA | Configuração | .env.example | Env incompleto | P1 |
 | CFG-002 | MÉDIA | Configuração | static/ | Uploads no git | P1 |
 | CFG-004 | MÉDIA | Configuração | rate_limit_service | Multi-instância | P1 |
-| BUG-005 | MÉDIA | Bug | RankingPage.tsx | Métrica líder | P2 |
-| BUG-006 | MÉDIA | Bug | Jogos/Ranking | isError | P2 |
-| BUG-008 | MÉDIA | Bug | GameCard | Race autosave | P2 |
+| BUG-005 | MÉDIA | Bug | RankingPage.tsx | Métrica líder | Corrigido |
+| BUG-006 | MÉDIA | Bug | Jogos/Ranking | isError | Corrigido |
+| BUG-008 | MÉDIA | Bug | GameCard | Race autosave | Corrigido |
 | NAV-003 | MÉDIA | Navegação | AppLayout.tsx | URL owner | P2 |
 | UX-005 | MÉDIA | Usabilidade | EsqueciSenhaPage | Sucesso genérico | P2 |
 | CFG-005 | MÉDIA | Configuração | main.py | Catch-all SPA | P2 |

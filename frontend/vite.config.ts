@@ -67,6 +67,7 @@ export default defineConfig({
       '/configuracao-pontuacao-fase': { target: API_TARGET, changeOrigin: true },
       '/resultados-especiais': { target: API_TARGET, changeOrigin: true },
       '/empresas': { target: API_TARGET, changeOrigin: true },
+      '/plataforma': { target: API_TARGET, changeOrigin: true },
       '/equipe': apiProxy('/equipe'),
       '/perfil': apiProxy('/perfil'),
       '/health': { target: API_TARGET, changeOrigin: true },

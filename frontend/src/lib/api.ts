@@ -140,8 +140,12 @@ export async function apiFetch<T>(path: string, opts: RequestOptions = {}): Prom
   return data as T
 }
 
-/** POST multipart (ex.: upload). Não reenvia o body após refresh de token — em 401, o usuário pode tentar de novo. */
-export async function apiPostMultipart<T>(path: string, formData: FormData): Promise<T> {
+/** POST multipart (ex.: upload). Repete uma vez após refresh de token em 401. */
+export async function apiPostMultipart<T>(
+  path: string,
+  formData: FormData,
+  opts: { _retryAfterRefresh?: boolean } = {},
+): Promise<T> {
   const token = getToken()
   const headers: Record<string, string> = {
     Accept: 'application/json',
@@ -156,6 +160,19 @@ export async function apiPostMultipart<T>(path: string, formData: FormData): Pro
     body: formData,
     credentials: 'include',
   })
+
+  if (
+    res.status === 401 &&
+    token &&
+    !opts._retryAfterRefresh &&
+    path !== REFRESH_PATH &&
+    path !== '/auth/logout'
+  ) {
+    const newToken = await tryRefreshToken()
+    if (newToken) {
+      return apiPostMultipart<T>(path, formData, { _retryAfterRefresh: true })
+    }
+  }
 
   let data: unknown = null
   const ct = res.headers.get('content-type') || ''

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { MatchHeader } from './MatchHeader'
@@ -48,6 +48,7 @@ export function GameCard({
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [saveError, setSaveError] = useState<string | null>(null)
   const [savingMarcadores, setSavingMarcadores] = useState(false)
+  const saveSeqRef = useRef(0)
 
   const { data: marcadoresSalvos = [] } = useQuery({
     queryKey: ['marcadores-brasil', 'me', jogo.id],
@@ -90,13 +91,16 @@ export function GameCard({
     if (casa === null || fora === null) return
     if (jogo.tipo_fase === 'mata_mata' && !classificado) return
 
+    const seq = ++saveSeqRef.current
     setSaveState('saving')
     setSaveError(null)
     try {
       await onSave(jogo.id, casa, fora, classificado)
+      if (seq !== saveSeqRef.current) return
       setSaveState('saved')
       setTouched(false)
     } catch (err) {
+      if (seq !== saveSeqRef.current) return
       setSaveState('error')
       setSaveError(err instanceof Error ? err.message : 'Erro ao salvar palpite')
     }

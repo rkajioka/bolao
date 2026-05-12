@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { Lock, Eye, EyeOff, CheckCircle2, ArrowLeft } from 'lucide-react'
 import { useAuth } from '@/features/auth/AuthContext'
 import { perfilService } from '@/services/perfil.service'
-import { ApiError, setToken } from '@/lib/api'
+import { ApiError } from '@/lib/api'
 import { validarSenhaSegura } from '@/lib/passwordPolicy'
 
 interface PasswordFieldProps {
@@ -64,7 +64,7 @@ export function RedefinirSenhaPage() {
   const [params] = useSearchParams()
   const token = params.get('token') ?? ''
   const navigate = useNavigate()
-  const { refreshUser } = useAuth()
+  const { adoptSession, refreshUser } = useAuth()
 
   const [senha, setSenha] = useState('')
   const [confirmar, setConfirmar] = useState('')
@@ -106,7 +106,7 @@ export function RedefinirSenhaPage() {
     setError(null)
     try {
       const res = await perfilService.redefinirSenha(token, senha, confirmar)
-      setToken(res.access_token)
+      adoptSession(res.access_token)
       await refreshUser()
       setSuccess(true)
       setTimeout(() => navigate('/jogos', { replace: true }), 1500)

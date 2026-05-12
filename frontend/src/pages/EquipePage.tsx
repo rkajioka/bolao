@@ -338,7 +338,9 @@ function InviteForm({
                 {result.email}
               </p>
               <p className="mt-0.5">
-                {result.convite_enviado_por_email
+                {result.status === 'falha_requisicao'
+                  ? `Falha na requisição: ${result.email_erro ?? 'Falha ao enviar lote'}`
+                  : result.convite_enviado_por_email
                   ? 'E-mail enviado'
                   : result.email_erro
                     ? `Falha: ${result.email_erro}. Reenvie o convite.`
@@ -406,13 +408,15 @@ function InviteResults({
               {r.email}
             </p>
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+              {r.status === 'falha_requisicao' &&
+                `Falha na requisição: ${r.email_erro ?? 'Falha ao enviar lote'}`}
               {r.status === 'convite_criado' &&
                 (r.convite_enviado_por_email
                   ? 'Convite enviado por e-mail — peça para checar a caixa de entrada'
                   : 'Convite criado — reenvie por e-mail se necessário')}
               {r.status === 'convite_pendente' && 'Convite pendente (já existe)'}
               {r.status === 'ja_cadastrado' && 'Usuário já cadastrado'}
-              {r.email_erro ? ` · ${r.email_erro}` : ''}
+              {r.email_erro && r.status !== 'falha_requisicao' ? ` · ${r.email_erro}` : ''}
             </p>
           </div>
         </div>

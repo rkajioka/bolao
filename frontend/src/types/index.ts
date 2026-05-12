@@ -29,7 +29,7 @@ export interface Empresa {
 
 export interface ConviteResultado {
   email: string
-  status: 'convite_criado' | 'convite_pendente' | 'ja_cadastrado' | 'limite_usuarios'
+  status: 'convite_criado' | 'convite_pendente' | 'ja_cadastrado' | 'limite_usuarios' | 'falha_requisicao'
   expiracao?: string
   convite_enviado_por_email?: boolean
   email_tentativas?: number

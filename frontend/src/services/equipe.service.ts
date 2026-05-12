@@ -1,4 +1,4 @@
-import { api, apiPostMultipart } from '@/lib/api'
+import { api, ApiError, apiPostMultipart } from '@/lib/api'
 import type { BulkConviteResponse, ConviteResultado, ConviteResumoEnvio, MembroEquipe } from '@/types'
 
 const INVITE_CHUNK_SIZE = 5
@@ -40,8 +40,7 @@ function mergeResumo(current: ConviteResumoEnvio | null, next: ConviteResumoEnvi
 
 export const equipeService = {
   async listarEquipe(empresaId?: number | null): Promise<MembroEquipe[]> {
-    const tail = empresaId != null ? `?empresa_id=${empresaId}` : ''
-    return api.get<MembroEquipe[]>(`/equipe/${tail}`)
+    return api.get<MembroEquipe[]>(`/equipe${empresaQs(empresaId)}`)
   },
 
   async enviarConvites(emails: string[], empresaId?: number | null): Promise<BulkConviteResponse> {
@@ -67,9 +66,9 @@ export const equipeService = {
       } catch (error) {
         const failedItems: ConviteResultado[] = chunk.map((email) => ({
           email,
-          status: 'convite_criado',
+          status: 'falha_requisicao',
           convite_enviado_por_email: false,
-          email_erro: error instanceof Error ? error.message : 'Falha ao enviar lote',
+          email_erro: error instanceof ApiError ? error.message : 'Falha ao enviar lote',
         }))
         itens = [...itens, ...failedItems]
         resumo = mergeResumo(

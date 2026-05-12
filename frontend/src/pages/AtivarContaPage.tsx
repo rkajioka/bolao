@@ -7,7 +7,6 @@ import { useAuth } from '@/features/auth/AuthContext'
 import { equipeService } from '@/services/equipe.service'
 import { PERFIL_AVATAR_MAX_BYTES } from '@/services/perfil.service'
 import { UserAvatar } from '@/components/UserAvatar'
-import { setToken } from '@/lib/api'
 import { ApiError } from '@/lib/api'
 import { validarSenhaSegura } from '@/lib/passwordPolicy'
 
@@ -15,7 +14,7 @@ export function AtivarContaPage() {
   const [params] = useSearchParams()
   const token = params.get('token') ?? ''
   const navigate = useNavigate()
-  const { refreshUser } = useAuth()
+  const { adoptSession, refreshUser } = useAuth()
 
   const [nome, setNome] = useState('')
   const [senha, setSenha] = useState('')
@@ -93,7 +92,7 @@ export function AtivarContaPage() {
         confirmar,
         avatarUrl ?? undefined,
       )
-      setToken(res.access_token)
+      adoptSession(res.access_token)
       await refreshUser()
       setSuccess(true)
       setTimeout(() => navigate('/jogos', { replace: true }), 1500)

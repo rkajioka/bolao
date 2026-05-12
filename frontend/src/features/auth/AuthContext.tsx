@@ -28,6 +28,7 @@ interface AuthContextValue extends AuthState {
   login: (email: string, senha: string) => Promise<{ primeiro_login: boolean }>
   logout: () => Promise<void>
   refreshUser: () => Promise<void>
+  adoptSession: (accessToken: string) => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -151,6 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         refreshUser,
+        adoptSession,
       }}
     >
       {children}

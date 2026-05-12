@@ -141,7 +141,7 @@ export function RankingPage() {
   const effectiveEmpresaId = needsOwnerEmpresaPick ? resolvedEmpresaId : authEmpresaId
   const rankingEnabled = !needsOwnerEmpresaPick || effectiveEmpresaId != null
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['ranking', effectiveEmpresaId],
     queryFn: () => rankingService.get(needsOwnerEmpresaPick ? effectiveEmpresaId : undefined),
     enabled: rankingEnabled,
@@ -244,8 +244,8 @@ export function RankingPage() {
             <p className="text-sm font-semibold truncate">{linhaUsuario.nome}</p>
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
               {posicaoUsuario === 1
-                ? listaTop50[0]
-                  ? `+${sortValue(linhaUsuario, sortBy) - sortValue(listaTop50[0], sortBy)} do 2º`
+                ? top50[1]
+                  ? `+${sortValue(linhaUsuario, sortBy) - sortValue(top50[1], sortBy)} do 2º`
                   : 'Líder'
                 : `${liderPts - sortValue(linhaUsuario, sortBy)} pts atrás do líder`}
             </p>
@@ -267,6 +267,22 @@ export function RankingPage() {
             {[1, 2, 3, 4].map((i) => <RankingCardSkeleton key={i} />)}
           </div>
         </div>
+      ) : isError ? (
+        <EmptyState
+          icon={<Trophy size={28} style={{ color: 'var(--text-muted)' }} />}
+          title="Não foi possível carregar o ranking"
+          description="Verifique sua conexão e tente novamente."
+          action={
+            <button
+              type="button"
+              onClick={() => void refetch()}
+              className="text-sm font-medium"
+              style={{ color: 'var(--accent)' }}
+            >
+              Tentar novamente
+            </button>
+          }
+        />
       ) : linhas.length === 0 ? (
         <EmptyState
           icon={<Trophy size={28} style={{ color: 'var(--text-muted)' }} />}

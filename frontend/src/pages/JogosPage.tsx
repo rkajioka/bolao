@@ -41,7 +41,7 @@ export function JogosPage() {
   const queryClient = useQueryClient()
   const { canParticipate, canLancarResultadoOficial } = useAuth()
 
-  const { data: jogosCrono = [], isLoading: loadingJogos } = useQuery({
+  const { data: jogosCrono = [], isLoading: loadingJogos, isError: jogosError, refetch: refetchJogos } = useQuery({
     queryKey: ['jogos', 'cronologico'],
     queryFn: () => api.get<Jogo[]>('/jogos/cronologico'),
   })
@@ -74,7 +74,12 @@ export function JogosPage() {
     },
   })
 
-  const { data: tabelaGrupo = [], isLoading: loadingTabelaGrupo } = useQuery({
+  const {
+    data: tabelaGrupo = [],
+    isLoading: loadingTabelaGrupo,
+    isError: tabelaGrupoError,
+    refetch: refetchTabelaGrupo,
+  } = useQuery({
     queryKey: ['grupos', 'tabela', grupoSelecionado],
     queryFn: async () => {
       const resp = await api.get<TabelaGrupoResponse>(`/grupos/${grupoSelecionado}/tabela`)
@@ -252,12 +257,28 @@ export function JogosPage() {
           controlId="owner-resultados"
         />
 
-        {loadingJogos ? (
-          <div className="space-y-3">
+      {loadingJogos ? (
+        <div className="space-y-3">
             {[1, 2, 3].map((i) => (
               <GameCardSkeleton key={i} />
             ))}
           </div>
+        ) : jogosError ? (
+          <EmptyState
+            icon={<CalendarDays size={28} style={{ color: 'var(--text-muted)' }} />}
+            title="Não foi possível carregar os jogos"
+            description="Verifique sua conexão e tente novamente."
+            action={
+              <button
+                type="button"
+                onClick={() => void refetchJogos()}
+                className="text-sm font-medium"
+                style={{ color: 'var(--accent)' }}
+              >
+                Tentar novamente
+              </button>
+            }
+          />
         ) : jogosCrono.length === 0 ? (
           <EmptyState
             icon={<CalendarDays size={28} style={{ color: 'var(--text-muted)' }} />}
@@ -319,6 +340,22 @@ export function JogosPage() {
         <div className="space-y-3">
           {[1, 2, 3].map((i) => <GameCardSkeleton key={i} />)}
         </div>
+      ) : jogosError ? (
+        <EmptyState
+          icon={<CalendarDays size={28} style={{ color: 'var(--text-muted)' }} />}
+          title="Não foi possível carregar os jogos"
+          description="Verifique sua conexão e tente novamente."
+          action={
+            <button
+              type="button"
+              onClick={() => void refetchJogos()}
+              className="text-sm font-medium"
+              style={{ color: 'var(--accent)' }}
+            >
+              Tentar novamente
+            </button>
+          }
+        />
       ) : jogosCrono.length === 0 ? (
         <EmptyState
           icon={<CalendarDays size={28} style={{ color: 'var(--text-muted)' }} />}
@@ -348,11 +385,34 @@ export function JogosPage() {
               <p className="text-xs mb-3 px-1" style={{ color: 'var(--text-muted)' }}>
                 Classificação calculada com base nos resultados oficiais cadastrados.
               </p>
-              <GroupStandingsTable
-                grupoSelecionado={grupoSelecionado}
-                tabela={tabelaGrupo}
-                isLoading={loadingTabelaGrupo}
-              />
+              {loadingTabelaGrupo ? (
+                <GroupStandingsTable
+                  grupoSelecionado={grupoSelecionado}
+                  tabela={tabelaGrupo}
+                  isLoading
+                />
+              ) : tabelaGrupoError ? (
+                <EmptyState
+                  icon={<CalendarDays size={26} style={{ color: 'var(--text-muted)' }} />}
+                  title="Não foi possível carregar a classificação"
+                  description="Verifique sua conexão e tente novamente."
+                  action={
+                    <button
+                      type="button"
+                      onClick={() => void refetchTabelaGrupo()}
+                      className="text-sm font-medium"
+                      style={{ color: 'var(--accent)' }}
+                    >
+                      Tentar novamente
+                    </button>
+                  }
+                />
+              ) : (
+                <GroupStandingsTable
+                  grupoSelecionado={grupoSelecionado}
+                  tabela={tabelaGrupo}
+                />
+              )}
             </div>
           )}
 
