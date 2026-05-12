@@ -47,7 +47,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -6, scale: 0.98 }}
               transition={{ duration: 0.16, ease: [0.4, 0, 0.2, 1] }}
-              className="pointer-events-auto flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium shadow-lg max-w-[min(88vw,260px)]"
+              className="pointer-events-auto flex items-start gap-2.5 px-4 py-2.5 rounded-2xl text-sm font-medium shadow-lg max-w-[min(92vw,28rem)]"
               style={{
                 background: t.type === 'error'
                   ? 'rgba(40, 18, 22, 0.96)'
@@ -60,16 +60,16 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 color: '#F8FAFC',
               }}
             >
-              {t.type === 'success' && <CheckCircle size={14} style={{ color: 'var(--accent)', flexShrink: 0 }} />}
-              {t.type === 'error' && <XCircle size={14} style={{ color: 'var(--danger)', flexShrink: 0 }} />}
-              <span className="flex-1 text-center leading-tight">{t.message}</span>
+              {t.type === 'success' && <CheckCircle size={16} style={{ color: 'var(--accent)', flexShrink: 0, marginTop: 1 }} />}
+              {t.type === 'error' && <XCircle size={16} style={{ color: 'var(--danger)', flexShrink: 0, marginTop: 1 }} />}
+              <span className="flex-1 min-w-0 leading-snug">{t.message}</span>
               <button
                 type="button"
                 onClick={() => remove(t.id)}
-                className="opacity-50 hover:opacity-100 transition-opacity shrink-0"
+                className="opacity-50 hover:opacity-100 transition-opacity shrink-0 mt-0.5"
                 aria-label="Fechar aviso"
               >
-                <X size={12} />
+                <X size={14} />
               </button>
             </motion.div>
           ))}

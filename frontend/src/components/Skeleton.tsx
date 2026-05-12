@@ -59,28 +59,44 @@ export function RankingCardSkeleton() {
 
 export function PodiumSkeleton() {
   const cols = [
-    { minHeight: '130px', width: '44px' },
-    { minHeight: '150px', width: '44px' },
-    { minHeight: '116px', width: '44px' },
+    { minHeight: 156, pedestal: 10, flex: 1.05, width: 48 },
+    { minHeight: 184, pedestal: 14, flex: 1.2, width: 56 },
+    { minHeight: 140, pedestal: 8, flex: 1.05, width: 48 },
   ]
   return (
-    <div className="flex gap-2 items-end mb-2" role="status" aria-label="Carregando pódio">
-      {cols.map((col, i) => (
-        <div
-          key={i}
-          className="flex-1 flex flex-col items-center justify-end gap-2 py-3 rounded-2xl"
-          style={{
-            minHeight: col.minHeight,
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.07)',
-          }}
-        >
-          <Skeleton className="w-5 h-3 rounded" />
-          <Skeleton className={`rounded-full`} style={{ width: col.width, height: col.width }} />
-          <Skeleton className="w-14 h-3 rounded" />
-          <Skeleton className="w-10 h-5 rounded" />
-        </div>
-      ))}
+    <div
+      className="glass rounded-3xl p-3 mb-5"
+      style={{ border: '1px solid rgba(255,255,255,0.08)' }}
+      role="status"
+      aria-label="Carregando pódio"
+    >
+      <Skeleton className="h-3 w-12 rounded mb-2" />
+      <div className="flex gap-3 items-end">
+        {cols.map((col, i) => (
+          <div
+            key={i}
+            className="flex min-w-0 flex-col"
+            style={{ flex: col.flex }}
+          >
+            <div
+              className="flex flex-col items-center justify-end gap-2 rounded-t-2xl px-2.5 py-3"
+              style={{
+                minHeight: col.minHeight,
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.07)',
+                borderBottom: 'none',
+              }}
+            >
+              <Skeleton className="w-6 h-6 rounded" />
+              <Skeleton className="w-10 h-3 rounded" />
+              <Skeleton className="rounded-full" style={{ width: col.width, height: col.width }} />
+              <Skeleton className="w-14 h-3 rounded" />
+              <Skeleton className="w-10 h-6 rounded" />
+            </div>
+            <Skeleton className="w-full rounded-b-xl" style={{ height: col.pedestal }} />
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

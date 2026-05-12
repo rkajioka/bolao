@@ -38,6 +38,48 @@ const MEDAL_CONFIG = [
   { color: '#CD7F32', shadow: 'rgba(205,127,50,0.15)', rgb: '205,127,50', label: '3º', symbol: '🥉' },
 ]
 
+const PODIUM_LAYOUT = [
+  {
+    medalSize: 'text-3xl',
+    avatarSize: 'w-14 h-14',
+    avatarIcon: 22,
+    pointsClass: 'text-3xl',
+    nameMax: 'max-w-[96px]',
+    minHeight: 184,
+    pedestal: 14,
+    flex: 1.2,
+    bgAlpha: 0.16,
+    borderAlpha: 0.42,
+    glow: '0 14px 36px rgba(246,198,91,0.22), inset 0 1px 0 rgba(255,255,255,0.12)',
+  },
+  {
+    medalSize: 'text-2xl',
+    avatarSize: 'w-12 h-12',
+    avatarIcon: 20,
+    pointsClass: 'text-xl',
+    nameMax: 'max-w-[88px]',
+    minHeight: 156,
+    pedestal: 10,
+    flex: 1.05,
+    bgAlpha: 0.1,
+    borderAlpha: 0.28,
+    glow: 'none',
+  },
+  {
+    medalSize: 'text-2xl',
+    avatarSize: 'w-12 h-12',
+    avatarIcon: 20,
+    pointsClass: 'text-xl',
+    nameMax: 'max-w-[88px]',
+    minHeight: 140,
+    pedestal: 8,
+    flex: 1.05,
+    bgAlpha: 0.1,
+    borderAlpha: 0.28,
+    glow: 'none',
+  },
+] as const
+
 function sortValue(linha: RankingLinha, sort: SortBy): number {
   if (sort === 'jogos') return linha.pontos_jogos
   if (sort === 'especiais') return linha.pontos_especiais + linha.bonus_brasil
@@ -249,61 +291,94 @@ export function RankingPage() {
           <div className="space-y-2">
             {/* Pódio top 3 */}
             {top3.length > 0 && (
-              <div className="flex gap-2 items-end mb-2" role="list" aria-label="Top 3 do ranking">
-                {([1, 0, 2] as const).filter((idx) => top3[idx]).map((idx) => {
-                  const linha = top3[idx]
-                  const p = MEDAL_CONFIG[idx]
-                  const isMe = linha.usuario_id === user?.id
-                  const pts = sortValue(linha, sortBy)
-                  const liderVal = sortValue(top3[0], sortBy)
-                  const diff = idx === 0
-                    ? top3[1] ? pts - sortValue(top3[1], sortBy) : null
-                    : liderVal - pts
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.24 }}
+                className="glass rounded-3xl p-3 mb-5"
+                style={{ border: '1px solid rgba(255,255,255,0.08)' }}
+              >
+                <p className="text-[11px] font-bold uppercase tracking-wider px-1 pb-2" style={{ color: 'var(--text-muted)' }}>
+                  Pódio
+                </p>
+                <div className="flex gap-3 items-end" role="list" aria-label="Top 3 do ranking">
+                  {([1, 0, 2] as const).filter((idx) => top3[idx]).map((idx) => {
+                    const linha = top3[idx]
+                    const p = MEDAL_CONFIG[idx]
+                    const layout = PODIUM_LAYOUT[idx]
+                    const isMe = linha.usuario_id === user?.id
+                    const pts = sortValue(linha, sortBy)
+                    const liderVal = sortValue(top3[0], sortBy)
+                    const diff = idx === 0
+                      ? top3[1] ? pts - sortValue(top3[1], sortBy) : null
+                      : liderVal - pts
+                    const borderAlpha = isMe ? 0.62 : layout.borderAlpha
+                    const meRing = isMe ? '0 0 0 2px var(--accent), 0 0 16px rgba(53,208,127,0.16)' : 'none'
+                    const boxShadow = layout.glow === 'none' ? meRing : `${layout.glow}${isMe ? `, ${meRing}` : ''}`
 
-                  return (
-                    <motion.div
-                      key={linha.usuario_id}
-                      role="listitem"
-                      aria-label={`${p.label} lugar: ${linha.nome}, ${pts} pontos`}
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.22, delay: idx * 0.05 }}
-                      className="flex-1 flex flex-col items-center justify-end gap-1 py-3 px-2 rounded-2xl text-center"
-                      style={{
-                        minHeight: idx === 0 ? '150px' : idx === 1 ? '130px' : '116px',
-                        background: `rgba(${p.rgb},0.07)`,
-                        border: `1px solid rgba(${p.rgb},${isMe ? '0.55' : '0.22'})`,
-                        boxShadow: isMe ? `0 0 0 2px var(--accent), 0 0 12px rgba(53,208,127,0.12)` : 'none',
-                      }}
-                    >
-                      <span className="text-base leading-none" aria-hidden="true">{p.symbol}</span>
-                      <div
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold overflow-hidden"
-                        style={{ background: 'rgba(255,255,255,0.08)', border: `2px solid ${p.color}` }}
+                    return (
+                      <motion.div
+                        key={linha.usuario_id}
+                        role="listitem"
+                        aria-label={`${p.label} lugar: ${linha.nome}, ${pts} pontos`}
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.24, delay: idx * 0.06 }}
+                        className="flex min-w-0 flex-col"
+                        style={{ flex: layout.flex }}
                       >
-                        {linha.imagem_perfil ? (
-                          <img src={imgUrl(linha.imagem_perfil)} alt={linha.nome} className="w-full h-full object-cover" />
-                        ) : (
-                          <User size={18} style={{ color: p.color }} aria-hidden />
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold truncate max-w-[80px]">{linha.nome.split(' ')[0]}</p>
-                        <p className="text-lg font-black tabular-nums leading-tight mt-0.5" style={{ color: p.color }}>
-                          {pts}
-                        </p>
-                        <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{sortLabel}</p>
-                      </div>
-                      {diff !== null && diff > 0 && (
-                        <p className="text-[10px] tabular-nums" style={{ color: 'var(--text-muted)' }}>
-                          {idx === 0 ? `+${diff} do 2º` : `-${diff}`}
-                        </p>
-                      )}
-                      <RankingEspeciaisFlags linha={linha} getPais={getPais} />
-                    </motion.div>
-                  )
-                })}
-              </div>
+                        <div
+                          className="flex flex-col items-center justify-end gap-1.5 rounded-t-2xl px-2.5 py-3 text-center"
+                          style={{
+                            minHeight: layout.minHeight,
+                            background: `linear-gradient(180deg, rgba(${p.rgb},${layout.bgAlpha + 0.04}) 0%, rgba(${p.rgb},${layout.bgAlpha}) 100%)`,
+                            border: `1px solid rgba(${p.rgb},${borderAlpha})`,
+                            borderBottom: 'none',
+                            boxShadow,
+                          }}
+                        >
+                          <span className={`${layout.medalSize} leading-none`} aria-hidden="true">{p.symbol}</span>
+                          <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: p.color }}>
+                            {p.label} lugar
+                          </p>
+                          <div
+                            className={`${layout.avatarSize} rounded-full flex items-center justify-center text-xs font-bold overflow-hidden`}
+                            style={{ background: 'rgba(255,255,255,0.08)', border: `2px solid ${p.color}` }}
+                          >
+                            {linha.imagem_perfil ? (
+                              <img src={imgUrl(linha.imagem_perfil)} alt={linha.nome} className="w-full h-full object-cover" />
+                            ) : (
+                              <User size={layout.avatarIcon} style={{ color: p.color }} aria-hidden />
+                            )}
+                          </div>
+                          <div>
+                            <p className={`text-xs font-semibold truncate ${layout.nameMax}`}>{linha.nome.split(' ')[0]}</p>
+                            <p className={`${layout.pointsClass} font-black tabular-nums leading-tight mt-0.5`} style={{ color: p.color }}>
+                              {pts}
+                            </p>
+                            <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{sortLabel}</p>
+                          </div>
+                          {diff !== null && diff > 0 && (
+                            <p className="text-[10px] tabular-nums" style={{ color: 'var(--text-muted)' }}>
+                              {idx === 0 ? `+${diff} do 2º` : `-${diff}`}
+                            </p>
+                          )}
+                          <RankingEspeciaisFlags linha={linha} getPais={getPais} />
+                        </div>
+                        <div
+                          aria-hidden="true"
+                          className="w-full rounded-b-xl"
+                          style={{
+                            height: layout.pedestal,
+                            background: `linear-gradient(180deg, rgba(${p.rgb},0.55) 0%, ${p.color} 100%)`,
+                            boxShadow: idx === 0 ? `0 8px 18px ${p.shadow}` : 'none',
+                          }}
+                        />
+                      </motion.div>
+                    )
+                  })}
+                </div>
+              </motion.div>
             )}
 
             {/* Posições 4..50 */}
@@ -321,7 +396,7 @@ export function RankingPage() {
                   initial={{ opacity: 0, x: -6 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.18, delay: Math.min((i + 3) * 0.025, 0.4) }}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-2xl"
+                  className="flex items-center gap-3 px-3 py-2 rounded-2xl"
                   aria-label={`${posicaoAtual}º lugar: ${linha.nome}, ${pts} pontos`}
                   style={{
                     background: isMe ? 'rgba(53,208,127,0.06)' : 'var(--glass)',
@@ -347,7 +422,7 @@ export function RankingPage() {
                   </div>
                   <RankingEspeciaisFlags linha={linha} getPais={getPais} />
                   <div className="text-right shrink-0">
-                    <p className="font-black text-base tabular-nums">{pts}</p>
+                    <p className="font-black text-sm tabular-nums">{pts}</p>
                     <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
                       {sortBy === 'total'
                         ? `J:${linha.pontos_jogos} E:${linha.pontos_especiais}${marcadoresBrasilHabilitado && linha.bonus_brasil > 0 ? ` BR:${linha.bonus_brasil}` : ''}`
@@ -368,7 +443,7 @@ export function RankingPage() {
                   initial={{ opacity: 0, x: -6 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.18 }}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-2xl"
+                  className="flex items-center gap-3 px-3 py-2 rounded-2xl"
                   style={{
                     background: 'rgba(53,208,127,0.06)',
                     border: '1px solid rgba(53,208,127,0.25)',
@@ -391,7 +466,7 @@ export function RankingPage() {
                   </div>
                   <RankingEspeciaisFlags linha={linhaUsuarioSorted} getPais={getPais} />
                   <motion.div className="text-right shrink-0">
-                    <p className="font-black text-base tabular-nums">{sortValue(linhaUsuarioSorted, sortBy)}</p>
+                    <p className="font-black text-sm tabular-nums">{sortValue(linhaUsuarioSorted, sortBy)}</p>
                     <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{sortLabel}</p>
                   </motion.div>
                 </motion.div>
