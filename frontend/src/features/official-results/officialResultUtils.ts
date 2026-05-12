@@ -49,6 +49,17 @@ export function podeFinalizarResultadoOficial(dataJogo: string, agora = Date.now
   return Number.isFinite(liberacao) && agora >= liberacao
 }
 
+export function labelPreenchimentoResultadoDisponivel(dataJogo: string): string {
+  const liberacao = momentoLiberacaoFinalizacaoOficial(dataJogo)
+  if (!Number.isFinite(liberacao)) {
+    return 'Preencher resultado a partir de uma data a definir'
+  }
+  const data = new Date(liberacao)
+  const dia = data.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })
+  const horario = data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  return `Preencher resultado a partir do dia ${dia} horário ${horario}`
+}
+
 export function chaveGrupoSecao(jogo: { tipo_fase: string; grupo: string | null }): string {
   if (jogo.tipo_fase === 'grupos') {
     return (jogo.grupo || '?').toUpperCase()

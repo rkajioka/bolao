@@ -21,17 +21,16 @@ export function ScoreStepper({ value, onChange, disabled, label, readOnly = fals
 
   if (readOnly) {
     return (
-      <div className="w-12 h-10 flex items-center justify-center text-xl font-bold tabular-nums" aria-label={label}>
-        <div
-          className="w-12 h-10 flex items-center justify-center rounded-xl"
-          style={{
-            background: value !== null ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.10)',
-            color: value !== null ? 'var(--text)' : 'var(--text-muted)',
-          }}
-        >
-          {value !== null ? value : '–'}
-        </div>
+      <div
+        className="box-border w-12 h-10 flex items-center justify-center rounded-xl text-center text-xl font-bold tabular-nums leading-none p-0"
+        aria-label={label}
+        style={{
+          background: value !== null ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,255,255,0.10)',
+          color: value !== null ? 'var(--text)' : 'var(--text-muted)',
+        }}
+      >
+        {value !== null ? value : '–'}
       </div>
     )
   }
@@ -55,7 +54,7 @@ export function ScoreStepper({ value, onChange, disabled, label, readOnly = fals
       </button>
 
       <div
-        className="w-12 h-10 flex items-center justify-center text-xl font-bold tabular-nums"
+        className="box-border w-12 h-10 flex items-center justify-center text-center text-xl font-bold tabular-nums leading-none p-0"
         style={{
           background: value !== null
             ? 'rgba(53,208,127,0.08)'

@@ -251,7 +251,7 @@ export function JogosPage() {
     return (
       <div className="space-y-4">
         <SectionHeader
-          title="Resultados"
+          title="Jogos"
           subtitle="Lance os resultados oficiais das partidas"
         />
 

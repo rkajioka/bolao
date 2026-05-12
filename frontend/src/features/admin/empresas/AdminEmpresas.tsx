@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Building2 } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { Building2, ChevronDown } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { empresaService } from '@/services/empresa.service'
 import type { Empresa } from '@/types'
@@ -8,6 +9,47 @@ import type { Empresa } from '@/types'
 interface AdminEmpresasProps {
   success: (msg: string) => void
   error: (msg: string) => void
+}
+
+const inputStyle = {
+  background: 'rgba(255,255,255,0.06)',
+  border: '1px solid rgba(255,255,255,0.10)',
+  color: 'var(--text)',
+} as const
+
+type FiltroEmpresa = 'todos' | 'ativas' | 'inativas' | 'bonus_br'
+
+function normalizarBusca(texto: string): string {
+  return texto.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
+}
+
+function empresaAtendeBusca(empresa: Empresa, query: string): boolean {
+  const tokens = normalizarBusca(query).split(/\s+/).filter(Boolean)
+  if (tokens.length === 0) return true
+
+  const corpus = normalizarBusca(
+    [
+      empresa.nome,
+      empresa.codigo_empresa,
+      empresa.ativo ? 'ativa ativo' : 'inativa inativo',
+      empresa.marcadores_brasil_habilitado
+        ? 'marcadores brasil bonus br ativo ligado'
+        : 'marcadores brasil bonus br inativo desligado',
+      String(empresa.max_usuarios),
+      String(empresa.total_usuarios),
+      String(empresa.convites_pendentes),
+      String(empresa.vagas_restantes),
+    ].join(' '),
+  )
+
+  return tokens.every((token) => corpus.includes(token))
+}
+
+function empresaAtendeFiltro(empresa: Empresa, filtro: FiltroEmpresa): boolean {
+  if (filtro === 'ativas') return empresa.ativo
+  if (filtro === 'inativas') return !empresa.ativo
+  if (filtro === 'bonus_br') return empresa.marcadores_brasil_habilitado
+  return true
 }
 
 export function AdminEmpresas({ success, error }: AdminEmpresasProps) {
@@ -81,11 +123,7 @@ export function AdminEmpresas({ success, error }: AdminEmpresasProps) {
             value={nome}
             onChange={(e) => setNome(e.target.value)}
             className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
-            style={{
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.10)',
-              color: 'var(--text)',
-            }}
+            style={inputStyle}
             maxLength={255}
             required
           />
@@ -100,15 +138,14 @@ export function AdminEmpresas({ success, error }: AdminEmpresasProps) {
             value={maxUsuarios}
             onChange={(e) => setMaxUsuarios(e.target.value)}
             className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
-            style={{
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.10)',
-              color: 'var(--text)',
-            }}
+            style={inputStyle}
             required
           />
         </label>
-        <label className="flex items-start gap-3 rounded-xl p-3 cursor-pointer" style={{ background: 'var(--segmented-bg)', border: '1px solid var(--border)' }}>
+        <label
+          className="flex items-start gap-3 rounded-xl p-3 cursor-pointer"
+          style={{ background: 'var(--segmented-bg)', border: '1px solid var(--border)' }}
+        >
           <input
             type="checkbox"
             checked={marcadoresBrasilHabilitado}
@@ -118,7 +155,8 @@ export function AdminEmpresas({ success, error }: AdminEmpresasProps) {
           <span className="space-y-1">
             <span className="block text-sm font-semibold">Bônus por marcadores do Brasil</span>
             <span className="block text-xs" style={{ color: 'var(--text-muted)' }}>
-              A lista de jogadores candidatos é global (Torneio → Jogos). Com o bônus ativo, o admin da empresa define os pontos na configuração de pontuação.
+              A lista de jogadores candidatos é global (Torneio → Jogos). Com o bônus ativo, o admin da empresa
+              define os pontos na configuração de pontuação.
             </span>
           </span>
         </label>
@@ -152,12 +190,20 @@ function EmpresasList({
   error: (msg: string) => void
 }) {
   const queryClient = useQueryClient()
+  const [listaAberta, setListaAberta] = useState(true)
+  const [busca, setBusca] = useState('')
+  const [filtro, setFiltro] = useState<FiltroEmpresa>('todos')
   const [marcadoresPendente, setMarcadoresPendente] = useState<{
     id: number
     nome: string
     habilitado: boolean
   } | null>(null)
   const [maxUsuariosEdicao, setMaxUsuariosEdicao] = useState<Record<number, string>>({})
+
+  const empresasFiltradas = useMemo(
+    () => empresas.filter((empresa) => empresaAtendeFiltro(empresa, filtro) && empresaAtendeBusca(empresa, busca)),
+    [empresas, busca, filtro],
+  )
 
   const atualizarLimite = useMutation({
     mutationFn: ({ id, max_usuarios }: { id: number; max_usuarios: number }) =>
@@ -189,14 +235,6 @@ function EmpresasList({
     },
   })
 
-  if (empresas.length === 0) {
-    return (
-      <p className="text-sm text-center py-6" style={{ color: 'var(--text-muted)' }}>
-        Nenhuma empresa cadastrada ainda.
-      </p>
-    )
-  }
-
   const pendenteAtivar = marcadoresPendente?.habilitado === true
 
   return (
@@ -225,108 +263,303 @@ function EmpresasList({
           })
         }}
       />
-    <div className="space-y-2" role="list" aria-label="Empresas cadastradas">
-      {empresas.map((emp) => (
-        <div
-          key={emp.id}
-          className="glass rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-          role="listitem"
+
+      <div className="glass rounded-2xl overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setListaAberta((aberta) => !aberta)}
+          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left"
+          style={{ background: 'rgba(255,255,255,0.03)', border: 'none', color: 'var(--text)' }}
+          aria-expanded={listaAberta}
         >
-          <div>
-            <p className="font-semibold text-sm">{emp.nome}</p>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-              Código: {emp.codigo_empresa}
-            </p>
-            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-              Uso: {emp.total_usuarios + emp.convites_pendentes}/{emp.max_usuarios} usuários
-              {emp.convites_pendentes > 0 ? ` (${emp.convites_pendentes} convite(s) pendente(s))` : ''}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-end gap-2 shrink-0">
-            <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
-                Máximo de usuários
-              </span>
-              <input
-                type="number"
-                min={1}
-                value={maxUsuariosEdicao[emp.id] ?? String(emp.max_usuarios)}
-                onChange={(e) =>
-                  setMaxUsuariosEdicao((current) => ({ ...current, [emp.id]: e.target.value }))
-                }
-                className="w-28 px-2.5 py-1.5 rounded-lg text-sm outline-none"
-                style={{
-                  background: 'rgba(255,255,255,0.06)',
-                  border: '1px solid rgba(255,255,255,0.10)',
-                  color: 'var(--text)',
-                }}
-              />
-            </label>
-            <button
-              type="button"
-              disabled={atualizarLimite.isPending}
-              onClick={() => {
-                const valor = Number(maxUsuariosEdicao[emp.id] ?? emp.max_usuarios)
-                if (!Number.isInteger(valor) || valor < 1) {
-                  error('Informe um limite máximo de usuários válido.')
-                  return
-                }
-                atualizarLimite.mutate({ id: emp.id, max_usuarios: valor })
-              }}
-              className="text-xs px-2.5 py-1.5 rounded-lg font-semibold"
-              style={{
-                background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.10)',
-                color: 'var(--text)',
-              }}
+          <span className="text-sm font-semibold">Empresas cadastradas ({empresas.length})</span>
+          <ChevronDown
+            size={18}
+            className="shrink-0 transition-transform duration-200"
+            style={{
+              transform: listaAberta ? 'rotate(180deg)' : 'rotate(0deg)',
+              color: 'var(--text-muted)',
+            }}
+          />
+        </button>
+
+        <AnimatePresence initial={false}>
+          {listaAberta && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
             >
-              Salvar limite
-            </button>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <span
-              className="text-xs px-2 py-0.5 rounded-full font-medium"
-              style={{
-                background: emp.ativo ? 'var(--accent-dim)' : 'var(--danger-dim)',
-                color: emp.ativo ? 'var(--accent)' : 'var(--danger)',
-                border: `1px solid ${emp.ativo ? 'rgba(53,208,127,0.3)' : 'rgba(255,92,122,0.3)'}`,
-              }}
-            >
-              {emp.ativo ? 'Ativa' : 'Inativa'}
-            </span>
-            <span
-              className="text-xs px-2 py-0.5 rounded-full font-medium"
-              style={{
-                background: emp.marcadores_brasil_habilitado ? 'rgba(53,208,127,0.12)' : 'rgba(255,255,255,0.06)',
-                color: emp.marcadores_brasil_habilitado ? 'var(--accent)' : 'var(--text-muted)',
-                border: `1px solid ${emp.marcadores_brasil_habilitado ? 'rgba(53,208,127,0.25)' : 'rgba(255,255,255,0.10)'}`,
-              }}
-            >
-              Marcadores BR: {emp.marcadores_brasil_habilitado ? 'Ativo' : 'Inativo'}
-            </span>
-            <button
-              type="button"
-              disabled={atualizarMarcadores.isPending}
-              onClick={() => {
-                setMarcadoresPendente({
-                  id: emp.id,
-                  nome: emp.nome,
-                  habilitado: !emp.marcadores_brasil_habilitado,
-                })
-              }}
-              className="text-xs px-2.5 py-1 rounded-lg font-semibold"
-              style={{
-                background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.10)',
-                color: 'var(--text)',
-              }}
-            >
-              {emp.marcadores_brasil_habilitado ? 'Desligar bônus BR' : 'Ligar bônus BR'}
-            </button>
-          </div>
-        </div>
-      ))}
-    </div>
+              <div
+                className="px-4 pb-4 pt-3 space-y-3"
+                style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+              >
+                <div className="space-y-2">
+                  <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+                    Cadastradas ({empresas.length})
+                    {empresasFiltradas.length !== empresas.length && (
+                      <span> — exibindo {empresasFiltradas.length}</span>
+                    )}
+                  </p>
+                  <input
+                    type="search"
+                    value={busca}
+                    onChange={(e) => setBusca(e.target.value)}
+                    placeholder="Buscar por nome, código, status, uso ou bônus BR…"
+                    aria-label="Buscar empresas"
+                    className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                    style={inputStyle}
+                  />
+                  <div className="flex flex-wrap gap-1.5">
+                    {(
+                      [
+                        { key: 'todos' as const, label: 'Todas' },
+                        { key: 'ativas' as const, label: 'Ativas' },
+                        { key: 'inativas' as const, label: 'Inativas' },
+                        { key: 'bonus_br' as const, label: 'Com bônus BR' },
+                      ] as const
+                    ).map(({ key, label }) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setFiltro(key)}
+                        className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors"
+                        style={{
+                          background: filtro === key ? 'var(--accent)' : 'rgba(255,255,255,0.06)',
+                          border: `1px solid ${filtro === key ? 'var(--accent)' : 'rgba(255,255,255,0.10)'}`,
+                          color: filtro === key ? '#070A12' : 'var(--text-muted)',
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div
+                  className="rounded-xl overflow-y-auto max-h-[min(28rem,60vh)] space-y-2 pr-1"
+                  style={{ border: '1px solid rgba(255,255,255,0.08)' }}
+                  role="list"
+                  aria-label="Empresas cadastradas"
+                >
+                  {empresas.length === 0 ? (
+                    <p className="text-sm py-6 px-3 text-center" style={{ color: 'var(--text-muted)' }}>
+                      Nenhuma empresa cadastrada ainda.
+                    </p>
+                  ) : empresasFiltradas.length === 0 ? (
+                    <p className="text-sm py-6 px-3 text-center" style={{ color: 'var(--text-muted)' }}>
+                      Nenhum resultado para essa busca ou filtro.
+                    </p>
+                  ) : (
+                    empresasFiltradas.map((empresa) => (
+                      <EmpresaListItem
+                        key={empresa.id}
+                        empresa={empresa}
+                        maxUsuariosEdicao={maxUsuariosEdicao[empresa.id] ?? String(empresa.max_usuarios)}
+                        onMaxUsuariosChange={(valor) =>
+                          setMaxUsuariosEdicao((current) => ({ ...current, [empresa.id]: valor }))
+                        }
+                        onSalvarLimite={() => {
+                          const valor = Number(maxUsuariosEdicao[empresa.id] ?? empresa.max_usuarios)
+                          if (!Number.isInteger(valor) || valor < 1) {
+                            error('Informe um limite máximo de usuários válido.')
+                            return
+                          }
+                          atualizarLimite.mutate({ id: empresa.id, max_usuarios: valor })
+                        }}
+                        onToggleMarcadores={() =>
+                          setMarcadoresPendente({
+                            id: empresa.id,
+                            nome: empresa.nome,
+                            habilitado: !empresa.marcadores_brasil_habilitado,
+                          })
+                        }
+                        salvandoLimite={atualizarLimite.isPending}
+                        salvandoMarcadores={atualizarMarcadores.isPending}
+                      />
+                    ))
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </>
+  )
+}
+
+function EmpresaListItem({
+  empresa,
+  maxUsuariosEdicao,
+  onMaxUsuariosChange,
+  onSalvarLimite,
+  onToggleMarcadores,
+  salvandoLimite,
+  salvandoMarcadores,
+}: {
+  empresa: Empresa
+  maxUsuariosEdicao: string
+  onMaxUsuariosChange: (valor: string) => void
+  onSalvarLimite: () => void
+  onToggleMarcadores: () => void
+  salvandoLimite: boolean
+  salvandoMarcadores: boolean
+}) {
+  const [aberta, setAberta] = useState(false)
+  const usoTotal = empresa.total_usuarios + empresa.convites_pendentes
+
+  return (
+    <div
+      className="rounded-xl overflow-hidden"
+      style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}
+      role="listitem"
+    >
+      <button
+        type="button"
+        onClick={() => setAberta((atual) => !atual)}
+        className="w-full px-3 py-3 text-left"
+        aria-expanded={aberta}
+      >
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="font-semibold text-sm truncate">{empresa.nome}</p>
+              <StatusBadge ativo={empresa.ativo} />
+              <MarcadoresBadge ativo={empresa.marcadores_brasil_habilitado} />
+            </div>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              Código <span className="font-mono">{empresa.codigo_empresa}</span>
+            </p>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              Uso: {usoTotal}/{empresa.max_usuarios} usuários
+              {empresa.convites_pendentes > 0
+                ? ` · ${empresa.convites_pendentes} convite(s) pendente(s)`
+                : ''}
+              {empresa.vagas_restantes > 0 ? ` · ${empresa.vagas_restantes} vaga(s) restante(s)` : ''}
+            </p>
+          </div>
+          <ChevronDown
+            size={18}
+            className="shrink-0 mt-0.5 transition-transform duration-200"
+            style={{
+              transform: aberta ? 'rotate(180deg)' : 'rotate(0deg)',
+              color: 'var(--text-muted)',
+            }}
+          />
+        </div>
+      </button>
+
+      <AnimatePresence initial={false}>
+        {aberta && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div
+              className="px-3 pb-3 pt-1 grid gap-3 sm:grid-cols-2"
+              style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+            >
+              <section className="rounded-xl p-3 space-y-2" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                <p className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
+                  Limite de participantes
+                </p>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  {empresa.total_usuarios} ativo(s), {empresa.convites_pendentes} convite(s) pendente(s) e{' '}
+                  {empresa.vagas_restantes} vaga(s) disponível(is).
+                </p>
+                <label className="block space-y-1">
+                  <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+                    Máximo de usuários
+                  </span>
+                  <input
+                    type="number"
+                    min={1}
+                    value={maxUsuariosEdicao}
+                    onChange={(e) => onMaxUsuariosChange(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl text-sm outline-none"
+                    style={inputStyle}
+                  />
+                </label>
+                <button
+                  type="button"
+                  disabled={salvandoLimite}
+                  onClick={onSalvarLimite}
+                  className="w-full py-2 rounded-xl text-xs font-semibold disabled:opacity-50"
+                  style={{
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(255,255,255,0.10)',
+                    color: 'var(--text)',
+                  }}
+                >
+                  Salvar limite
+                </button>
+              </section>
+
+              <section className="rounded-xl p-3 space-y-2" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                <p className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
+                  Bônus por marcadores do Brasil
+                </p>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  {empresa.marcadores_brasil_habilitado
+                    ? 'Participantes desta empresa podem palpitar marcadores do Brasil. O admin define os pontos na configuração de pontuação.'
+                    : 'O bônus está desligado para esta empresa. Ative para liberar palpites e pontuação de marcadores.'}
+                </p>
+                <button
+                  type="button"
+                  disabled={salvandoMarcadores}
+                  onClick={onToggleMarcadores}
+                  className="w-full py-2 rounded-xl text-xs font-semibold disabled:opacity-50"
+                  style={{
+                    background: empresa.marcadores_brasil_habilitado
+                      ? 'rgba(255,92,122,0.10)'
+                      : 'rgba(53,208,127,0.12)',
+                    border: `1px solid ${
+                      empresa.marcadores_brasil_habilitado ? 'rgba(255,92,122,0.25)' : 'rgba(53,208,127,0.25)'
+                    }`,
+                    color: empresa.marcadores_brasil_habilitado ? 'var(--danger)' : 'var(--accent)',
+                  }}
+                >
+                  {empresa.marcadores_brasil_habilitado ? 'Desligar bônus BR' : 'Ligar bônus BR'}
+                </button>
+              </section>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+function StatusBadge({ ativo }: { ativo: boolean }) {
+  return (
+    <span
+      className="text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide"
+      style={{
+        background: ativo ? 'var(--accent-dim)' : 'var(--danger-dim)',
+        color: ativo ? 'var(--accent)' : 'var(--danger)',
+        border: `1px solid ${ativo ? 'rgba(53,208,127,0.3)' : 'rgba(255,92,122,0.3)'}`,
+      }}
+    >
+      {ativo ? 'Ativa' : 'Inativa'}
+    </span>
+  )
+}
+
+function MarcadoresBadge({ ativo }: { ativo: boolean }) {
+  return (
+    <span
+      className="text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide"
+      style={{
+        background: ativo ? 'rgba(53,208,127,0.12)' : 'rgba(255,255,255,0.06)',
+        color: ativo ? 'var(--accent)' : 'var(--text-muted)',
+        border: `1px solid ${ativo ? 'rgba(53,208,127,0.25)' : 'rgba(255,255,255,0.10)'}`,
+      }}
+    >
+      BR {ativo ? 'ativo' : 'inativo'}
+    </span>
   )
 }

@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Pencil } from 'lucide-react'
+import { Lock, LockOpen, Pencil } from 'lucide-react'
 import { CountryFlag } from '@/components/CountryFlag'
 import { SelectInput } from '@/components/SelectInput'
 import { faseLabel, formatDate, normalizeFaseSlug } from '@/lib/utils'
 import {
-  momentoLiberacaoFinalizacaoOficial,
+  labelPreenchimentoResultadoDisponivel,
   podeFinalizarResultadoOficial,
 } from '@/features/official-results/officialResultUtils'
 import { gamesService, type UpdateResultadoPayload } from '@/services/games.service'
@@ -115,14 +115,15 @@ export function OfficialGameResultCard({
     setEditMeta(true)
   }
 
+  const podeFinalizar = podeFinalizarResultadoOficial(jogo.data_jogo, agora)
+  const resultadoBloqueado = !readOnly && !jogo.finalizado && !podeFinalizar
+  const placarSomenteLeitura = readOnly || jogo.finalizado || resultadoBloqueado
+
   useEffect(() => {
     if (readOnly || jogo.finalizado) return
     const id = window.setInterval(() => setAgora(Date.now()), 60_000)
     return () => window.clearInterval(id)
   }, [readOnly, jogo.finalizado, jogo.id])
-
-  const podeFinalizar = podeFinalizarResultadoOficial(jogo.data_jogo, agora)
-  const liberacaoFinalizacao = momentoLiberacaoFinalizacaoOficial(jogo.data_jogo)
 
   useEffect(() => {
     setPlacarCasa(jogo.placar_casa ?? 0)
@@ -254,10 +255,16 @@ export function OfficialGameResultCard({
     color: 'var(--text)',
   } as const
 
+  const placarBoxClassName =
+    'box-border w-[4.5rem] h-12 mx-auto flex items-center justify-center rounded-xl text-center text-3xl font-bold tabular-nums leading-none p-0'
+
   return (
     <div
       className={`rounded-xl space-y-3 ${showFlags ? 'p-4' : 'p-3'}`}
-      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+      style={{
+        background: resultadoBloqueado ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.04)',
+        border: `1px solid ${resultadoBloqueado ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.08)'}`,
+      }}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -270,12 +277,24 @@ export function OfficialGameResultCard({
             </p>
           )}
         </div>
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0">
+          {!readOnly && !jogo.finalizado && (
+            <span
+              className="inline-flex h-8 w-8 items-center justify-center shrink-0"
+              aria-label={resultadoBloqueado ? 'Resultado ainda bloqueado' : 'Preenchimento liberado'}
+            >
+              {resultadoBloqueado ? (
+                <Lock size={16} aria-hidden style={{ color: 'var(--text-muted)', opacity: 0.7 }} />
+              ) : (
+                <LockOpen size={16} aria-hidden style={{ color: 'var(--accent)' }} />
+              )}
+            </span>
+          )}
           {podeEditarMetadados && (
             <button
               type="button"
               onClick={() => (editMeta ? setEditMeta(false) : abrirEdicaoMetadados())}
-              className="p-1.5 rounded-lg transition-colors"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors shrink-0"
               style={{
                 background: editMeta ? 'rgba(53,208,127,0.12)' : 'rgba(255,255,255,0.06)',
                 border: `1px solid ${editMeta ? 'rgba(53,208,127,0.25)' : 'rgba(255,255,255,0.10)'}`,
@@ -283,7 +302,7 @@ export function OfficialGameResultCard({
               }}
               aria-label={editMeta ? 'Fechar edição do jogo' : 'Editar jogo'}
             >
-              <Pencil size={14} />
+              <Pencil size={14} className="shrink-0" />
             </button>
           )}
           {jogo.finalizado && (
@@ -397,8 +416,10 @@ export function OfficialGameResultCard({
             <p className="text-sm font-semibold text-center leading-tight px-1 w-full">
               {jogo.pais_casa.nome}
             </p>
-            {readOnly || jogo.finalizado ? (
-              <p className="text-3xl font-bold tabular-nums">{placarCasa}</p>
+            {placarSomenteLeitura ? (
+              <div className={placarBoxClassName} style={inputStyle}>
+                {placarCasa}
+              </div>
             ) : (
               <input
                 type="number"
@@ -406,7 +427,7 @@ export function OfficialGameResultCard({
                 aria-label={`Placar ${jogo.pais_casa.nome}`}
                 value={placarCasa}
                 onChange={(e) => setPlacarCasa(parseInt(e.target.value, 10) || 0)}
-                className="w-full max-w-[4.5rem] text-center text-3xl font-bold py-2 rounded-xl outline-none tabular-nums"
+                className={`${placarBoxClassName} outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
                 style={inputStyle}
               />
             )}
@@ -421,8 +442,10 @@ export function OfficialGameResultCard({
             <p className="text-sm font-semibold text-center leading-tight px-1 w-full">
               {jogo.pais_fora.nome}
             </p>
-            {readOnly || jogo.finalizado ? (
-              <p className="text-3xl font-bold tabular-nums">{placarFora}</p>
+            {placarSomenteLeitura ? (
+              <div className={placarBoxClassName} style={inputStyle}>
+                {placarFora}
+              </div>
             ) : (
               <input
                 type="number"
@@ -430,7 +453,7 @@ export function OfficialGameResultCard({
                 aria-label={`Placar ${jogo.pais_fora.nome}`}
                 value={placarFora}
                 onChange={(e) => setPlacarFora(parseInt(e.target.value, 10) || 0)}
-                className="w-full max-w-[4.5rem] text-center text-3xl font-bold py-2 rounded-xl outline-none tabular-nums"
+                className={`${placarBoxClassName} outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
                 style={inputStyle}
               />
             )}
@@ -442,8 +465,10 @@ export function OfficialGameResultCard({
             <p className="text-[11px] font-medium truncate" style={{ color: 'var(--text-muted)' }}>
               {jogo.pais_casa.nome}
             </p>
-            {readOnly || jogo.finalizado ? (
-              <p className="text-2xl font-bold">{placarCasa}</p>
+            {placarSomenteLeitura ? (
+              <div className={`${placarBoxClassName} text-2xl`} style={inputStyle}>
+                {placarCasa}
+              </div>
             ) : (
               <input
                 type="number"
@@ -451,7 +476,7 @@ export function OfficialGameResultCard({
                 aria-label={`Placar ${jogo.pais_casa.nome}`}
                 value={placarCasa}
                 onChange={(e) => setPlacarCasa(parseInt(e.target.value, 10) || 0)}
-                className="w-full text-center text-2xl font-bold py-2 rounded-xl outline-none"
+                className={`${placarBoxClassName} text-2xl outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
                 style={inputStyle}
               />
             )}
@@ -465,8 +490,10 @@ export function OfficialGameResultCard({
             <p className="text-[11px] font-medium truncate" style={{ color: 'var(--text-muted)' }}>
               {jogo.pais_fora.nome}
             </p>
-            {readOnly || jogo.finalizado ? (
-              <p className="text-2xl font-bold">{placarFora}</p>
+            {placarSomenteLeitura ? (
+              <div className={`${placarBoxClassName} text-2xl ml-auto`} style={inputStyle}>
+                {placarFora}
+              </div>
             ) : (
               <input
                 type="number"
@@ -474,7 +501,7 @@ export function OfficialGameResultCard({
                 aria-label={`Placar ${jogo.pais_fora.nome}`}
                 value={placarFora}
                 onChange={(e) => setPlacarFora(parseInt(e.target.value, 10) || 0)}
-                className="w-full text-center text-2xl font-bold py-2 rounded-xl outline-none"
+                className={`${placarBoxClassName} text-2xl ml-auto outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
                 style={inputStyle}
               />
             )}
@@ -482,7 +509,7 @@ export function OfficialGameResultCard({
         </div>
       )}
 
-      {isMataMata && empatado && !readOnly && !jogo.finalizado && (
+      {isMataMata && empatado && !readOnly && !jogo.finalizado && podeFinalizar && (
         <label className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
           <input
             type="checkbox"
@@ -499,7 +526,7 @@ export function OfficialGameResultCard({
         </label>
       )}
 
-      {isMataMata && empatado && foiParaPenaltis && !readOnly && !jogo.finalizado && (
+      {isMataMata && empatado && foiParaPenaltis && !readOnly && !jogo.finalizado && podeFinalizar && (
         <div className="grid grid-cols-2 gap-2">
           <input
             type="number"
@@ -528,7 +555,7 @@ export function OfficialGameResultCard({
         </div>
       )}
 
-      {isMataMata && empatado && !foiParaPenaltis && !readOnly && !jogo.finalizado && (
+      {isMataMata && empatado && !foiParaPenaltis && !readOnly && !jogo.finalizado && podeFinalizar && (
         <div className="space-y-2">
           <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
             Classificado
@@ -558,24 +585,22 @@ export function OfficialGameResultCard({
 
       {!readOnly && !jogo.finalizado && (
         <div className="space-y-2">
-          {!podeFinalizar && Number.isFinite(liberacaoFinalizacao) && (
+          {resultadoBloqueado && (
             <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
-              Finalização liberada às{' '}
-              {new Date(liberacaoFinalizacao).toLocaleTimeString('pt-BR', {
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
+              {labelPreenchimentoResultadoDisponivel(jogo.data_jogo)}
             </p>
           )}
-          <button
-            type="button"
-            onClick={handleSalvar}
-            disabled={saving || !podeFinalizar}
-            className="w-full py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
-            style={{ background: 'var(--accent)', color: '#070A12' }}
-          >
-            {saving ? 'Salvando…' : 'Salvar e finalizar'}
-          </button>
+          {podeFinalizar && (
+            <button
+              type="button"
+              onClick={handleSalvar}
+              disabled={saving}
+              className="w-full py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50"
+              style={{ background: 'var(--accent)', color: '#070A12' }}
+            >
+              {saving ? 'Salvando…' : 'Salvar e finalizar'}
+            </button>
+          )}
         </div>
       )}
     </div>

@@ -55,7 +55,12 @@ export function AppLayout() {
   }
 
   const navItems: NavItem[] = [
-    { to: '/jogos', icon: <CalendarDays size={22} />, label: 'Palpites', visible: true },
+    {
+      to: '/jogos',
+      icon: <CalendarDays size={22} />,
+      label: isOwner ? 'Jogos' : 'Palpites',
+      visible: true,
+    },
     {
       to: '/especiais',
       icon: <Star size={22} />,
