@@ -58,6 +58,35 @@ def test_finalizar_jogo_atualiza_pontuacao_placar(client) -> None:
     assert alvo["pontuacao_total"] >= 10
 
 
+def test_finalizar_jogo_pontua_placar_exato_zero_a_zero(client) -> None:
+    db = SessionLocal()
+    try:
+        seed_admin_e_usuario(db)
+        a, b = seed_dois_paises(db)
+        jogo = seed_jogo_grupo_em_breve(db, a, b)
+        jid = jogo.id
+    finally:
+        db.close()
+
+    ut = _login(client, "user-etapa13@example.com", "senhausuario1")
+    uh = {"Authorization": f"Bearer {ut}"}
+    r0 = client.post("/palpites-jogos", headers=uh, json={"jogo_id": jid, "palpite_casa": 0, "palpite_fora": 0})
+    assert r0.status_code == 201, r0.text
+
+    _tornar_jogo_finalizavel(jid)
+
+    at = _login(client, "owner-etapa13@example.com", "senhaowner1")
+    ah = {"Authorization": f"Bearer {at}"}
+    assert client.patch(f"/jogos/{jid}/resultado", headers=ah, json={"placar_casa": 0, "placar_fora": 0}).status_code == 200
+    assert client.patch(f"/jogos/{jid}/finalizar", headers=ah).status_code == 200
+
+    r3 = client.get("/palpites-jogos/me", headers=uh)
+    assert r3.status_code == 200
+    palpite = next(p for p in r3.json() if p["jogo_id"] == jid)
+    assert palpite["pontuacao_placar"] >= 10
+    assert palpite["pontuacao_total"] >= 10
+
+
 def test_alterar_resultado_apos_finalizar_recalcula(client) -> None:
     db = SessionLocal()
     try:

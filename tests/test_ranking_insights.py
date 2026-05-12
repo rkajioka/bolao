@@ -226,6 +226,39 @@ def test_minha_posicao_periodo_com_palpite(client) -> None:
     assert body["meus_pontos_periodo"] > 0
 
 
+def test_metricas_contam_resultado_correto_incluindo_placar_exato(client) -> None:
+    db = SessionLocal()
+    try:
+        seed_owner_admin_e_usuario(db)
+        a, b = seed_dois_paises(db)
+        j1 = _seed_jogo_grupo_rodada(db, a, b, 1)
+        j2 = _seed_jogo_grupo_rodada(db, b, a, 1)
+        jogo_ids = [j1.id, j2.id]
+    finally:
+        db.close()
+
+    token = _login(client, "user-etapa13@example.com", "senhausuario1")
+    h = {"Authorization": f"Bearer {token}"}
+    assert client.post("/palpites-jogos", headers=h, json={"jogo_id": jogo_ids[0], "palpite_casa": 0, "palpite_fora": 0}).status_code == 201
+    assert client.post("/palpites-jogos", headers=h, json={"jogo_id": jogo_ids[1], "palpite_casa": 1, "palpite_fora": 0}).status_code == 201
+
+    db = SessionLocal()
+    try:
+        finalizar_jogo(db, db.get(Jogo, jogo_ids[0]), 0, 0)
+        finalizar_jogo(db, db.get(Jogo, jogo_ids[1]), 1, 0)
+    finally:
+        db.close()
+
+    body = _insights(client, token)
+    metricas = {item["chave"]: item for item in body["metricas_empresa"]}
+    assert metricas["pessoas_placar_exato"]["valor"] >= 1
+    assert metricas["pessoas_resultado"]["valor"] >= 1
+    assert metricas["total_placares_exatos"]["valor"] >= 2
+    assert metricas["total_acertos_resultado"]["valor"] >= 2
+    assert body["meu_acertos_placar_exato"] >= 2
+    assert body["meu_acertos_resultado"] >= 2
+
+
 def test_fase_mata_mata_ilegivel_nao_quebra_bloco_valido(client) -> None:
     db = SessionLocal()
     try:

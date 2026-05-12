@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from sqlalchemy import and_, case, desc, func, select
+from sqlalchemy import and_, case, desc, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.jogo_fases import fase_mata_mata_slug_ou_none
@@ -25,6 +25,12 @@ PALPITE_PREENCHIDO = and_(
     PalpiteJogo.palpite_casa.is_not(None),
     PalpiteJogo.palpite_fora.is_not(None),
 )
+
+ACERTO_PLACAR_EXATO = PalpiteJogo.pontuacao_placar > 0
+ACERTO_RESULTADO = or_(PalpiteJogo.pontuacao_resultado > 0, ACERTO_PLACAR_EXATO)
+ACERTO_CLASSIFICADO = PalpiteJogo.pontuacao_classificado > 0
+CONTAGEM_ACERTO_PLACAR_EXATO = case((ACERTO_PLACAR_EXATO, 1), else_=0)
+CONTAGEM_ACERTO_RESULTADO = case((ACERTO_RESULTADO, 1), else_=0)
 
 
 @dataclass(frozen=True)
@@ -142,7 +148,7 @@ def resolver_periodo_insights(
     if ultimo_fechado is None:
         return (
             None,
-            "Aguardando o primeiro bloco do torneio",
+            "Aguardando a primeira rodada ou fase do torneio",
             "aguardando_primeiro_bloco",
             None,
             [],
@@ -232,27 +238,21 @@ def _metricas_empresa(
             ),
             func.count(
                 func.distinct(
-                    case((PalpiteJogo.pontuacao_placar > 0, PalpiteJogo.usuario_id), else_=None)
+                    case((ACERTO_PLACAR_EXATO, PalpiteJogo.usuario_id), else_=None)
                 )
             ).label("pessoas_placar_exato"),
             func.count(
                 func.distinct(
-                    case((PalpiteJogo.pontuacao_resultado > 0, PalpiteJogo.usuario_id), else_=None)
+                    case((ACERTO_RESULTADO, PalpiteJogo.usuario_id), else_=None)
                 )
             ).label("pessoas_resultado"),
             func.count(
                 func.distinct(
-                    case((PalpiteJogo.pontuacao_classificado > 0, PalpiteJogo.usuario_id), else_=None)
+                    case((ACERTO_CLASSIFICADO, PalpiteJogo.usuario_id), else_=None)
                 )
             ).label("pessoas_classificado"),
-            func.coalesce(
-                func.sum(case((PalpiteJogo.pontuacao_placar > 0, 1), else_=0)),
-                0,
-            ).label("total_placares_exatos"),
-            func.coalesce(
-                func.sum(case((PalpiteJogo.pontuacao_resultado > 0, 1), else_=0)),
-                0,
-            ).label("total_acertos_resultado"),
+            func.coalesce(func.sum(CONTAGEM_ACERTO_PLACAR_EXATO), 0).label("total_placares_exatos"),
+            func.coalesce(func.sum(CONTAGEM_ACERTO_RESULTADO), 0).label("total_acertos_resultado"),
             func.coalesce(func.sum(case((PALPITE_PREENCHIDO, 1), else_=0)), 0).label("palpites_preenchidos"),
         )
         .select_from(PalpiteJogo)
@@ -282,7 +282,7 @@ def _metricas_empresa(
     metricas = [
         InsightMetricaEmpresaInterna(
             chave="participantes_com_palpite",
-            label="Participantes com palpite no bloco",
+            label="Participantes com palpite na rodada/fase",
             valor=participantes_com_palpite,
             total=participantes_empresa,
         ),
@@ -300,12 +300,12 @@ def _metricas_empresa(
         ),
         InsightMetricaEmpresaInterna(
             chave="total_placares_exatos",
-            label="Total de placares exatos no bloco",
+            label="Total de placares exatos na rodada/fase",
             valor=int(row.total_placares_exatos or 0),
         ),
         InsightMetricaEmpresaInterna(
             chave="total_acertos_resultado",
-            label="Total de acertos de resultado no bloco",
+            label="Total de acertos de resultado na rodada/fase",
             valor=int(row.total_acertos_resultado or 0),
         ),
         InsightMetricaEmpresaInterna(
@@ -315,7 +315,7 @@ def _metricas_empresa(
         ),
         InsightMetricaEmpresaInterna(
             chave="cobertura_palpites_pct",
-            label="Cobertura de palpites no bloco",
+            label="Cobertura de palpites na rodada/fase",
             valor=cobertura_pct,
             total=100,
         ),
@@ -416,9 +416,9 @@ def obter_insights_periodo(
     )
     destaques = DestaquesUsuariosInterno(
         pontos_bloco=_top_por_metrica(db, jogo_ids, PONTOS_BLOCO_EXPR, empresa_id),
-        placar_exato=_top_por_metrica(db, jogo_ids, PalpiteJogo.pontuacao_placar, empresa_id),
-        resultado=_top_por_metrica(db, jogo_ids, PalpiteJogo.pontuacao_resultado, empresa_id),
-        classificado=_top_por_metrica(db, jogo_ids, PalpiteJogo.pontuacao_classificado, empresa_id)
+        placar_exato=_top_por_metrica(db, jogo_ids, CONTAGEM_ACERTO_PLACAR_EXATO, empresa_id),
+        resultado=_top_por_metrica(db, jogo_ids, CONTAGEM_ACERTO_RESULTADO, empresa_id),
+        classificado=_top_por_metrica(db, jogo_ids, case((ACERTO_CLASSIFICADO, 1), else_=0), empresa_id)
         if bloco_mata_mata
         else [],
     )
@@ -426,9 +426,12 @@ def obter_insights_periodo(
     meu = db.execute(
         select(
             func.coalesce(func.sum(case((PALPITE_PREENCHIDO, 1), else_=0)), 0).label("preenchidos"),
-            func.coalesce(func.sum(PalpiteJogo.pontuacao_resultado), 0).label("acertos_resultado"),
-            func.coalesce(func.sum(PalpiteJogo.pontuacao_placar), 0).label("acertos_placar"),
-            func.coalesce(func.sum(PalpiteJogo.pontuacao_classificado), 0).label("acertos_classificado"),
+            func.coalesce(func.sum(CONTAGEM_ACERTO_RESULTADO), 0).label("acertos_resultado"),
+            func.coalesce(func.sum(CONTAGEM_ACERTO_PLACAR_EXATO), 0).label("acertos_placar"),
+            func.coalesce(
+                func.sum(case((ACERTO_CLASSIFICADO, 1), else_=0)),
+                0,
+            ).label("acertos_classificado"),
             func.coalesce(func.sum(PONTOS_BLOCO_EXPR), 0).label("pontos"),
         ).where(and_(PalpiteJogo.usuario_id == usuario_id, PalpiteJogo.jogo_id.in_(jogo_ids)))
     ).one()

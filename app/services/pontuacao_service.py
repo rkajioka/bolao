@@ -278,6 +278,28 @@ def _atualizar_um_palpite_jogo(
     palpite.pontuacao_total = p_placar + p_res + p_class + p_marc
 
 
+def sincronizar_pontuacao_palpite(
+    db: Session,
+    palpite: PalpiteJogo,
+    *,
+    empresa_id: int | None = None,
+) -> None:
+    """Recalcula pontos de um palpite quando o jogo já está finalizado com placar oficial."""
+    jogo = palpite.jogo or jogo_service.get_by_id(db, palpite.jogo_id)
+    if jogo is None or not jogo.finalizado:
+        return
+    if jogo.placar_casa is None or jogo.placar_fora is None:
+        return
+    if palpite.palpite_casa is None or palpite.palpite_fora is None:
+        return
+
+    if empresa_id is None and palpite.usuario is not None:
+        empresa_id = palpite.usuario.empresa_id
+
+    cfg = _config_empresa(db, empresa_id)
+    _atualizar_um_palpite_jogo(db, palpite, jogo, cfg, empresa_id)
+
+
 def recalcular_todos_palpites_do_jogo(db: Session, jogo_id: int, empresa_id: int | None = None) -> None:
     """Persiste pontuação em todos os `palpites_jogos` daquele jogo (§7.4, §8.3)."""
     jogo = jogo_service.get_by_id(db, jogo_id)

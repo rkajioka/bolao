@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.models.jogo import Jogo
 from app.models.palpite_jogo import PalpiteJogo
 from app.schemas.palpite_jogo import PalpiteJogoCreate, PalpiteJogoUpdate
-from app.services import jogo_service, pais_service
+from app.services import jogo_service, pais_service, pontuacao_service
 from app.services.regra_negocio import assert_palpite_aberto, obter_jogo_para_edicao_palpite
 
 
@@ -67,7 +67,16 @@ def list_me(db: Session, usuario_id: int) -> list[PalpiteJogo]:
         .join(Jogo, PalpiteJogo.jogo_id == Jogo.id)
         .order_by(Jogo.data_jogo.asc(), PalpiteJogo.id.asc())
     )
-    return list(db.scalars(q).unique().all())  # unique: join + loaders
+    palpites = list(db.scalars(q).unique().all())  # unique: join + loaders
+    alterou = False
+    for palpite in palpites:
+        antes = palpite.pontuacao_total
+        pontuacao_service.sincronizar_pontuacao_palpite(db, palpite)
+        if palpite.pontuacao_total != antes:
+            alterou = True
+    if alterou:
+        db.commit()
+    return palpites
 
 
 def create_palpite(db: Session, usuario_id: int, data: PalpiteJogoCreate) -> PalpiteJogo:
@@ -98,7 +107,14 @@ def create_palpite(db: Session, usuario_id: int, data: PalpiteJogoCreate) -> Pal
         db.rollback()
         raise
     db.refresh(p)
-    return get_by_id_for_usuario(db, p.id, usuario_id)  # type: ignore[return-value]
+    palpite = get_by_id_for_usuario(db, p.id, usuario_id)
+    assert palpite is not None
+    jogo = palpite.jogo or jogo_service.get_by_id(db, palpite.jogo_id)
+    if jogo is not None:
+        pontuacao_service.sincronizar_pontuacao_palpite(db, palpite)
+        db.commit()
+        db.refresh(palpite)
+    return palpite
 
 
 def update_palpite(db: Session, usuario_id: int, palpite_id: int, data: PalpiteJogoUpdate) -> PalpiteJogo:
@@ -133,4 +149,11 @@ def update_palpite(db: Session, usuario_id: int, palpite_id: int, data: PalpiteJ
     assert_palpite_aberto(db, jogo_atual)
     db.commit()
     db.refresh(p)
-    return get_by_id_for_usuario(db, p.id, usuario_id)  # type: ignore[return-value]
+    palpite = get_by_id_for_usuario(db, p.id, usuario_id)
+    assert palpite is not None
+    jogo = palpite.jogo or jogo_service.get_by_id(db, palpite.jogo_id)
+    if jogo is not None:
+        pontuacao_service.sincronizar_pontuacao_palpite(db, palpite)
+        db.commit()
+        db.refresh(palpite)
+    return palpite

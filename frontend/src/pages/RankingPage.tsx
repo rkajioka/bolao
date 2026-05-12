@@ -154,7 +154,7 @@ export function RankingPage() {
 
   const destaqueSecoes = insights
     ? [
-        { titulo: 'Mais pontos no bloco', itens: insights.destaques_usuarios.pontos_bloco, cor: 'var(--accent)' },
+        { titulo: 'Mais pontos na rodada/fase', itens: insights.destaques_usuarios.pontos_bloco, cor: 'var(--accent)' },
         { titulo: 'Mais placares exatos', itens: insights.destaques_usuarios.placar_exato, cor: 'var(--highlight)' },
         { titulo: 'Mais resultados corretos', itens: insights.destaques_usuarios.resultado, cor: 'var(--accent)' },
         { titulo: 'Mais classificados corretos', itens: insights.destaques_usuarios.classificado, cor: 'var(--highlight)' },
@@ -420,7 +420,7 @@ export function RankingPage() {
           ) : insights.periodo_status === 'aguardando_primeiro_bloco' ? (
             <EmptyState
               icon={<TrendingUp size={28} style={{ color: 'var(--text-muted)' }} />}
-              title="Aguardando o primeiro bloco"
+              title="Aguardando a primeira rodada/fase"
               description="Os insights aparecerão quando a primeira rodada ou fase do torneio for totalmente encerrada."
             />
           ) : (
@@ -432,7 +432,7 @@ export function RankingPage() {
                   className="rounded-2xl px-4 py-3 text-sm"
                   style={{ background: 'rgba(255,193,7,0.08)', border: '1px solid rgba(255,193,7,0.25)' }}
                 >
-                  O bloco {insights.periodo_em_andamento_label} ainda está em andamento. Os números abaixo refletem o último bloco totalmente encerrado.
+                  A rodada/fase {insights.periodo_em_andamento_label} ainda está em andamento. Os números abaixo refletem a última rodada ou fase totalmente encerrada.
                 </motion.div>
               )}
 
@@ -497,13 +497,13 @@ export function RankingPage() {
                   </p>
                   {insights.minha_posicao_periodo != null && (
                     <span className="text-xs ml-auto font-semibold tabular-nums" style={{ color: 'var(--accent)' }}>
-                      #{insights.minha_posicao_periodo} no bloco
+                      #{insights.minha_posicao_periodo} na rodada/fase
                     </span>
                   )}
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    { value: insights.meus_pontos_periodo, label: 'pts no bloco', color: 'var(--accent)' },
+                    { value: insights.meus_pontos_periodo, label: 'pts na rodada/fase', color: 'var(--accent)' },
                     { value: insights.meu_preenchidos, label: 'palpites', color: 'var(--text)' },
                     { value: insights.meu_acertos_placar_exato, label: 'placar exato', color: 'var(--highlight)' },
                     { value: insights.meu_acertos_resultado, label: 'resultados', color: 'var(--text)' },
