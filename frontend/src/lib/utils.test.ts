@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { jogoBloqueado } from '@/lib/utils'
+import { jogoBloqueado, mensagemPodioRepetidoEspeciais } from '@/lib/utils'
 import type { Jogo, Pais } from '@/types'
 
 const paisA: Pais = {
@@ -41,6 +41,16 @@ function jogoBase(overrides: Partial<Jogo> = {}): Jogo {
     ...overrides,
   }
 }
+
+describe('mensagemPodioRepetidoEspeciais', () => {
+  it('rejeita país repetido entre campeão, vice e terceiro', () => {
+    expect(mensagemPodioRepetidoEspeciais('1', '1', '2')).toMatch(/distintos/i)
+  })
+
+  it('permite repetir país do pódio com artilheiro', () => {
+    expect(mensagemPodioRepetidoEspeciais('1', '2', '3')).toBeNull()
+  })
+})
 
 describe('jogoBloqueado', () => {
   it('bloqueia jogo finalizado', () => {

@@ -9,6 +9,7 @@ interface CountrySelectProps {
   onChange: (value: string) => void
   placeholder: string
   disabled?: boolean
+  excludedCountryIds?: number[]
 }
 
 export function CountrySelect({
@@ -17,6 +18,7 @@ export function CountrySelect({
   onChange,
   placeholder,
   disabled = false,
+  excludedCountryIds = [],
 }: CountrySelectProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -27,11 +29,21 @@ export function CountrySelect({
     () => [...countries].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
     [countries],
   )
+  const excludedIds = useMemo(
+    () => new Set(excludedCountryIds.filter((id) => id > 0)),
+    [excludedCountryIds],
+  )
+
+  const selectableCountries = useMemo(
+    () => sortedCountries.filter((c) => !excludedIds.has(c.id) || String(c.id) === value),
+    [sortedCountries, excludedIds, value],
+  )
+
   const filteredCountries = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return sortedCountries
-    return sortedCountries.filter((c) => c.nome.toLowerCase().includes(q))
-  }, [sortedCountries, query])
+    if (!q) return selectableCountries
+    return selectableCountries.filter((c) => c.nome.toLowerCase().includes(q))
+  }, [selectableCountries, query])
 
   useEffect(() => {
     if (!open) return

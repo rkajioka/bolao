@@ -64,6 +64,8 @@ def _resolve_owner_id(
     create_email: str | None,
     create_senha: str | None,
     create_nome: str | None,
+    *,
+    replace_owner: bool = False,
 ) -> int:
     if keep_email:
         email = keep_email.strip().lower()
@@ -74,11 +76,12 @@ def _resolve_owner_id(
             raise SystemExit(f"Usuário {email} não é owner (tipo={owner.tipo_usuario})")
         return owner.id
 
-    owner_id = db.scalar(
-        select(func.min(Usuario.id)).where(Usuario.tipo_usuario == "owner")
-    )
-    if owner_id is not None:
-        return int(owner_id)
+    if not replace_owner:
+        owner_id = db.scalar(
+            select(func.min(Usuario.id)).where(Usuario.tipo_usuario == "owner")
+        )
+        if owner_id is not None:
+            return int(owner_id)
 
     if not create_email or not create_senha or not create_nome:
         raise SystemExit(
@@ -134,6 +137,11 @@ def _delete_other_users(db: Session, owner_id: int) -> int:
         text("DELETE FROM usuarios WHERE id <> :owner_id"),
         {"owner_id": owner_id},
     )
+    return int(result.rowcount or 0)
+
+
+def _delete_all_users(db: Session) -> int:
+    result = db.execute(text("DELETE FROM usuarios"))
     return int(result.rowcount or 0)
 
 
@@ -200,6 +208,11 @@ def main() -> None:
     parser.add_argument("--create-owner-email", default=None)
     parser.add_argument("--create-owner-senha", default=None)
     parser.add_argument("--create-owner-nome", default=None)
+    parser.add_argument(
+        "--replace-owner",
+        action="store_true",
+        help="Remove todos os usuários e cria o owner informado em --create-owner-*.",
+    )
     args = parser.parse_args()
 
     if not args.confirm:
@@ -212,17 +225,30 @@ def main() -> None:
         jogos_antes = _count(db, Jogo)
         print(f"Antes: paises={paises_antes}, jogos={jogos_antes}")
 
-        owner_id = _resolve_owner_id(
-            db,
-            args.keep_email,
-            args.create_owner_email,
-            args.create_owner_senha,
-            args.create_owner_nome,
-        )
+        if args.replace_owner and args.keep_email:
+            raise SystemExit("Use apenas --replace-owner ou --keep-email, não os dois.")
 
         _truncate_operational_tables(db)
         removed_empresas = _delete_empresas(db)
-        removed_users = _delete_other_users(db, owner_id)
+        if args.replace_owner:
+            removed_users = _delete_all_users(db)
+            owner_id = _resolve_owner_id(
+                db,
+                None,
+                args.create_owner_email,
+                args.create_owner_senha,
+                args.create_owner_nome,
+                replace_owner=True,
+            )
+        else:
+            owner_id = _resolve_owner_id(
+                db,
+                args.keep_email,
+                args.create_owner_email,
+                args.create_owner_senha,
+                args.create_owner_nome,
+            )
+            removed_users = _delete_other_users(db, owner_id)
         _normalize_owner(db, owner_id)
         _ensure_configuracao_email(db)
         _ensure_plataforma_tema(db)

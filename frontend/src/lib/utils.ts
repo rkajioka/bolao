@@ -6,6 +6,23 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+const MENSAGEM_PODIO_REPETIDO_ESPECIAIS =
+  'Campeão, vice-campeão e 3º lugar devem ser seleções de países distintos'
+
+export function mensagemPodioRepetidoEspeciais(
+  campeaoId?: string | number | null,
+  viceCampeaoId?: string | number | null,
+  terceiroLugarId?: string | number | null,
+): string | null {
+  const ids = [campeaoId, viceCampeaoId, terceiroLugarId]
+    .map((id) => String(id ?? '').trim())
+    .filter(Boolean)
+  if (new Set(ids).size !== ids.length) {
+    return MENSAGEM_PODIO_REPETIDO_ESPECIAIS
+  }
+  return null
+}
+
 export function imgUrl(url: string | null | undefined): string {
   if (!url) return ''
   if (url.startsWith('http')) return url

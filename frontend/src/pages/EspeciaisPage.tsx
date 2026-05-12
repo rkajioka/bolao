@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { Star, Lock } from 'lucide-react'
 import { api } from '@/lib/api'
+import { mensagemPodioRepetidoEspeciais } from '@/lib/utils'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useToast } from '@/components/Toast'
 import { SectionHeader } from '@/components/SectionHeader'
@@ -56,6 +57,15 @@ export function EspeciaisPage() {
     }
     if (bloqueadoEdicao) {
       error('Os palpites especiais estão bloqueados.')
+      return
+    }
+    const podioRepetido = mensagemPodioRepetidoEspeciais(
+      form.campeao_id,
+      form.vice_campeao_id,
+      form.terceiro_lugar_id,
+    )
+    if (podioRepetido) {
+      error(podioRepetido)
       return
     }
     setSaving(true)
@@ -136,11 +146,41 @@ export function EspeciaisPage() {
           className="glass rounded-2xl p-5 space-y-5"
         >
           {[
-            { key: 'campeao_id', label: 'Campeão', selected: selectedPais, placeholder: 'Selecione o campeão' },
-            { key: 'vice_campeao_id', label: 'Vice-campeão', selected: selectedVice, placeholder: 'Selecione o vice-campeão' },
-            { key: 'terceiro_lugar_id', label: '3º lugar', selected: selectedTerceiro, placeholder: 'Selecione o 3º lugar' },
-            { key: 'artilheiro_pais_id', label: 'País do artilheiro', selected: selectedArtilheiroPais, placeholder: 'Selecione o país do artilheiro' },
-          ].map(({ key, label, placeholder }, idx) => (
+            {
+              key: 'campeao_id',
+              label: 'Campeão',
+              selected: selectedPais,
+              placeholder: 'Selecione o campeão',
+              excludedCountryIds: [form.vice_campeao_id, form.terceiro_lugar_id]
+                .filter(Boolean)
+                .map((id) => Number(id)),
+            },
+            {
+              key: 'vice_campeao_id',
+              label: 'Vice-campeão',
+              selected: selectedVice,
+              placeholder: 'Selecione o vice-campeão',
+              excludedCountryIds: [form.campeao_id, form.terceiro_lugar_id]
+                .filter(Boolean)
+                .map((id) => Number(id)),
+            },
+            {
+              key: 'terceiro_lugar_id',
+              label: '3º lugar',
+              selected: selectedTerceiro,
+              placeholder: 'Selecione o 3º lugar',
+              excludedCountryIds: [form.campeao_id, form.vice_campeao_id]
+                .filter(Boolean)
+                .map((id) => Number(id)),
+            },
+            {
+              key: 'artilheiro_pais_id',
+              label: 'País do artilheiro',
+              selected: selectedArtilheiroPais,
+              placeholder: 'Selecione o país do artilheiro',
+              excludedCountryIds: [],
+            },
+          ].map(({ key, label, placeholder, excludedCountryIds }, idx) => (
             <div key={key}>
               <label
                 className="block text-xs font-bold mb-2 uppercase tracking-wider flex items-center gap-1.5"
@@ -155,6 +195,7 @@ export function EspeciaisPage() {
                 onChange={(val) => setForm((f) => ({ ...f, [key]: val }))}
                 placeholder={placeholder}
                 disabled={bloqueadoEdicao}
+                excludedCountryIds={excludedCountryIds}
               />
             </div>
           ))}

@@ -11,6 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.palpite_especial import PalpiteEspecial
+from app.schemas.especiais_common import validar_podio_sem_pais_repetido
 from app.schemas.palpite_especial import (
     PalpiteEspecialAdminRead,
     PalpiteEspecialCreate,
@@ -48,6 +49,14 @@ def _validar_campeao(db: Session, campeao_id: int | None) -> None:
         return
     if pais_service.get_by_id(db, campeao_id) is None:
         raise ValueError("País campeão não encontrado")
+
+
+def _validar_podio_palpite(p: PalpiteEspecial) -> None:
+    validar_podio_sem_pais_repetido(
+        campeao_id=p.campeao_id,
+        vice_campeao_id=p.vice_campeao_id,
+        terceiro_lugar_id=p.terceiro_lugar_id,
+    )
 
 
 def _validar_pais_generico(db: Session, pais_id: int | None, label: str) -> None:
@@ -121,6 +130,7 @@ def create_palpite(db: Session, usuario_id: int, data: PalpiteEspecialCreate, em
         artilheiro_pais_id=data.artilheiro_pais_id,
         bloqueado=False,
     )
+    _validar_podio_palpite(p)
     db.add(p)
     try:
         db.commit()
@@ -154,6 +164,7 @@ def update_palpite_me(db: Session, usuario_id: int, data: PalpiteEspecialUpdate,
         _validar_pais_generico(db, raw["artilheiro_pais_id"], "país do artilheiro")
         p.artilheiro_pais_id = raw["artilheiro_pais_id"]
 
+    _validar_podio_palpite(p)
     db.commit()
     db.refresh(p)
     return p

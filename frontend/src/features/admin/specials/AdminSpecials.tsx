@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { SelectInput } from '@/components/SelectInput'
 import type { ConfiguracaoBolao, PontuacaoFase } from '@/types'
-import { formatDate } from '@/lib/utils'
+import { formatDate, mensagemPodioRepetidoEspeciais } from '@/lib/utils'
 import { adminService } from '@/services/admin.service'
 
 interface AdminSpecialsProps {
@@ -109,6 +109,29 @@ export function AdminSpecials({ success, error, variant, empresaId }: AdminSpeci
     [paises],
   )
 
+  const resultadoPaisOptions = useMemo(() => {
+    const filtrarPodio = (atual: string, outros: string[]) =>
+      paisOptions.filter(
+        (option) => !outros.includes(option.value) || option.value === atual,
+      )
+
+    return {
+      campeao: filtrarPodio(resultadoForm.campeao_id, [
+        resultadoForm.vice_campeao_id,
+        resultadoForm.terceiro_lugar_id,
+      ]),
+      vice: filtrarPodio(resultadoForm.vice_campeao_id, [
+        resultadoForm.campeao_id,
+        resultadoForm.terceiro_lugar_id,
+      ]),
+      terceiro: filtrarPodio(resultadoForm.terceiro_lugar_id, [
+        resultadoForm.campeao_id,
+        resultadoForm.vice_campeao_id,
+      ]),
+      artilheiro: paisOptions,
+    }
+  }, [paisOptions, resultadoForm])
+
   const marcadoresBrasilHabilitado = Boolean(form?.marcadores_brasil_habilitado)
   const bloqueioEspeciaisTravado = config?.data_bloqueio_palpites_especiais != null
   const resultadoEspecialFinalizado = Boolean(resultadoEspecial?.finalizado)
@@ -164,6 +187,15 @@ export function AdminSpecials({ success, error, variant, empresaId }: AdminSpeci
   const handleSaveResultadoEspecial = async () => {
     if (resultadoEspecialFinalizado) {
       error('O resultado de especiais está finalizado e não pode ser alterado.')
+      return
+    }
+    const podioRepetido = mensagemPodioRepetidoEspeciais(
+      resultadoForm.campeao_id,
+      resultadoForm.vice_campeao_id,
+      resultadoForm.terceiro_lugar_id,
+    )
+    if (podioRepetido) {
+      error(podioRepetido)
       return
     }
     setSavingResultado(true)
@@ -224,28 +256,28 @@ export function AdminSpecials({ success, error, variant, empresaId }: AdminSpeci
             <SelectInput
               value={resultadoForm.campeao_id}
               onChange={(value) => setResultadoForm((old) => ({ ...old, campeao_id: value }))}
-              options={paisOptions}
+              options={resultadoPaisOptions.campeao}
               placeholder="Campeão"
               disabled={resultadoEspecialFinalizado}
             />
             <SelectInput
               value={resultadoForm.vice_campeao_id}
               onChange={(value) => setResultadoForm((old) => ({ ...old, vice_campeao_id: value }))}
-              options={paisOptions}
+              options={resultadoPaisOptions.vice}
               placeholder="Vice-campeão"
               disabled={resultadoEspecialFinalizado}
             />
             <SelectInput
               value={resultadoForm.terceiro_lugar_id}
               onChange={(value) => setResultadoForm((old) => ({ ...old, terceiro_lugar_id: value }))}
-              options={paisOptions}
+              options={resultadoPaisOptions.terceiro}
               placeholder="3º lugar"
               disabled={resultadoEspecialFinalizado}
             />
             <SelectInput
               value={resultadoForm.artilheiro_pais_id}
               onChange={(value) => setResultadoForm((old) => ({ ...old, artilheiro_pais_id: value }))}
-              options={paisOptions}
+              options={resultadoPaisOptions.artilheiro}
               placeholder="País do artilheiro"
               disabled={resultadoEspecialFinalizado}
             />

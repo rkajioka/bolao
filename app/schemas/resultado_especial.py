@@ -1,6 +1,8 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+from app.schemas.especiais_common import validar_podio_sem_pais_repetido
 
 
 class ResultadoEspecialBase(BaseModel):
@@ -12,7 +14,14 @@ class ResultadoEspecialBase(BaseModel):
 
 
 class ResultadoEspecialWrite(ResultadoEspecialBase):
-    pass
+    @model_validator(mode="after")
+    def podio_sem_repeticao(self) -> "ResultadoEspecialWrite":
+        validar_podio_sem_pais_repetido(
+            campeao_id=self.campeao_id,
+            vice_campeao_id=self.vice_campeao_id,
+            terceiro_lugar_id=self.terceiro_lugar_id,
+        )
+        return self
 
 
 class ResultadoEspecialRead(ResultadoEspecialBase):

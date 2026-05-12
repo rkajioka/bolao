@@ -2,6 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from app.schemas.especiais_common import validar_podio_sem_pais_repetido
 from app.schemas.pais import PaisRead
 
 
@@ -22,6 +23,15 @@ class PalpiteEspecialBase(BaseModel):
 
 class PalpiteEspecialCreate(PalpiteEspecialBase):
     """Cria o único registro de palpites especiais do usuário (campos opcionais no MVP)."""
+
+    @model_validator(mode="after")
+    def podio_sem_repeticao(self) -> "PalpiteEspecialCreate":
+        validar_podio_sem_pais_repetido(
+            campeao_id=self.campeao_id,
+            vice_campeao_id=self.vice_campeao_id,
+            terceiro_lugar_id=self.terceiro_lugar_id,
+        )
+        return self
 
 
 class PalpiteEspecialUpdate(BaseModel):
