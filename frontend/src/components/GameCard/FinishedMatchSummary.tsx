@@ -1,4 +1,4 @@
-import { CheckCircle2, CircleOff, Trophy } from 'lucide-react'
+import { CheckCircle2, CircleOff } from 'lucide-react'
 import { CountryFlag } from '@/components/CountryFlag'
 import type { Jogo, MarcadorPalpite, PalpiteJogo } from '@/types'
 
@@ -27,46 +27,38 @@ function resultadoDoPlacar(casa: number, fora: number) {
   return 'empate'
 }
 
-function ScoreRow({
+function scoreCellStyle(tone: 'official' | 'exact' | 'result' | 'neutral') {
+  if (tone === 'official') {
+    return { background: 'var(--highlight-dim)', border: '1px solid var(--border)' }
+  }
+  if (tone === 'exact') {
+    return { background: 'var(--accent-dim)', border: '1px solid var(--border)' }
+  }
+  if (tone === 'result') {
+    return { background: 'var(--accent-dim)', border: '1px solid var(--border)' }
+  }
+  return { background: 'var(--segmented-bg)', border: '1px solid var(--border)' }
+}
+
+function ScoreCell({
   label,
   casa,
   fora,
-  jogo,
-  tone = 'neutral',
+  tone,
 }: {
   label: string
   casa: number | null
   fora: number | null
-  jogo: Jogo
-  tone?: 'neutral' | 'official' | 'exact' | 'result'
+  tone: 'official' | 'exact' | 'result' | 'neutral'
 }) {
-  const toneStyle =
-    tone === 'official'
-      ? { background: 'rgba(246,198,91,0.08)', border: '1px solid rgba(246,198,91,0.22)' }
-      : tone === 'exact'
-        ? { background: 'rgba(53,208,127,0.10)', border: '1px solid rgba(53,208,127,0.28)' }
-        : tone === 'result'
-          ? { background: 'rgba(53,208,127,0.06)', border: '1px solid rgba(53,208,127,0.18)' }
-          : { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }
-
   return (
-    <div className="rounded-xl p-3 space-y-2" style={toneStyle}>
-      <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+    <div className="rounded-lg px-2.5 py-2 text-center" style={scoreCellStyle(tone)}>
+      <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>
         {label}
       </p>
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0 flex-1">
-          <CountryFlag pais={jogo.pais_casa} size="sm" />
-          <span className="text-sm font-semibold truncate">{jogo.pais_casa.nome}</span>
-        </div>
-        <span className="text-xl font-black tabular-nums shrink-0" style={{ color: 'var(--text)' }}>
-          {placarTexto(casa, fora)}
-        </span>
-        <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
-          <span className="text-sm font-semibold truncate text-right">{jogo.pais_fora.nome}</span>
-          <CountryFlag pais={jogo.pais_fora} size="sm" />
-        </div>
-      </div>
+      <p className="text-lg font-black tabular-nums mt-0.5" style={{ color: 'var(--text)' }}>
+        {placarTexto(casa, fora)}
+      </p>
     </div>
   )
 }
@@ -106,44 +98,64 @@ export function FinishedMatchSummary({
 
   const breakdown = palpite
     ? [
-        { label: 'Placar exato', pts: palpite.pontuacao_placar },
-        { label: 'Resultado correto', pts: palpite.pontuacao_resultado },
+        { label: 'Exato', pts: palpite.pontuacao_placar },
+        { label: 'Resultado', pts: palpite.pontuacao_resultado },
         ...(jogo.tipo_fase === 'mata_mata'
-          ? [{ label: 'Classificado correto', pts: palpite.pontuacao_classificado }]
+          ? [{ label: 'Classif.', pts: palpite.pontuacao_classificado }]
           : []),
         ...(marcadoresBrasilHabilitado
-          ? [{ label: 'Marcadores do Brasil', pts: palpite.pontuacao_marcadores_brasil }]
+          ? [{ label: 'Marcadores', pts: palpite.pontuacao_marcadores_brasil }]
           : []),
       ]
     : []
 
+  const breakdownComPontos = breakdown.filter(({ pts }) => pts > 0)
   const marcadoresValidos = marcadoresSalvos.filter((m) => m.nome_jogador.trim() && m.quantidade_gols > 0)
 
   return (
-    <div className="space-y-3">
-      <ScoreRow
-        label="Resultado oficial"
-        casa={oficialCasa}
-        fora={oficialFora}
-        jogo={jogo}
-        tone="official"
-      />
+    <div className="space-y-2">
+      <div
+        className="rounded-xl p-2.5 space-y-2"
+        style={{ background: 'var(--segmented-bg)', border: '1px solid var(--border)' }}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+            <CountryFlag pais={jogo.pais_casa} size="sm" />
+            <span className="text-xs font-semibold truncate" style={{ color: 'var(--text)' }}>
+              {jogo.pais_casa.nome}
+            </span>
+          </div>
+          <span className="text-[10px] font-semibold uppercase shrink-0" style={{ color: 'var(--text-muted)' }}>
+            vs
+          </span>
+          <div className="flex items-center gap-1.5 min-w-0 flex-1 justify-end">
+            <span className="text-xs font-semibold truncate text-right" style={{ color: 'var(--text)' }}>
+              {jogo.pais_fora.nome}
+            </span>
+            <CountryFlag pais={jogo.pais_fora} size="sm" />
+          </div>
+        </div>
 
-      {temPalpite ? (
-        <ScoreRow
-          label="Seu palpite"
-          casa={palpiteCasa}
-          fora={palpiteFora}
-          jogo={jogo}
-          tone={placarExato ? 'exact' : resultadoCorreto ? 'result' : 'neutral'}
-        />
-      ) : (
+        <div className={`grid gap-2 ${temPalpite ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          <ScoreCell label="Oficial" casa={oficialCasa} fora={oficialFora} tone="official" />
+          {temPalpite ? (
+            <ScoreCell
+              label="Seu palpite"
+              casa={palpiteCasa}
+              fora={palpiteFora}
+              tone={placarExato ? 'exact' : resultadoCorreto ? 'result' : 'neutral'}
+            />
+          ) : null}
+        </div>
+      </div>
+
+      {!temPalpite && (
         <div
-          className="rounded-xl px-3 py-3 flex items-center gap-2"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+          className="rounded-xl px-3 py-2 flex items-center gap-2"
+          style={{ background: 'var(--segmented-bg)', border: '1px solid var(--border)' }}
         >
           <CircleOff size={14} style={{ color: 'var(--text-muted)' }} />
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
             Você não enviou palpite para este jogo.
           </p>
         </div>
@@ -153,16 +165,16 @@ export function FinishedMatchSummary({
         <div className="flex flex-wrap gap-1.5">
           {jogo.teve_prorrogacao && (
             <span
-              className="px-2 py-0.5 rounded-full text-[11px] font-medium"
-              style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)' }}
+              className="px-2 py-0.5 rounded-full text-[10px] font-medium"
+              style={{ background: 'var(--segmented-bg)', color: 'var(--text-muted)' }}
             >
               Prorrogação
             </span>
           )}
           {jogo.foi_para_penaltis && jogo.penaltis_casa !== null && jogo.penaltis_fora !== null && (
             <span
-              className="px-2 py-0.5 rounded-full text-[11px] font-medium"
-              style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)' }}
+              className="px-2 py-0.5 rounded-full text-[10px] font-medium"
+              style={{ background: 'var(--segmented-bg)', color: 'var(--text-muted)' }}
             >
               Pênaltis {jogo.penaltis_casa}×{jogo.penaltis_fora}
             </span>
@@ -172,109 +184,80 @@ export function FinishedMatchSummary({
 
       {jogo.tipo_fase === 'mata_mata' && (classificadoOficial || classificadoPalpite) && (
         <div
-          className="rounded-xl p-3 space-y-2"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+          className="rounded-xl px-3 py-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs"
+          style={{ background: 'var(--segmented-bg)', border: '1px solid var(--border)' }}
         >
-          <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-            Classificado
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <div className="rounded-lg px-3 py-2" style={{ background: 'rgba(255,255,255,0.03)' }}>
-              <p className="text-[11px] mb-1" style={{ color: 'var(--text-muted)' }}>Oficial</p>
-              {classificadoOficial ? (
-                <div className="flex items-center gap-2">
-                  <CountryFlag pais={classificadoOficial} size="sm" />
-                  <span className="text-sm font-semibold truncate">{classificadoOficial.nome}</span>
-                </div>
-              ) : (
-                <span className="text-sm" style={{ color: 'var(--text-muted)' }}>–</span>
-              )}
-            </div>
-            <div
-              className="rounded-lg px-3 py-2"
-              style={{
-                background: classificadoCorreto ? 'rgba(53,208,127,0.08)' : 'rgba(255,255,255,0.03)',
-                border: classificadoCorreto ? '1px solid rgba(53,208,127,0.22)' : '1px solid transparent',
-              }}
-            >
-              <p className="text-[11px] mb-1" style={{ color: 'var(--text-muted)' }}>Seu palpite</p>
-              {classificadoPalpite ? (
-                <div className="flex items-center gap-2">
-                  <CountryFlag pais={classificadoPalpite} size="sm" />
-                  <span className="text-sm font-semibold truncate">{classificadoPalpite.nome}</span>
-                  {classificadoCorreto && <CheckCircle2 size={14} style={{ color: 'var(--accent)' }} />}
-                </div>
-              ) : (
-                <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Não informado</span>
-              )}
-            </div>
+          <span style={{ color: 'var(--text-muted)' }}>Classificado</span>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span style={{ color: 'var(--text-muted)' }}>Oficial</span>
+            {classificadoOficial ? (
+              <>
+                <CountryFlag pais={classificadoOficial} size="sm" />
+                <span className="font-semibold truncate" style={{ color: 'var(--text)' }}>
+                  {classificadoOficial.nome}
+                </span>
+              </>
+            ) : (
+              <span style={{ color: 'var(--text-muted)' }}>–</span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span style={{ color: 'var(--text-muted)' }}>Palpite</span>
+            {classificadoPalpite ? (
+              <>
+                <CountryFlag pais={classificadoPalpite} size="sm" />
+                <span className="font-semibold truncate" style={{ color: 'var(--text)' }}>
+                  {classificadoPalpite.nome}
+                </span>
+                {classificadoCorreto ? <CheckCircle2 size={13} style={{ color: 'var(--accent)' }} /> : null}
+              </>
+            ) : (
+              <span style={{ color: 'var(--text-muted)' }}>Não informado</span>
+            )}
           </div>
         </div>
       )}
 
       {marcadoresBrasilHabilitado && marcadoresValidos.length > 0 && (
-        <div
-          className="rounded-xl p-3 space-y-2"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
-        >
-          <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-            Seus marcadores do Brasil
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {marcadoresValidos.map((marcador) => (
-              <span
-                key={`${marcador.nome_jogador}-${marcador.quantidade_gols}`}
-                className="text-xs px-2.5 py-1 rounded-full"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
-              >
-                {marcador.nome_jogador} · {marcador.quantidade_gols} gol{marcador.quantidade_gols === 1 ? '' : 's'}
-              </span>
-            ))}
-          </div>
+        <div className="flex flex-wrap gap-1.5">
+          {marcadoresValidos.map((marcador) => (
+            <span
+              key={`${marcador.nome_jogador}-${marcador.quantidade_gols}`}
+              className="text-[10px] px-2 py-0.5 rounded-full"
+              style={{ background: 'var(--segmented-bg)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}
+            >
+              {marcador.nome_jogador} · {marcador.quantidade_gols} gol{marcador.quantidade_gols === 1 ? '' : 's'}
+            </span>
+          ))}
         </div>
       )}
 
       {palpite && (
         <div
-          className="rounded-xl p-3 space-y-3"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+          className="rounded-xl px-3 py-2 flex flex-wrap items-center justify-between gap-2"
+          style={{ background: 'var(--segmented-bg)', border: '1px solid var(--border)' }}
         >
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <Trophy size={14} style={{ color: 'var(--highlight)' }} />
-              <p className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--highlight)' }}>
-                Sua pontuação
-              </p>
-            </div>
-            <p className="text-2xl font-black tabular-nums" style={{ color: 'var(--accent)' }}>
-              {palpite.pontuacao_total}
-              <span className="text-sm font-semibold ml-1" style={{ color: 'var(--text-muted)' }}>pts</span>
-            </p>
+          <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+            {breakdownComPontos.length > 0 ? (
+              breakdownComPontos.map(({ label, pts }) => (
+                <span
+                  key={label}
+                  className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                  style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}
+                >
+                  {label} +{pts}
+                </span>
+              ))
+            ) : (
+              <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                Sem pontos neste jogo
+              </span>
+            )}
           </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            {breakdown.map(({ label, pts }) => (
-              <div
-                key={label}
-                className="rounded-lg px-3 py-2"
-                style={{
-                  background: pts > 0 ? 'rgba(53,208,127,0.08)' : 'rgba(255,255,255,0.03)',
-                  border: `1px solid ${pts > 0 ? 'rgba(53,208,127,0.22)' : 'rgba(255,255,255,0.06)'}`,
-                }}
-              >
-                <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{label}</p>
-                <p className="text-lg font-black tabular-nums mt-0.5" style={{ color: pts > 0 ? 'var(--accent)' : 'var(--text-muted)' }}>
-                  {pts}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          {palpite.pontuacao_total === 0 && (
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              Nenhum critério de pontuação foi atingido neste jogo.
-            </p>
-          )}
+          <p className="text-lg font-black tabular-nums shrink-0" style={{ color: palpite.pontuacao_total > 0 ? 'var(--accent)' : 'var(--text-muted)' }}>
+            {palpite.pontuacao_total}
+            <span className="text-xs font-semibold ml-1">pts</span>
+          </p>
         </div>
       )}
     </div>

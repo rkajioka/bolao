@@ -119,7 +119,7 @@ export function GameCard({
     >
       <MatchHeader jogo={jogo} todosJogos={todosJogos} status={status} />
 
-      <div className="px-4 py-4">
+      <div className={`px-4 ${jogo.finalizado ? 'py-3' : 'py-4'}`}>
         {jogo.finalizado ? (
           <FinishedMatchSummary
             jogo={jogo}
