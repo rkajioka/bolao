@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { jogoBloqueado, mensagemPodioRepetidoEspeciais } from '@/lib/utils'
+import { deadlineText, jogoBloqueado, mensagemPodioRepetidoEspeciais, nomeSelecaoParaCard } from '@/lib/utils'
 import type { Jogo, Pais } from '@/types'
 
 const paisA: Pais = {
@@ -49,6 +49,46 @@ describe('mensagemPodioRepetidoEspeciais', () => {
 
   it('permite repetir país do pódio com artilheiro', () => {
     expect(mensagemPodioRepetidoEspeciais('1', '2', '3')).toBeNull()
+  })
+})
+
+describe('nomeSelecaoParaCard', () => {
+  it('abrevia nomes conhecidos', () => {
+    expect(nomeSelecaoParaCard('República Tcheca', 'CZE')).toBe('Rep. Tcheca')
+  })
+
+  it('usa sigla para nomes muito longos', () => {
+    expect(nomeSelecaoParaCard('Seleção com nome extenso demais', 'SEL')).toBe('SEL')
+  })
+})
+
+describe('deadlineText', () => {
+  it('retorna urgência normal acima de 24 horas', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2030-06-13T16:00:00Z'))
+    const jogo = jogoBase()
+    const result = deadlineText(jogo, [jogo])
+    expect(result).toEqual({ text: 'Fecha em 2 dias', urgency: 'normal' })
+    vi.useRealTimers()
+  })
+
+  it('retorna urgência soon abaixo de 24 horas', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2030-06-15T03:00:00Z'))
+    const jogo = jogoBase()
+    const result = deadlineText(jogo, [jogo])
+    expect(result?.urgency).toBe('soon')
+    expect(result?.text).toMatch(/^Fecha em /)
+    vi.useRealTimers()
+  })
+
+  it('retorna urgência urgent abaixo de 1 hora', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2030-06-15T16:30:00Z'))
+    const jogo = jogoBase()
+    const result = deadlineText(jogo, [jogo])
+    expect(result).toEqual({ text: 'Fecha em 30min', urgency: 'urgent' })
+    vi.useRealTimers()
   })
 })
 

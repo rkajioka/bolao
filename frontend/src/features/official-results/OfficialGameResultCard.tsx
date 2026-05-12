@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { Lock, LockOpen, Pencil } from 'lucide-react'
 import { CountryFlag } from '@/components/CountryFlag'
 import { SelectInput } from '@/components/SelectInput'
+import { BrazilOfficialScorers } from '@/features/official-results/BrazilOfficialScorers'
 import { FASES_MATA_MATA_OPTIONS } from '@/lib/faseMataLabels'
-import { faseLabel, formatDate, normalizeFaseSlug } from '@/lib/utils'
+import { faseLabel, formatDate, isBrasil, normalizeFaseSlug } from '@/lib/utils'
 import {
   labelPreenchimentoResultadoDisponivel,
   podeFinalizarResultadoOficial,
@@ -80,6 +81,7 @@ export function OfficialGameResultCard({
 
   const isMataMata = jogo.tipo_fase === 'mata_mata'
   const empatado = placarCasa === placarFora
+  const jogoBrasil = isBrasil(jogo)
   const podeEditarMetadados = allowEditMetadata && !readOnly && !jogo.finalizado && paises.length > 0
 
   const paisesDisponiveis = useMemo(() => {
@@ -573,6 +575,16 @@ export function OfficialGameResultCard({
             ))}
           </div>
         </div>
+      )}
+
+      {jogoBrasil && (
+        <BrazilOfficialScorers
+          jogo={jogo}
+          placarCasa={placarCasa}
+          placarFora={placarFora}
+          bloqueado={placarSomenteLeitura}
+          onError={onError}
+        />
       )}
 
       {!readOnly && !jogo.finalizado && (

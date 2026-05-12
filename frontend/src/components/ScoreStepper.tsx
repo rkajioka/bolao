@@ -24,64 +24,76 @@ function parseScore(text: string): number | null {
   return clampScore(Number(text))
 }
 
+function displayValue(value: number | null): string {
+  if (value === null) return ''
+  return String(value)
+}
+
+function isUnset(value: number | null): boolean {
+  return value === null
+}
+
 export function ScoreStepper({ value, onChange, disabled, label, readOnly = false }: ScoreStepperProps) {
-  const [draft, setDraft] = useState(() => (value === null ? '' : String(value)))
+  const [draft, setDraft] = useState(() => displayValue(value))
 
   useEffect(() => {
-    setDraft(value === null ? '' : String(value))
+    setDraft(displayValue(value))
   }, [value])
 
   const decrement = () => {
-    if (!disabled && value !== null && value > 0) onChange(value - 1)
+    if (!disabled && value !== null) onChange(clampScore(value - 1))
   }
 
   const increment = () => {
-    if (!disabled) onChange(value === null ? 0 : clampScore(value + 1))
+    if (!disabled) onChange(clampScore(value === null ? 0 : value + 1))
   }
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const nextText = digitsOnly(event.target.value)
+    if (nextText === '') {
+      setDraft('')
+      return
+    }
     setDraft(nextText)
     onChange(parseScore(nextText))
   }
 
   const handleBlur = () => {
-    setDraft(value === null ? '' : String(value))
+    setDraft(displayValue(value))
   }
 
   if (readOnly) {
     return (
       <div
-        className="box-border w-12 h-10 flex items-center justify-center rounded-xl text-center text-xl font-bold tabular-nums leading-none p-0"
+        className="box-border w-10 h-9 flex items-center justify-center rounded-lg text-center text-lg font-bold tabular-nums leading-none p-0 surface-input"
         aria-label={label}
-        style={{
-          background: value !== null ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)',
-          border: '1px solid rgba(255,255,255,0.10)',
-          color: value !== null ? 'var(--text)' : 'var(--text-muted)',
-        }}
+        style={{ color: isUnset(value) ? 'var(--text-muted)' : 'var(--text)' }}
       >
-        {value !== null ? value : '–'}
+        {isUnset(value) ? '–' : displayValue(value)}
       </div>
     )
   }
 
+  const unset = isUnset(value)
+
   return (
-    <div className="flex items-center gap-0" aria-label={label}>
+    <div
+      className="flex items-center overflow-hidden rounded-lg surface-input"
+      aria-label={label}
+    >
       <button
         type="button"
         tabIndex={-1}
         onClick={decrement}
-        disabled={disabled || value === null || value === 0}
-        className="w-10 h-10 rounded-l-xl flex items-center justify-center transition-all duration-150 disabled:opacity-30"
+        disabled={disabled || unset || value === 0}
+        className="w-8 h-9 flex shrink-0 items-center justify-center border-0 bg-transparent transition-colors duration-150 disabled:opacity-30"
         style={{
-          background: 'rgba(255,255,255,0.06)',
-          border: '1px solid rgba(255,255,255,0.10)',
-          borderRight: 'none',
           color: 'var(--text-muted)',
+          borderRight: '1px solid var(--border)',
         }}
         aria-label="Diminuir"
       >
-        <Minus size={14} />
+        <Minus size={12} />
       </button>
 
       <input
@@ -95,19 +107,10 @@ export function ScoreStepper({ value, onChange, disabled, label, readOnly = fals
         onBlur={handleBlur}
         disabled={disabled}
         aria-label={label}
-        placeholder="–"
         data-score-input=""
-        className="box-border w-12 h-10 text-center text-xl font-bold tabular-nums leading-none p-0 outline-none transition-colors duration-150 disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-[rgba(53,208,127,0.45)]"
-        style={{
-          background: value !== null
-            ? 'rgba(53,208,127,0.08)'
-            : 'rgba(255,255,255,0.03)',
-          borderTop: '1px solid rgba(255,255,255,0.10)',
-          borderBottom: '1px solid rgba(255,255,255,0.10)',
-          borderLeft: 'none',
-          borderRight: 'none',
-          color: value !== null ? 'var(--text)' : 'var(--text-muted)',
-        }}
+        placeholder={unset ? '–' : undefined}
+        className="box-border h-9 w-10 shrink-0 border-0 bg-transparent p-0 text-center text-lg font-bold tabular-nums leading-none outline-none transition-colors duration-150 placeholder:font-bold placeholder:text-[var(--text-muted)] disabled:opacity-40 focus-visible:ring-2 focus-visible:ring-[rgba(53,208,127,0.45)]"
+        style={{ color: unset ? 'var(--text-muted)' : 'var(--text)' }}
       />
 
       <button
@@ -115,16 +118,14 @@ export function ScoreStepper({ value, onChange, disabled, label, readOnly = fals
         tabIndex={-1}
         onClick={increment}
         disabled={disabled}
-        className="w-10 h-10 rounded-r-xl flex items-center justify-center transition-all duration-150 disabled:opacity-30"
+        className="w-8 h-9 flex shrink-0 items-center justify-center border-0 bg-transparent transition-colors duration-150 disabled:opacity-30"
         style={{
-          background: 'rgba(255,255,255,0.06)',
-          border: '1px solid rgba(255,255,255,0.10)',
-          borderLeft: 'none',
           color: 'var(--text-muted)',
+          borderLeft: '1px solid var(--border)',
         }}
         aria-label="Aumentar"
       >
-        <Plus size={14} />
+        <Plus size={12} />
       </button>
     </div>
   )

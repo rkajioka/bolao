@@ -42,6 +42,7 @@ interface BrazilScorersProps {
   bloqueado: boolean
   saving: boolean
   onSave: (marcadores: MarcadorItem[]) => Promise<void>
+  variant?: 'palpite' | 'resultado'
 }
 
 export function BrazilScorers({
@@ -51,7 +52,10 @@ export function BrazilScorers({
   bloqueado,
   saving,
   onSave,
+  variant = 'palpite',
 }: BrazilScorersProps) {
+  const titulo = variant === 'resultado' ? 'Marcadores do Brasil (resultado)' : 'Marcadores do Brasil (bônus)'
+  const referenciaGols = variant === 'resultado' ? 'resultado' : 'palpite'
   const [open, setOpen] = useState(false)
   const [local, setLocal] = useState<MarcadorItem[]>(() => sincronizarLinhasMarcadores(marcadores, golsBrasil))
 
@@ -83,7 +87,7 @@ export function BrazilScorers({
         className="flex items-center gap-2 text-sm font-medium w-full"
         style={{ color: 'var(--highlight)' }}
       >
-        <span>Marcadores do Brasil (bônus)</span>
+        <span>{titulo}</span>
         <ChevronDown
           size={16}
           className="ml-auto transition-transform duration-200"
@@ -103,13 +107,13 @@ export function BrazilScorers({
             <div className="pt-3 space-y-2">
               {golsBrasil <= 0 && (
                 <p className="text-xs px-0.5" style={{ color: 'var(--text-muted)' }}>
-                  Com 0 gols do Brasil no palpite, não há marcadores para informar.
+                  Com 0 gols do Brasil no {referenciaGols}, não há marcadores para informar.
                 </p>
               )}
               {golsBrasil > 0 && (
                 <p className="text-xs px-0.5" style={{ color: 'var(--text-muted)' }}>
-                  Escolha exatamente {golsBrasil} jogador{golsBrasil === 1 ? '' : 'es'}, um por gol do Brasil no
-                  palpite. Para repetir um jogador, use linhas separadas.
+                  Escolha exatamente {golsBrasil} jogador{golsBrasil === 1 ? '' : 'es'}, um por gol do Brasil no{' '}
+                  {referenciaGols}. Para repetir um jogador, use linhas separadas.
                 </p>
               )}
               {golsBrasil > 0 && candidatos.length === 0 && (

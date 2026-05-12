@@ -9,6 +9,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { SectionHeader } from '@/components/SectionHeader'
 import { GroupStandingsTable } from '@/components/GroupStandingsTable'
 import { SegmentedControl } from '@/components/SegmentedControl'
+import { JogosFilters, type JogosStatusFiltro, type JogosTab } from '@/components/JogosFilters'
 import { useToast } from '@/components/Toast'
 import type {
   ConfiguracaoBolao,
@@ -27,22 +28,12 @@ import {
   palpiteSegmentOptionsFromJogos,
 } from '@/lib/utils'
 
-type Tab = 'cronologico' | 'grupos'
-type StatusFiltro = 'abertos' | 'fechados'
-
-const TAB_SEGMENTS = [
-  { key: 'cronologico' as Tab, label: 'Cronológico' },
-  { key: 'grupos' as Tab, label: 'Por grupo' },
-]
-
-const STATUS_SEGMENTS = [
-  { key: 'abertos' as StatusFiltro, label: 'Em aberto' },
-  { key: 'fechados' as StatusFiltro, label: 'Fechados' },
-]
+type OwnerStatusFiltro = 'abertos' | 'fechados'
 
 export function JogosPage() {
-  const [tab, setTab] = useState<Tab>('cronologico')
-  const [filtroStatus, setFiltroStatus] = useState<StatusFiltro>('abertos')
+  const [tab, setTab] = useState<JogosTab>('cronologico')
+  const [filtroStatus, setFiltroStatus] = useState<JogosStatusFiltro>('abertos')
+  const [ownerFiltroStatus, setOwnerFiltroStatus] = useState<OwnerStatusFiltro>('abertos')
   const [grupoSelecionado, setGrupoSelecionado] = useState<string>('A')
   const [segmentoCrono, setSegmentoCrono] = useState<string>('')
   const [segmentoGrupo, setSegmentoGrupo] = useState<string>('')
@@ -131,7 +122,6 @@ export function JogosPage() {
       }
       await queryClient.invalidateQueries({ queryKey: ['palpites'] })
       await queryClient.invalidateQueries({ queryKey: ['marcadores-brasil', 'me', jogoId] })
-      success('Palpite salvo!')
     } catch (err) {
       error(err instanceof Error ? err.message : 'Erro ao salvar palpite')
       throw err
@@ -179,29 +169,26 @@ export function JogosPage() {
   const isJogoFinalizado = (jogo: Jogo) => jogo.finalizado
   const isJogoFechado = (jogo: Jogo) => !isJogoAberto(jogo) && !isJogoFinalizado(jogo)
 
-  /** Filtros recalculados a cada render (jogoBloqueado usa Date.now); ordem vem sempre de jogosOrdenadosAsc. */
-  const jogosCronoAbertos = jogosOrdenadosAsc.filter((jogo) => isJogoAberto(jogo))
-
-  const jogosCronoFechados = [
-    ...jogosOrdenadosAsc.filter((jogo) => isJogoFechado(jogo) || isJogoFinalizado(jogo)),
-  ].reverse()
-
   const jogosCronoPendentesOficial = jogosOrdenadosAsc.filter((jogo) => !jogo.finalizado)
   const jogosCronoFinalizadosOficial = [...jogosOrdenadosAsc.filter((jogo) => jogo.finalizado)].reverse()
 
-  const jogosCronoFiltrados = filtroStatus === 'abertos' ? jogosCronoAbertos : jogosCronoFechados
+  const filtrarPorStatus = (jogos: Jogo[]) => {
+    if (filtroStatus === 'abertos') {
+      return jogos.filter((jogo) => isJogoAberto(jogo))
+    }
+    if (filtroStatus === 'fechados') {
+      return [...jogos.filter((jogo) => isJogoFechado(jogo) || isJogoFinalizado(jogo))].reverse()
+    }
+    return jogos.filter((jogo) => palpiteMap.has(jogo.id))
+  }
+
+  const jogosCronoFiltrados = filtrarPorStatus(jogosOrdenadosAsc)
 
   const jogosDoGrupoSelecionado = jogosOrdenadosAsc.filter(
     (jogo) => jogo.tipo_fase === 'grupos' && (jogo.grupo || '').toUpperCase() === grupoSelecionado,
   )
 
-  const jogosGrupoAbertos = jogosDoGrupoSelecionado.filter((jogo) => isJogoAberto(jogo))
-
-  const jogosGrupoFechados = [
-    ...jogosDoGrupoSelecionado.filter((jogo) => isJogoFechado(jogo) || isJogoFinalizado(jogo)),
-  ].reverse()
-
-  const jogosDoGrupoFiltrados = filtroStatus === 'abertos' ? jogosGrupoAbertos : jogosGrupoFechados
+  const jogosDoGrupoFiltrados = filtrarPorStatus(jogosDoGrupoSelecionado)
 
   const segmentosCrono = useMemo(
     () => palpiteSegmentOptionsFromJogos(jogosCronoFiltrados),
@@ -257,11 +244,11 @@ export function JogosPage() {
 
         <SegmentedControl
           segments={[
-            { key: 'abertos' as StatusFiltro, label: 'Pendentes' },
-            { key: 'fechados' as StatusFiltro, label: 'Finalizados' },
+            { key: 'abertos' as OwnerStatusFiltro, label: 'Pendentes' },
+            { key: 'fechados' as OwnerStatusFiltro, label: 'Finalizados' },
           ]}
-          value={filtroStatus}
-          onChange={setFiltroStatus}
+          value={ownerFiltroStatus}
+          onChange={setOwnerFiltroStatus}
           controlId="owner-resultados"
         />
 
@@ -279,16 +266,16 @@ export function JogosPage() {
           />
         ) : (
           <OfficialResultsPanel
-            jogos={filtroStatus === 'abertos' ? jogosCronoPendentesOficial : jogosCronoFinalizadosOficial}
-            readOnly={filtroStatus === 'fechados'}
+            jogos={ownerFiltroStatus === 'abertos' ? jogosCronoPendentesOficial : jogosCronoFinalizadosOficial}
+            readOnly={ownerFiltroStatus === 'fechados'}
             showFlags
-            showDateFilter={filtroStatus === 'abertos'}
-            showFaseFilter={filtroStatus === 'abertos'}
-            showGrupoFilter={filtroStatus === 'abertos'}
-            groupByGrupo={filtroStatus === 'abertos'}
-            allowEditMetadata={filtroStatus === 'abertos'}
+            showDateFilter={ownerFiltroStatus === 'abertos'}
+            showFaseFilter={ownerFiltroStatus === 'abertos'}
+            showGrupoFilter={ownerFiltroStatus === 'abertos'}
+            groupByGrupo={ownerFiltroStatus === 'abertos'}
+            allowEditMetadata={ownerFiltroStatus === 'abertos'}
             emptyMessage={
-              filtroStatus === 'abertos'
+              ownerFiltroStatus === 'abertos'
                 ? 'Nenhum jogo pendente de finalização.'
                 : 'Nenhum jogo finalizado ainda.'
             }
@@ -301,16 +288,32 @@ export function JogosPage() {
     )
   }
 
+  const emptyCopy =
+    filtroStatus === 'abertos'
+      ? {
+          title: 'Nenhum jogo em aberto',
+          description: 'Você não tem jogos abertos para preencher no momento.',
+        }
+      : filtroStatus === 'fechados'
+        ? {
+            title: 'Nenhum jogo fechado',
+            description: 'Os jogos fechados ou finalizados aparecerão aqui.',
+          }
+        : {
+            title: 'Nenhum palpite salvo',
+            description: 'Salve placares para vê-los nesta lista.',
+          }
+
+  const segmentosAtivos = tab === 'cronologico' ? segmentosCrono : segmentosGrupo
+  const segmentoAtivo = tab === 'cronologico' ? segmentoCronoAtivo : segmentoGrupoAtivo
+  const onSegmentoChange = tab === 'cronologico' ? setSegmentoCrono : setSegmentoGrupo
+  const jogosVisiveis = tab === 'cronologico' ? jogosCronoNaFase : jogosGrupoNaFase
+  const listaFiltradaVazia =
+    tab === 'cronologico' ? jogosCronoFiltrados.length === 0 : jogosDoGrupoFiltrados.length === 0
+
   return (
     <div className="space-y-4">
       <SectionHeader title="Palpites" subtitle="Faça seus palpites antes do fechamento" />
-
-      <SegmentedControl
-        segments={TAB_SEGMENTS}
-        value={tab}
-        onChange={setTab}
-        controlId="jogos-tab"
-      />
 
       {loadingJogos ? (
         <div className="space-y-3">
@@ -324,133 +327,62 @@ export function JogosPage() {
         />
       ) : (
         <div className="space-y-3">
-          {tab === 'cronologico' ? (
-            <div className="space-y-3">
-              <SegmentedControl
-                segments={STATUS_SEGMENTS}
-                value={filtroStatus}
-                onChange={setFiltroStatus}
-                controlId="crono-status"
+          <JogosFilters
+            tab={tab}
+            onTabChange={setTab}
+            filtroStatus={filtroStatus}
+            onFiltroStatusChange={setFiltroStatus}
+            segmentos={segmentosAtivos}
+            segmentoAtivo={segmentoAtivo}
+            onSegmentoChange={onSegmentoChange}
+            gruposDisponiveis={gruposDisponiveis}
+            grupoSelecionado={grupoSelecionado}
+            onGrupoChange={setGrupoSelecionado}
+          />
+
+          {tab === 'grupos' && (
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider mb-3 px-1" style={{ color: 'var(--accent)' }}>
+                Classificação do Grupo {grupoSelecionado}
+              </h3>
+              <p className="text-xs mb-3 px-1" style={{ color: 'var(--text-muted)' }}>
+                Classificação calculada com base nos resultados oficiais cadastrados.
+              </p>
+              <GroupStandingsTable
+                grupoSelecionado={grupoSelecionado}
+                tabela={tabelaGrupo}
+                isLoading={loadingTabelaGrupo}
               />
-
-              {segmentosCrono.length > 1 && (
-                <SegmentedControl
-                  segments={segmentosCrono}
-                  value={segmentoCronoAtivo}
-                  onChange={setSegmentoCrono}
-                  controlId="crono-fase"
-                  scrollable={segmentosCrono.length > 3}
-                />
-              )}
-
-              {jogosCronoFiltrados.length === 0 ? (
-                <EmptyState
-                  icon={<CalendarDays size={26} style={{ color: 'var(--text-muted)' }} />}
-                  title={filtroStatus === 'abertos' ? 'Nenhum jogo em aberto' : 'Nenhum jogo fechado'}
-                  description={
-                    filtroStatus === 'abertos'
-                      ? 'Você não tem jogos abertos para preencher no momento.'
-                      : 'Os jogos fechados/finalizados aparecerão aqui.'
-                  }
-                />
-              ) : (
-                jogosCronoNaFase.map((jogo) => (
-                  <GameCard
-                    key={jogo.id}
-                    jogo={jogo}
-                    palpite={palpiteMap.get(jogo.id) ?? null}
-                    todosJogos={jogosCrono}
-                    onSave={handleSave}
-                    onSaveMarcadores={marcadoresBrasilHabilitado ? handleSaveMarcadores : undefined}
-                    candidatos={candidatos}
-                    marcadoresBrasilHabilitado={marcadoresBrasilHabilitado}
-                  />
-                ))
-              )}
             </div>
+          )}
+
+          {tab === 'grupos' && (
+            <h3 className="text-xs font-bold uppercase tracking-wider px-1" style={{ color: 'var(--accent)' }}>
+              Palpites do Grupo {grupoSelecionado}
+            </h3>
+          )}
+
+          {listaFiltradaVazia ? (
+            <EmptyState
+              icon={<CalendarDays size={26} style={{ color: 'var(--text-muted)' }} />}
+              title={emptyCopy.title}
+              description={emptyCopy.description}
+            />
           ) : (
-            <div className="space-y-7 pt-2">
-              <div className="space-y-2">
-                <p className="text-xs font-medium px-1" style={{ color: 'var(--text-muted)' }}>
-                  Selecionar grupo
-                </p>
-                <div className="flex gap-2 flex-wrap">
-                  {gruposDisponiveis.map((grupo) => (
-                    <button
-                      key={grupo}
-                      onClick={() => setGrupoSelecionado(grupo)}
-                      className="px-3 py-1.5 rounded-xl text-sm font-bold transition-all duration-150"
-                      style={{
-                        background: grupoSelecionado === grupo ? 'var(--accent)' : 'rgba(255,255,255,0.06)',
-                        border: `1px solid ${grupoSelecionado === grupo ? 'var(--accent)' : 'rgba(255,255,255,0.10)'}`,
-                        color: grupoSelecionado === grupo ? '#070A12' : 'var(--text-muted)',
-                      }}
-                    >
-                      {grupo}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-xs font-bold uppercase tracking-wider mb-3 px-1" style={{ color: 'var(--accent)' }}>
-                  Classificação do Grupo {grupoSelecionado}
-                </h3>
-                <p className="text-xs mb-3 px-1" style={{ color: 'var(--text-muted)' }}>
-                  Classificação calculada com base nos resultados oficiais cadastrados.
-                </p>
-                <GroupStandingsTable
-                  grupoSelecionado={grupoSelecionado}
-                  tabela={tabelaGrupo}
-                  isLoading={loadingTabelaGrupo}
+            <div className="space-y-3">
+              {jogosVisiveis.map((jogo) => (
+                <GameCard
+                  key={jogo.id}
+                  jogo={jogo}
+                  palpite={palpiteMap.get(jogo.id) ?? null}
+                  todosJogos={jogosCrono}
+                  showStatusBadge={filtroStatus === 'meus_palpites'}
+                  onSave={handleSave}
+                  onSaveMarcadores={marcadoresBrasilHabilitado ? handleSaveMarcadores : undefined}
+                  candidatos={candidatos}
+                  marcadoresBrasilHabilitado={marcadoresBrasilHabilitado}
                 />
-              </div>
-
-              <div className="space-y-3">
-                <SegmentedControl
-                  segments={STATUS_SEGMENTS}
-                  value={filtroStatus}
-                  onChange={setFiltroStatus}
-                  controlId="grupos-status"
-                />
-
-                {segmentosGrupo.length > 1 && (
-                  <SegmentedControl
-                    segments={segmentosGrupo}
-                    value={segmentoGrupoAtivo}
-                    onChange={setSegmentoGrupo}
-                    controlId="grupo-fase"
-                    scrollable={segmentosGrupo.length > 3}
-                  />
-                )}
-
-                <h3 className="text-xs font-bold uppercase tracking-wider px-1" style={{ color: 'var(--accent)' }}>
-                  Palpites do Grupo {grupoSelecionado}
-                </h3>
-
-                {jogosDoGrupoFiltrados.length === 0 ? (
-                  <div className="glass rounded-2xl p-8 text-center">
-                    <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                      Nenhum jogo {filtroStatus === 'abertos' ? 'em aberto' : 'fechado'} para o grupo {grupoSelecionado}.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {jogosGrupoNaFase.map((jogo) => (
-                      <GameCard
-                        key={jogo.id}
-                        jogo={jogo}
-                        palpite={palpiteMap.get(jogo.id) ?? null}
-                        todosJogos={jogosCrono}
-                        onSave={handleSave}
-                        onSaveMarcadores={marcadoresBrasilHabilitado ? handleSaveMarcadores : undefined}
-                        candidatos={candidatos}
-                        marcadoresBrasilHabilitado={marcadoresBrasilHabilitado}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
+              ))}
             </div>
           )}
         </div>

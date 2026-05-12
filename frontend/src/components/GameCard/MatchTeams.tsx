@@ -1,5 +1,6 @@
 import { CountryFlag } from '@/components/CountryFlag'
 import { ScoreStepper } from '@/components/ScoreStepper'
+import { nomeSelecaoParaCard } from '@/lib/utils'
 import type { Jogo } from '@/types'
 
 interface MatchTeamsProps {
@@ -12,11 +13,20 @@ interface MatchTeamsProps {
 }
 
 export function MatchTeams({ jogo, casa, fora, bloqueado, onCasaChange, onForaChange }: MatchTeamsProps) {
+  const nomeCasa = nomeSelecaoParaCard(jogo.pais_casa.nome, jogo.pais_casa.sigla)
+  const nomeFora = nomeSelecaoParaCard(jogo.pais_fora.nome, jogo.pais_fora.sigla)
+
   return (
-    <div className="flex items-center justify-between gap-3">
-      <div className="flex items-center gap-2.5 flex-1 min-w-0">
+    <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+      <div className="flex items-center gap-2 min-w-0">
         <CountryFlag pais={jogo.pais_casa} size="md" />
-        <span className="font-semibold text-sm truncate">{jogo.pais_casa.nome}</span>
+        <span
+          className="font-semibold text-sm leading-tight line-clamp-2"
+          title={jogo.pais_casa.nome}
+          style={{ color: 'var(--text)' }}
+        >
+          {nomeCasa}
+        </span>
       </div>
 
       <div className="flex items-center gap-1 shrink-0">
@@ -27,7 +37,9 @@ export function MatchTeams({ jogo, casa, fora, bloqueado, onCasaChange, onForaCh
           readOnly={bloqueado}
           label={`Palpite ${jogo.pais_casa.nome}`}
         />
-        <span className="mx-1 text-base font-bold" style={{ color: 'var(--text-muted)' }}>×</span>
+        <span className="mx-0.5 text-sm font-bold" style={{ color: 'var(--text-muted)' }}>
+          ×
+        </span>
         <ScoreStepper
           value={fora}
           onChange={onForaChange}
@@ -37,8 +49,14 @@ export function MatchTeams({ jogo, casa, fora, bloqueado, onCasaChange, onForaCh
         />
       </div>
 
-      <div className="flex items-center gap-2.5 flex-1 min-w-0 justify-end">
-        <span className="font-semibold text-sm truncate text-right">{jogo.pais_fora.nome}</span>
+      <div className="flex items-center gap-2 min-w-0 justify-end">
+        <span
+          className="font-semibold text-sm leading-tight line-clamp-2 text-right"
+          title={jogo.pais_fora.nome}
+          style={{ color: 'var(--text)' }}
+        >
+          {nomeFora}
+        </span>
         <CountryFlag pais={jogo.pais_fora} size="md" />
       </div>
     </div>

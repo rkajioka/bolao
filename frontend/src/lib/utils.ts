@@ -223,10 +223,25 @@ export function pluralize(n: number, singular: string, plural: string): string {
   return n === 1 ? singular : plural
 }
 
+const NOMES_SELECAO_CARD: Record<string, string> = {
+  'República Tcheca': 'Rep. Tcheca',
+  'Estados Unidos': 'EUA',
+  'Coreia do Sul': 'Coreia do Sul',
+}
+
+export function nomeSelecaoParaCard(nome: string, sigla: string): string {
+  const abreviado = NOMES_SELECAO_CARD[nome]
+  if (abreviado) return abreviado
+  if (nome.length > 20) return sigla
+  return nome
+}
+
+export type DeadlineUrgency = 'normal' | 'soon' | 'urgent'
+
 export function deadlineText(
   jogo: Jogo,
   todosJogos: Jogo[],
-): { text: string; urgent: boolean } | null {
+): { text: string; urgency: DeadlineUrgency } | null {
   if (jogo.finalizado) return null
   const lim = momentoFimEdicao(jogo, todosJogos)
   if (!Number.isFinite(lim)) return null
@@ -235,18 +250,30 @@ export function deadlineText(
 
   const h = Math.floor(diff / 3_600_000)
   const m = Math.floor((diff % 3_600_000) / 60_000)
+  const MS_24H = 24 * 3_600_000
+  const MS_1H = 3_600_000
 
   let text: string
-  if (h >= 24) {
+  let urgency: DeadlineUrgency
+
+  if (diff > MS_24H) {
     const d = Math.floor(h / 24)
-    text = `Fecha em ${d}d ${h % 24}h`
-  } else if (h >= 1) {
-    text = `Fecha em ${h}h${m > 0 ? ` ${m}min` : ''}`
+    text = `Fecha em ${d} ${pluralize(d, 'dia', 'dias')}`
+    urgency = 'normal'
+  } else if (diff > MS_1H) {
+    if (h >= 1) {
+      text = `Fecha em ${h}h${m > 0 ? ` ${m}min` : ''}`
+    } else {
+      text = `Fecha em ${m}min`
+    }
+    urgency = 'soon'
   } else if (m >= 1) {
     text = `Fecha em ${m}min`
+    urgency = 'urgent'
   } else {
     text = 'Fecha em breve'
+    urgency = 'urgent'
   }
 
-  return { text, urgent: diff < 3_600_000 }
+  return { text, urgency }
 }

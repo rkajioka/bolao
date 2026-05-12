@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { Save, CheckCircle } from 'lucide-react'
 import { MatchHeader } from './MatchHeader'
 import { MatchTeams } from './MatchTeams'
 import { MatchResult } from './MatchResult'
@@ -9,6 +8,7 @@ import { KnockoutSection } from './KnockoutSection'
 import { BrazilScorers } from './BrazilScorers'
 import { FinishedMatchSummary } from './FinishedMatchSummary'
 import { api } from '@/lib/api'
+import { useDebouncedCallback } from '@/hooks/useDebouncedCallback'
 import type { Jogo, MarcadorCandidato, MarcadorPalpite, PalpiteJogo } from '@/types'
 import { jogoBloqueado, isBrasil } from '@/lib/utils'
 
@@ -16,16 +16,20 @@ interface GameCardProps {
   jogo: Jogo
   palpite: PalpiteJogo | null
   todosJogos: Jogo[]
+  showStatusBadge?: boolean
   onSave: (jogoId: number, casa: number, fora: number, classificado?: number | null) => Promise<void>
   onSaveMarcadores?: (jogoId: number, marcadores: { nome_jogador: string; quantidade_gols: number }[]) => Promise<void>
   candidatos?: MarcadorCandidato[]
   marcadoresBrasilHabilitado?: boolean
 }
 
+type SaveState = 'idle' | 'saving' | 'saved' | 'error'
+
 export function GameCard({
   jogo,
   palpite,
   todosJogos,
+  showStatusBadge = false,
   onSave,
   onSaveMarcadores,
   candidatos = [],
@@ -40,8 +44,9 @@ export function GameCard({
   const [classificado, setClassificado] = useState<number | null>(
     palpite?.palpite_classificado_id ?? null,
   )
-  const [saving, setSaving] = useState(false)
-  const [justSaved, setJustSaved] = useState(false)
+  const [touched, setTouched] = useState(false)
+  const [saveState, setSaveState] = useState<SaveState>('idle')
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [savingMarcadores, setSavingMarcadores] = useState(false)
 
   const { data: marcadoresSalvos = [] } = useQuery({
@@ -72,24 +77,62 @@ export function GameCard({
     casa !== null && fora !== null && (jogo.tipo_fase !== 'mata_mata' || classificado !== null)
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCasa(palpite?.palpite_casa ?? null)
     setFora(palpite?.palpite_fora ?? null)
     setClassificado(palpite?.palpite_classificado_id ?? null)
+    setTouched(false)
+    setSaveState('idle')
+    setSaveError(null)
   }, [jogo.id, palpite?.id, palpite?.palpite_casa, palpite?.palpite_fora, palpite?.palpite_classificado_id])
 
-  const handleSave = async () => {
-    if (bloqueado) return
+  const persistPalpite = useCallback(async () => {
+    if (bloqueado || !podeSalvar || !palpiteAlterado || !touched) return
     if (casa === null || fora === null) return
     if (jogo.tipo_fase === 'mata_mata' && !classificado) return
-    setSaving(true)
+
+    setSaveState('saving')
+    setSaveError(null)
     try {
       await onSave(jogo.id, casa, fora, classificado)
-      setJustSaved(true)
-      setTimeout(() => setJustSaved(false), 2500)
-    } finally {
-      setSaving(false)
+      setSaveState('saved')
+      setTouched(false)
+    } catch (err) {
+      setSaveState('error')
+      setSaveError(err instanceof Error ? err.message : 'Erro ao salvar palpite')
     }
+  }, [
+    bloqueado,
+    podeSalvar,
+    palpiteAlterado,
+    touched,
+    casa,
+    fora,
+    classificado,
+    jogo.id,
+    jogo.tipo_fase,
+    onSave,
+  ])
+
+  const debouncedSave = useDebouncedCallback(persistPalpite, 700)
+
+  useEffect(() => {
+    if (!touched || bloqueado || !podeSalvar || !palpiteAlterado) return
+    debouncedSave()
+  }, [touched, bloqueado, podeSalvar, palpiteAlterado, casa, fora, classificado, debouncedSave])
+
+  const handleCasaChange = (value: number | null) => {
+    setTouched(true)
+    setCasa(value)
+  }
+
+  const handleForaChange = (value: number | null) => {
+    setTouched(true)
+    setFora(value)
+  }
+
+  const handleClassificadoChange = (value: number | null) => {
+    setTouched(true)
+    setClassificado(value)
   }
 
   const handleSaveMarcadores = async (marcadoresData: { nome_jogador: string; quantidade_gols: number }[]) => {
@@ -102,6 +145,29 @@ export function GameCard({
     }
   }
 
+  const saveFeedback =
+    saveState === 'saving'
+      ? 'Salvando…'
+      : saveState === 'saved'
+        ? 'Palpite salvo'
+        : saveState === 'error'
+          ? saveError ?? 'Erro ao salvar'
+          : touched && palpiteAlterado
+            ? 'Alterações pendentes'
+            : null
+
+  const palpiteEmEdicao =
+    !jogo.finalizado &&
+    !bloqueado &&
+    (saveState === 'saving' || (touched && palpiteAlterado))
+
+  const palpiteRegistrado =
+    temPalpite ||
+    saveState === 'saved' ||
+    palpiteEmEdicao
+
+  const palpiteEncerrado = bloqueado && temPalpite
+
   return (
     <motion.article
       layout
@@ -110,14 +176,22 @@ export function GameCard({
       animate={{
         opacity: 1,
         y: 0,
-        boxShadow: justSaved
-          ? '0 0 0 1.5px rgba(53,208,127,0.5), 0 0 20px rgba(53,208,127,0.10)'
+        boxShadow: saveState === 'saved'
+          ? '0 0 0 1px rgba(53,208,127,0.35), 0 0 16px rgba(53,208,127,0.08)'
           : '0 0 0 0px rgba(53,208,127,0)',
       }}
       transition={{ duration: 0.18, boxShadow: { duration: 0.35, ease: 'easeOut' } }}
       aria-label={`Jogo: ${jogo.pais_casa.nome} vs ${jogo.pais_fora.nome}`}
     >
-      <MatchHeader jogo={jogo} todosJogos={todosJogos} status={status} />
+      <MatchHeader
+        jogo={jogo}
+        todosJogos={todosJogos}
+        status={status}
+        showStatusBadge={showStatusBadge}
+        palpiteRegistrado={palpiteRegistrado}
+        palpiteEmEdicao={palpiteEmEdicao}
+        palpiteEncerrado={palpiteEncerrado}
+      />
 
       <div className={`px-4 ${jogo.finalizado ? 'py-3' : 'py-4'}`}>
         {jogo.finalizado ? (
@@ -134,8 +208,8 @@ export function GameCard({
               casa={casa}
               fora={fora}
               bloqueado={bloqueado}
-              onCasaChange={setCasa}
-              onForaChange={setFora}
+              onCasaChange={handleCasaChange}
+              onForaChange={handleForaChange}
             />
 
             <MatchResult jogo={jogo} />
@@ -144,58 +218,28 @@ export function GameCard({
               jogo={jogo}
               classificado={classificado}
               bloqueado={bloqueado}
-              onClassificadoChange={setClassificado}
+              onClassificadoChange={handleClassificadoChange}
             />
           </>
         )}
 
-        {/* Botão salvar */}
-        {!bloqueado && (
-          <motion.button
-            type="button"
-            onClick={handleSave}
-            disabled={saving || !podeSalvar || (temPalpite && !palpiteAlterado)}
-            whileTap={saving || !podeSalvar || (temPalpite && !palpiteAlterado) ? {} : { scale: 0.97 }}
-            transition={{ duration: 0.1 }}
-            className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-            style={{
-              background: justSaved
-                ? 'rgba(53,208,127,0.15)'
-                : temPalpite && !palpiteAlterado
-                  ? 'rgba(255,255,255,0.08)'
-                  : 'var(--accent)',
-              color: justSaved
-                ? 'var(--accent)'
-                : temPalpite && !palpiteAlterado
-                  ? 'var(--text-muted)'
-                  : '#070A12',
-              border: justSaved ? '1px solid rgba(53,208,127,0.35)' : 'none',
-            }}
+        {!bloqueado && saveFeedback && (
+          <p
+            className="mt-2 text-xs text-center"
             aria-live="polite"
+            style={{
+              color:
+                saveState === 'error'
+                  ? 'var(--danger)'
+                  : saveState === 'saved'
+                    ? 'var(--accent)'
+                    : 'var(--text-muted)',
+            }}
           >
-            {saving ? (
-              <span
-                className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"
-                aria-label="Salvando"
-              />
-            ) : justSaved ? (
-              <CheckCircle size={14} />
-            ) : (
-              <Save size={14} />
-            )}
-            {saving
-              ? 'Salvando…'
-              : justSaved
-                ? 'Palpite salvo!'
-                : !temPalpite
-                  ? 'Salvar palpite'
-                  : palpiteAlterado
-                    ? 'Atualizar palpite'
-                    : 'Palpite salvo'}
-          </motion.button>
+            {saveFeedback}
+          </p>
         )}
 
-        {/* Marcadores do Brasil */}
         {!jogo.finalizado && brasil && temPalpite && marcadoresBrasilHabilitado && onSaveMarcadores && (
           <BrazilScorers
             marcadores={marcadoresParaUi}

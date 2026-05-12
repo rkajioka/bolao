@@ -14,7 +14,7 @@ from app.models.marcador_brasil import MarcadorBrasilPalpite, MarcadorBrasilResu
 from app.models.palpite_jogo import PalpiteJogo
 from app.schemas.marcador_brasil import MarcadorBrasilPalpiteItem, MarcadoresBrasilResultadoSync
 from app.services import candidato_marcador_brasil_service, empresa_service, jogo_service, palpite_jogo_service
-from app.services.regra_negocio import assert_jogo_nao_finalizado, assert_palpite_aberto, obter_jogo_para_edicao_palpite
+from app.services.regra_negocio import assert_palpite_aberto, obter_jogo_para_edicao_palpite
 
 MARCADORES_BRASIL_EMPRESA_DESABILITADO = "Bônus de marcadores desabilitado no bolão."
 
@@ -183,7 +183,6 @@ def sincronizar_marcadores_resultado_admin(
     db: Session, jogo_id: int, body: MarcadoresBrasilResultadoSync
 ) -> list[MarcadorBrasilResultado]:
     jogo = obter_jogo_que_envolve_brasil(db, jogo_id)
-    assert_jogo_nao_finalizado(jogo)
     gols_brasil = _gols_brasil_no_placar_oficial(jogo)
 
     linhas: list[tuple[str, int]] = []

@@ -2,15 +2,15 @@ import { useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown } from 'lucide-react'
-import { AutocompleteInput } from '@/components/AutocompleteInput'
 import { SelectInput } from '@/components/SelectInput'
+import { BrazilOfficialScorers } from '@/features/official-results/BrazilOfficialScorers'
 import {
   dataChaveLocal,
   labelDataFiltro,
 } from '@/features/official-results/officialResultUtils'
 import type { Jogo, Pais } from '@/types'
 import { FASES_MATA_MATA_OPTIONS } from '@/lib/faseMataLabels'
-import { compareJogosPorDataJogoAsc, faseLabel } from '@/lib/utils'
+import { compareJogosPorDataJogoAsc, faseLabel, isBrasil } from '@/lib/utils'
 import { gamesService } from '@/services/games.service'
 import { adminService } from '@/services/admin.service'
 
@@ -37,9 +37,7 @@ export function AdminGames({ success, error }: AdminGamesProps) {
     queryFn: () => gamesService.getCandidatesAdmin(),
   })
 
-  const [editingMarcadoresId, setEditingMarcadoresId] = useState<number | null>(null)
   const [finalizadosAbertos, setFinalizadosAbertos] = useState(false)
-  const [marcadoresForm, setMarcadoresForm] = useState<Record<number, { nome_jogador: string; quantidade_gols: number }[]>>({})
   const [novoCandidato, setNovoCandidato] = useState('')
   const [buscaCandidatos, setBuscaCandidatos] = useState('')
   const [filtroCandidatos, setFiltroCandidatos] = useState<'todos' | 'ativos' | 'inativos'>('todos')
@@ -163,34 +161,6 @@ export function AdminGames({ success, error }: AdminGamesProps) {
   const cancelarEdicaoCandidato = () => {
     setCandidatoEditandoId(null)
     setCandidatoNomeDraft('')
-  }
-
-  const openMarcadores = async (jogoId: number) => {
-    try {
-      const existentes = await gamesService.getMarcadoresAdmin(jogoId)
-      setMarcadoresForm((old) => ({
-        ...old,
-        [jogoId]: existentes.length ? existentes : [{ nome_jogador: '', quantidade_gols: 1 }],
-      }))
-    } catch {
-      setMarcadoresForm((old) => ({
-        ...old,
-        [jogoId]: [{ nome_jogador: '', quantidade_gols: 1 }],
-      }))
-    }
-    setEditingMarcadoresId((v) => (v === jogoId ? null : jogoId))
-  }
-
-  const salvarMarcadores = async (jogoId: number) => {
-    try {
-      const linhas = (marcadoresForm[jogoId] || []).filter((x) => x.nome_jogador.trim())
-      await gamesService.saveMarcadoresAdmin(jogoId, linhas)
-      await gamesService.recalcularMarcadores(jogoId)
-      success('Marcadores do Brasil salvos')
-      setEditingMarcadoresId(null)
-    } catch (err) {
-      error(err instanceof Error ? err.message : 'Erro ao salvar marcadores')
-    }
   }
 
   if (isLoading) return (
@@ -488,87 +458,17 @@ export function AdminGames({ success, error }: AdminGamesProps) {
                             {jogo.pais_fora.nome}
                           </p>
                         </div>
-                        {(jogo.pais_casa.sigla === 'BR' || jogo.pais_fora.sigla === 'BR') && (
-                          <button
-                            type="button"
-                            onClick={() => openMarcadores(jogo.id)}
-                            aria-expanded={editingMarcadoresId === jogo.id}
-                            className="text-xs px-3 py-1.5 rounded-xl font-semibold shrink-0"
-                            style={{ background: 'rgba(246,198,91,0.10)', border: '1px solid rgba(246,198,91,0.3)', color: 'var(--highlight)' }}
-                          >
-                            Marcadores BR
-                          </button>
-                        )}
                       </div>
-                      <AnimatePresence>
-                        {editingMarcadoresId === jogo.id && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            className="overflow-hidden"
-                          >
-                            <div className="pt-2 space-y-2" style={{ borderTop: '1px dashed rgba(255,255,255,0.08)' }}>
-                              {(marcadoresForm[jogo.id] || []).map((m, idx) => (
-                                <div key={idx} className="flex gap-2 items-center">
-                                  <AutocompleteInput
-                                    value={m.nome_jogador}
-                                    onChange={(val) =>
-                                      setMarcadoresForm((old) => ({
-                                        ...old,
-                                        [jogo.id]: (old[jogo.id] || []).map((x, i) =>
-                                          i === idx ? { ...x, nome_jogador: val } : x,
-                                        ),
-                                      }))
-                                    }
-                                    options={candidatosAdmin.filter((c) => c.ativo).map((c) => c.nome)}
-                                    placeholder="Nome do jogador"
-                                  />
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    aria-label="Quantidade de gols"
-                                    value={m.quantidade_gols}
-                                    onChange={(e) =>
-                                      setMarcadoresForm((old) => ({
-                                        ...old,
-                                        [jogo.id]: (old[jogo.id] || []).map((x, i) =>
-                                          i === idx ? { ...x, quantidade_gols: parseInt(e.target.value, 10) || 0 } : x,
-                                        ),
-                                      }))
-                                    }
-                                    className="w-16 px-2 py-2 rounded-xl text-sm text-center outline-none"
-                                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text)' }}
-                                  />
-                                </div>
-                              ))}
-                              <div className="flex gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setMarcadoresForm((old) => ({
-                                      ...old,
-                                      [jogo.id]: [...(old[jogo.id] || []), { nome_jogador: '', quantidade_gols: 1 }],
-                                    }))
-                                  }
-                                  className="flex-1 py-2 rounded-xl text-xs font-semibold"
-                                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: 'var(--text-muted)' }}
-                                >
-                                  + Adicionar
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => salvarMarcadores(jogo.id)}
-                                  className="flex-1 py-2 rounded-xl text-xs font-semibold"
-                                  style={{ background: 'var(--highlight-dim)', border: '1px solid rgba(246,198,91,0.3)', color: 'var(--highlight)' }}
-                                >
-                                  Salvar marcadores
-                                </button>
-                              </div>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                      {isBrasil(jogo) && (
+                        <BrazilOfficialScorers
+                          jogo={jogo}
+                          placarCasa={jogo.placar_casa ?? 0}
+                          placarFora={jogo.placar_fora ?? 0}
+                          bloqueado={false}
+                          onError={(msg) => error(msg)}
+                          onSaved={() => success('Marcadores do Brasil salvos')}
+                        />
+                      )}
                     </div>
                   ))}
                 </div>
