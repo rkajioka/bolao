@@ -12,11 +12,11 @@ export function ScoreStepper({ value, onChange, disabled, label, readOnly = fals
   const current = value ?? 0
 
   const decrement = () => {
-    if (!disabled && current > 0) onChange(current - 1)
+    if (!disabled && value !== null && value > 0) onChange(value - 1)
   }
 
   const increment = () => {
-    if (!disabled) onChange(current + 1)
+    if (!disabled) onChange(value === null ? 0 : value + 1)
   }
 
   if (readOnly) {
