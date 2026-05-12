@@ -1,14 +1,11 @@
 """
-Esvazia dados operacionais do bolão preservando paises, jogos e um único owner.
+Esvazia dados operacionais do bolão preservando paises, jogos e usuarios.
 
 Uso (com DATABASE_URL no ambiente ou .env):
-  py scripts/wipe_operational_data.py --confirm --keep-email owner@empresa.com
+  py scripts/wipe_operational_data.py --confirm --keep-all-users
 
-Se não existir owner:
-  py scripts/wipe_operational_data.py --confirm \\
-    --create-owner-email owner@empresa.com \\
-    --create-owner-senha "SenhaForte1" \\
-    --create-owner-nome "Owner"
+Modo legado (apenas um owner):
+  py scripts/wipe_operational_data.py --confirm --keep-email owner@empresa.com
 """
 
 from __future__ import annotations
@@ -145,6 +142,26 @@ def _delete_all_users(db: Session) -> int:
     return int(result.rowcount or 0)
 
 
+def _reset_jogos_agenda(db: Session) -> int:
+    result = db.execute(
+        text(
+            """
+            UPDATE jogos
+            SET
+                placar_casa = NULL,
+                placar_fora = NULL,
+                teve_prorrogacao = FALSE,
+                foi_para_penaltis = FALSE,
+                penaltis_casa = NULL,
+                penaltis_fora = NULL,
+                classificado_id = NULL,
+                finalizado = FALSE
+            """
+        )
+    )
+    return int(result.rowcount or 0)
+
+
 def _normalize_owner(db: Session, owner_id: int) -> None:
     owner = db.get(Usuario, owner_id)
     if owner is None:
@@ -178,17 +195,20 @@ def _ensure_plataforma_tema(db: Session) -> None:
 
 def _print_summary(
     db: Session,
-    owner_id: int,
+    *,
     removed_users: int,
     removed_empresas: int,
+    jogos_reiniciados: int,
+    owner_id: int | None = None,
 ) -> None:
-    owner = db.get(Usuario, owner_id)
+    owner = db.get(Usuario, owner_id) if owner_id is not None else None
     print("Reset concluído.")
     print(f"  paises: {_count(db, Pais)}")
     print(f"  jogos: {_count(db, Jogo)}")
     print(f"  usuarios: {_count(db, Usuario)}")
     print(f"  empresas: {_count(db, Empresa)}")
     print(f"  palpites_jogos: {_count(db, PalpiteJogo)}")
+    print(f"  jogos reiniciados: {jogos_reiniciados}")
     if owner is not None:
         print(f"  owner: id={owner.id} email={owner.email}")
     print(f"  usuarios removidos: {removed_users}")
@@ -197,7 +217,7 @@ def _print_summary(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Zera dados operacionais preservando paises, jogos e um owner."
+        description="Zera dados operacionais preservando paises, jogos e usuarios."
     )
     parser.add_argument(
         "--confirm",
@@ -213,6 +233,11 @@ def main() -> None:
         action="store_true",
         help="Remove todos os usuários e cria o owner informado em --create-owner-*.",
     )
+    parser.add_argument(
+        "--keep-all-users",
+        action="store_true",
+        help="Preserva todos os usuários cadastrados (remove empresas e dados operacionais).",
+    )
     args = parser.parse_args()
 
     if not args.confirm:
@@ -227,10 +252,16 @@ def main() -> None:
 
         if args.replace_owner and args.keep_email:
             raise SystemExit("Use apenas --replace-owner ou --keep-email, não os dois.")
+        if args.keep_all_users and (args.keep_email or args.replace_owner):
+            raise SystemExit("Use --keep-all-users sozinho ou o modo legado de owner.")
 
         _truncate_operational_tables(db)
         removed_empresas = _delete_empresas(db)
-        if args.replace_owner:
+        jogos_reiniciados = _reset_jogos_agenda(db)
+        owner_id: int | None = None
+        if args.keep_all_users:
+            removed_users = 0
+        elif args.replace_owner:
             removed_users = _delete_all_users(db)
             owner_id = _resolve_owner_id(
                 db,
@@ -249,7 +280,8 @@ def main() -> None:
                 args.create_owner_nome,
             )
             removed_users = _delete_other_users(db, owner_id)
-        _normalize_owner(db, owner_id)
+        if owner_id is not None:
+            _normalize_owner(db, owner_id)
         _ensure_configuracao_email(db)
         _ensure_plataforma_tema(db)
         db.commit()
@@ -262,7 +294,13 @@ def main() -> None:
                 f"(paises {paises_antes}->{paises_depois}, jogos {jogos_antes}->{jogos_depois})."
             )
 
-        _print_summary(db, owner_id, removed_users, removed_empresas)
+        _print_summary(
+            db,
+            owner_id=owner_id,
+            removed_users=removed_users,
+            removed_empresas=removed_empresas,
+            jogos_reiniciados=jogos_reiniciados,
+        )
     except BaseException:
         db.rollback()
         raise
