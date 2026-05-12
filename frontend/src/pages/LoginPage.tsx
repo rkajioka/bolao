@@ -1,10 +1,22 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type ClipboardEvent, type FormEvent, type KeyboardEvent } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useToast } from '@/components/Toast'
 import { ApiError } from '@/lib/api'
+
+const blockLoginClipboardShortcut = (event: KeyboardEvent<HTMLInputElement>) => {
+  if (!(event.ctrlKey || event.metaKey)) return
+  const key = event.key.toLowerCase()
+  if (key === 'c' || key === 'v' || key === 'x') {
+    event.preventDefault()
+  }
+}
+
+const blockLoginClipboardAction = (event: ClipboardEvent<HTMLInputElement>) => {
+  event.preventDefault()
+}
 
 export function LoginPage() {
   const [email, setEmail] = useState('')
@@ -106,6 +118,10 @@ export function LoginPage() {
                 onBlur={(e) =>
                   (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)')
                 }
+                onKeyDown={blockLoginClipboardShortcut}
+                onCopy={blockLoginClipboardAction}
+                onCut={blockLoginClipboardAction}
+                onPaste={blockLoginClipboardAction}
               />
             </div>
           </div>
@@ -144,6 +160,10 @@ export function LoginPage() {
                 onBlur={(e) =>
                   (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)')
                 }
+                onKeyDown={blockLoginClipboardShortcut}
+                onCopy={blockLoginClipboardAction}
+                onCut={blockLoginClipboardAction}
+                onPaste={blockLoginClipboardAction}
               />
               <button
                 type="button"

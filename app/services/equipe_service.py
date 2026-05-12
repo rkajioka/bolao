@@ -57,7 +57,6 @@ def listar_equipe(db: Session, empresa_id: int) -> list[dict]:
                 "tipo": "convite",
                 "convite_id": c.id,
                 "email": c.email,
-                "token": c.token,
                 "expiracao": c.expiracao.isoformat(),
                 "status": "convite_pendente",
                 "criado_por": c.criado_por,
@@ -72,16 +71,21 @@ def bloquear_usuario(
     empresa_id: int,
     usuario_id: int,
     bloqueado: bool,
-    solicitante_id: int,
+    solicitante: Usuario,
     ip: str | None = None,
 ) -> Usuario:
     usuario = get_usuario_empresa(db, empresa_id, usuario_id)
+    if usuario.tipo_usuario == "admin" and solicitante.tipo_usuario != "owner":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Ação não permitida sobre administrador da empresa",
+        )
     usuario.bloqueado = bloqueado
     if bloqueado:
         auth_service.revogar_refresh_tokens_usuario(db, usuario_id)
     acao = "equipe.bloqueado" if bloqueado else "equipe.desbloqueado"
     audit_log_service.log(
-        db, acao=acao, usuario_id=solicitante_id,
+        db, acao=acao, usuario_id=solicitante.id,
         empresa_id=empresa_id, alvo=str(usuario_id), ip=ip,
     )
     db.commit()
@@ -93,18 +97,23 @@ def remover_usuario(
     db: Session,
     empresa_id: int,
     usuario_id: int,
-    solicitante_id: int,
+    solicitante: Usuario,
     ip: str | None = None,
 ) -> None:
     usuario = get_usuario_empresa(db, empresa_id, usuario_id)
-    if usuario.id == solicitante_id:
+    if usuario.tipo_usuario == "admin" and solicitante.tipo_usuario != "owner":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Ação não permitida sobre administrador da empresa",
+        )
+    if usuario.id == solicitante.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Você não pode remover a si mesmo",
         )
     usuario.empresa_id = None
     audit_log_service.log(
-        db, acao="equipe.removido", usuario_id=solicitante_id,
+        db, acao="equipe.removido", usuario_id=solicitante.id,
         empresa_id=empresa_id, alvo=str(usuario_id), ip=ip,
     )
     db.commit()
@@ -163,4 +172,5 @@ def alterar_senha(db: Session, usuario: Usuario, data: AlterarSenhaRequest) -> N
             detail="A nova senha deve ser diferente da senha atual",
         )
     usuario.senha_hash = hash_password(data.nova_senha)
+    auth_service.revogar_refresh_tokens_usuario(db, usuario.id)
     db.commit()

@@ -18,7 +18,7 @@ def _seed_admin_com_empresa(db) -> tuple[Usuario, Empresa]:
     db.refresh(emp)
     admin, _ = usuario_service.create_usuario(
         db,
-        UsuarioCreate(
+        UsuarioCreate.model_construct(
             nome="Admin E-mail",
             email="admin-email@example.com",
             senha_plana="senha12345",
@@ -58,7 +58,7 @@ def test_convite_inclui_token_quando_outlook_falha(mock_send, client) -> None:
     body = r2.json()
     assert len(body["itens"]) == 1
     assert body["itens"][0]["status"] == "convite_criado"
-    assert "token" in body["itens"][0]
+    assert "token" not in body["itens"][0]
     assert body["itens"][0].get("convite_enviado_por_email") is False
     assert body["resumo_envio"]["falhas"] == 1
 
@@ -146,7 +146,7 @@ def test_convite_falha_alerta_todos_admins_da_empresa(mock_send, client) -> None
         db.refresh(emp)
         usuario_service.create_usuario(
             db,
-            UsuarioCreate(
+            UsuarioCreate.model_construct(
                 nome="Admin 1",
                 email="admin1@example.com",
                 senha_plana="senha12345",
@@ -158,7 +158,7 @@ def test_convite_falha_alerta_todos_admins_da_empresa(mock_send, client) -> None
         )
         usuario_service.create_usuario(
             db,
-            UsuarioCreate(
+            UsuarioCreate.model_construct(
                 nome="Admin 2",
                 email="admin2@example.com",
                 senha_plana="senha12345",
@@ -205,7 +205,7 @@ def test_criar_usuario_envia_link_de_redefinicao(mock_send, client) -> None:
         empresa_id = emp.id
         owner, _ = usuario_service.create_usuario(
             db,
-            UsuarioCreate(
+            UsuarioCreate.model_construct(
                 nome="Owner Criacao",
                 email="owner-create@example.com",
                 senha_plana="senhaowner1",
@@ -258,7 +258,7 @@ def test_forgot_password_chama_outlook_com_nome_empresa(mock_send, client) -> No
         db.refresh(emp)
         usuario_service.create_usuario(
             db,
-            UsuarioCreate(
+            UsuarioCreate.model_construct(
                 nome="User Reset",
                 email="user-reset@example.com",
                 senha_plana="senha12345",
@@ -293,7 +293,7 @@ def test_redefinir_senha_encerra_primeiro_login(mock_send, client) -> None:
         db.refresh(emp)
         user, _ = usuario_service.create_usuario(
             db,
-            UsuarioCreate(
+            UsuarioCreate.model_construct(
                 nome="Usuario Primeiro Login",
                 email="primeiro-login@example.com",
                 senha_plana="senha12345",

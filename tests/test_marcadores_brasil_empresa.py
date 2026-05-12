@@ -113,7 +113,7 @@ def test_nova_empresa_flag_false_exposta_em_config_minha(client) -> None:
     try:
         admin, _ = usuario_service.create_usuario(
             db,
-            UsuarioCreate(
+            UsuarioCreate.model_construct(
                 nome="Admin Off",
                 email="admin-off@example.com",
                 senha_plana="senhaadminoff1",
@@ -126,7 +126,7 @@ def test_nova_empresa_flag_false_exposta_em_config_minha(client) -> None:
         )
         user, _ = usuario_service.create_usuario(
             db,
-            UsuarioCreate(
+            UsuarioCreate.model_construct(
                 nome="User Off",
                 email="user-off@example.com",
                 senha_plana="senhausuariooff1",
@@ -166,7 +166,7 @@ def test_participante_marcadores_403_quando_feature_off(client) -> None:
         )
         usuario_service.create_usuario(
             db,
-            UsuarioCreate(
+            UsuarioCreate.model_construct(
                 nome="User Off 2",
                 email="user-off2@example.com",
                 senha_plana="senhausuariooff2",

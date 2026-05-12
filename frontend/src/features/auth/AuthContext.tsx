@@ -1,5 +1,12 @@
 import { createContext, useContext, useEffect, useMemo, useState, useCallback, type ReactNode } from 'react'
-import { api, clearToken, getToken, setToken } from '@/lib/api'
+import {
+  api,
+  bootstrapAccessTokenFromRefresh,
+  clearToken,
+  getToken,
+  migrateLegacyAccessTokenStorage,
+  setToken,
+} from '@/lib/api'
 import type { LoginResponse, User } from '@/types'
 
 interface AuthState {
@@ -42,7 +49,12 @@ function computeRoles(user: User | null) {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [token, setTokenState] = useState<string | null>(getToken)
-  const [isLoading, setIsLoading] = useState<boolean>(() => !!getToken())
+  const [isLoading, setIsLoading] = useState(true)
+
+  const adoptSession = useCallback((accessToken: string) => {
+    setToken(accessToken)
+    setTokenState(accessToken)
+  }, [])
 
   const logout = useCallback(async () => {
     try {
@@ -57,6 +69,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshUser = useCallback(async () => {
     try {
+      const current = getToken()
+      if (current) {
+        setTokenState(current)
+      }
       const u = await api.get<User>('/auth/me')
       setUser(u)
     } catch {
@@ -73,25 +89,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [logout])
 
   useEffect(() => {
-    if (!token) {
-      return
+    let cancelled = false
+
+    migrateLegacyAccessTokenStorage()
+
+    void (async () => {
+      try {
+        const accessToken = await bootstrapAccessTokenFromRefresh()
+        if (cancelled) {
+          return
+        }
+        if (accessToken) {
+          setTokenState(accessToken)
+          const u = await api.get<User>('/auth/me')
+          if (!cancelled) {
+            setUser(u)
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          clearToken()
+          setTokenState(null)
+          setUser(null)
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false)
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
     }
-    api.get<User>('/auth/me')
-      .then(setUser)
-      .catch(() => {
-        void logout()
-      })
-      .finally(() => setIsLoading(false))
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
   const login = useCallback(async (email: string, senha: string) => {
     const res = await api.post<LoginResponse>('/auth/login', { email, senha })
-    setToken(res.access_token)
-    setTokenState(res.access_token)
+    adoptSession(res.access_token)
     const u = await api.get<User>('/auth/me')
     setUser(u)
     return { primeiro_login: res.primeiro_login }
-  }, [])
+  }, [adoptSession])
 
   const roles = useMemo(() => computeRoles(user), [user])
 

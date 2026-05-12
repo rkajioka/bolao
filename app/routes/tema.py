@@ -11,7 +11,10 @@ router = APIRouter(tags=["tema"])
 
 
 @router.get("/plataforma/tema", response_model=TemaRead)
-def get_tema_plataforma(db: Session = Depends(get_db)) -> TemaRead:
+def get_tema_plataforma(
+    db: Session = Depends(get_db),
+    _user: Usuario = Depends(get_current_active_user),
+) -> TemaRead:
     row = tema_service.get_plataforma_tema(db)
     return TemaRead(
         tokens_dark=row.tokens_dark,

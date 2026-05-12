@@ -11,9 +11,6 @@ import {
   ShieldOff,
   Shield,
   Trash2,
-  Copy,
-  ChevronDown,
-  ChevronUp,
   Send,
   Upload,
   User,
@@ -88,18 +85,6 @@ function MemberCard({
   onRemover,
   onResetSenha,
 }: MemberCardProps) {
-  const [showToken, setShowToken] = useState(false)
-  const [copied, setCopied] = useState(false)
-
-  const copyToken = () => {
-    if (membro.token) {
-      const link = `${window.location.origin}/ativar-conta?token=${membro.token}`
-      void navigator.clipboard.writeText(link)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    }
-  }
-
   return (
     <motion.div
       layout
@@ -151,36 +136,9 @@ function MemberCard({
                 minute: '2-digit',
               })}
             </p>
-            <button
-              onClick={() => setShowToken((v) => !v)}
-              className="flex items-center gap-1 text-xs"
-              style={{ color: 'var(--accent)' }}
-            >
-              {showToken ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-              {showToken ? 'Ocultar link' : 'Ver link de ativação'}
-            </button>
-            <AnimatePresence>
-              {showToken && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="overflow-hidden"
-                >
-                  <div
-                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg"
-                    style={{ background: 'var(--border)', fontSize: '10px', color: 'var(--text-muted)' }}
-                  >
-                    <span className="flex-1 truncate font-mono">
-                      {`${window.location.origin}/ativar-conta?token=${membro.token}`}
-                    </span>
-                    <button onClick={copyToken} style={{ color: copied ? 'var(--accent)' : undefined, flexShrink: 0 }}>
-                      {copied ? <CheckCircle2 size={13} /> : <Copy size={13} />}
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              Reenvie o convite por e-mail se o participante não recebeu o link.
+            </p>
           </div>
         )}
 
@@ -383,16 +341,14 @@ function InviteForm({
                 {result.convite_enviado_por_email
                   ? 'E-mail enviado'
                   : result.email_erro
-                    ? `Falha: ${result.email_erro}`
+                    ? `Falha: ${result.email_erro}. Reenvie o convite.`
                     : result.status === 'ja_cadastrado'
                       ? 'Já cadastrado'
                       : result.status === 'convite_pendente'
                         ? 'Convite pendente'
                         : result.status === 'limite_usuarios'
                           ? 'Limite de participantes atingido'
-                          : result.token
-                          ? 'Convite criado — copie o link'
-                          : 'Processado'}
+                          : 'Convite criado — reenvie por e-mail se necessário'}
               </p>
             </motion.div>
           ))}
@@ -428,15 +384,6 @@ function InviteResults({
   resumo: ConviteResumoEnvio | null
   onClose: () => void
 }) {
-  const [copied, setCopied] = useState<string | null>(null)
-
-  const copy = (token: string) => {
-    const link = `${window.location.origin}/ativar-conta?token=${token}`
-    void navigator.clipboard.writeText(link)
-    setCopied(token)
-    setTimeout(() => setCopied(null), 2000)
-  }
-
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>
@@ -462,19 +409,12 @@ function InviteResults({
               {r.status === 'convite_criado' &&
                 (r.convite_enviado_por_email
                   ? 'Convite enviado por e-mail — peça para checar a caixa de entrada'
-                  : r.token
-                    ? 'Convite criado — copie o link abaixo'
-                    : 'Convite criado')}
+                  : 'Convite criado — reenvie por e-mail se necessário')}
               {r.status === 'convite_pendente' && 'Convite pendente (já existe)'}
               {r.status === 'ja_cadastrado' && 'Usuário já cadastrado'}
               {r.email_erro ? ` · ${r.email_erro}` : ''}
             </p>
           </div>
-          {r.token && (
-            <button onClick={() => copy(r.token!)} style={{ color: copied === r.token ? 'var(--accent)' : 'var(--text-muted)', flexShrink: 0 }}>
-              {copied === r.token ? <CheckCircle2 size={15} /> : <Copy size={15} />}
-            </button>
-          )}
         </div>
       ))}
       <button

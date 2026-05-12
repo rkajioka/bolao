@@ -1,17 +1,21 @@
 const LS_TOKEN = 'bolao_access_token'
 const REFRESH_PATH = '/auth/refresh'
+const BOLAO_CLIENT_HEADER = 'X-Bolao-Client'
+const BOLAO_CLIENT_VALUE = '1'
+
+let accessToken: string | null = null
 let refreshPromise: Promise<string | null> | null = null
 
 export function getToken(): string | null {
-  return localStorage.getItem(LS_TOKEN)
+  return accessToken
 }
 
 export function setToken(token: string): void {
-  localStorage.setItem(LS_TOKEN, token)
+  accessToken = token
 }
 
 export function clearToken(): void {
-  localStorage.removeItem(LS_TOKEN)
+  accessToken = null
 }
 
 class ApiError extends Error {
@@ -33,11 +37,18 @@ type RequestOptions = {
   _retryAfterRefresh?: boolean
 }
 
+function bolaoClientHeaders(): Record<string, string> {
+  return { [BOLAO_CLIENT_HEADER]: BOLAO_CLIENT_VALUE }
+}
+
 async function tryRefreshToken(): Promise<string | null> {
   if (!refreshPromise) {
     refreshPromise = fetch(REFRESH_PATH, {
       method: 'POST',
-      headers: { Accept: 'application/json' },
+      headers: {
+        Accept: 'application/json',
+        ...bolaoClientHeaders(),
+      },
       credentials: 'include',
     })
       .then(async (res) => {
@@ -63,6 +74,10 @@ export async function apiFetch<T>(path: string, opts: RequestOptions = {}): Prom
   const headers: Record<string, string> = {
     Accept: 'application/json',
     ...opts.headers,
+  }
+
+  if (path === REFRESH_PATH || path === '/auth/logout') {
+    Object.assign(headers, bolaoClientHeaders())
   }
 
   if (token) {
@@ -186,4 +201,15 @@ export const api = {
 
   delete: <T>(path: string) =>
     apiFetch<T>(path, { method: 'DELETE' }),
+}
+
+export async function bootstrapAccessTokenFromRefresh(): Promise<string | null> {
+  if (accessToken) {
+    return accessToken
+  }
+  return tryRefreshToken()
+}
+
+export function migrateLegacyAccessTokenStorage(): void {
+  localStorage.removeItem(LS_TOKEN)
 }

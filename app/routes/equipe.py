@@ -47,7 +47,6 @@ def listar_convites(
         {
             "id": c.id,
             "email": c.email,
-            "token": c.token,
             "expiracao": c.expiracao.isoformat(),
             "status": convite_service.status_convite(c),
             "criado_por": c.criado_por,
@@ -67,7 +66,7 @@ def bloquear_usuario(
     empresa_id: int = Depends(get_resolved_empresa_id),
 ) -> dict:
     ip = request.client.host if request.client else None
-    usuario = equipe_service.bloquear_usuario(db, empresa_id, usuario_id, bloqueado, admin.id, ip)
+    usuario = equipe_service.bloquear_usuario(db, empresa_id, usuario_id, bloqueado, admin, ip)
     return {"id": usuario.id, "bloqueado": usuario.bloqueado}
 
 
@@ -96,4 +95,4 @@ def remover_usuario(
     empresa_id: int = Depends(get_resolved_empresa_id),
 ) -> None:
     ip = request.client.host if request.client else None
-    equipe_service.remover_usuario(db, empresa_id, usuario_id, admin.id, ip)
+    equipe_service.remover_usuario(db, empresa_id, usuario_id, admin, ip)

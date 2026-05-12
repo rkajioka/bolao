@@ -157,7 +157,7 @@ def test_fases_minha_isoladas_por_empresa(client) -> None:
 
         usuario_service.create_usuario(
             db,
-            UsuarioCreate(
+            UsuarioCreate.model_construct(
                 nome="Admin A",
                 email="admin-a@example.com",
                 senha_plana="senhaadmin1",
@@ -169,7 +169,7 @@ def test_fases_minha_isoladas_por_empresa(client) -> None:
         )
         usuario_service.create_usuario(
             db,
-            UsuarioCreate(
+            UsuarioCreate.model_construct(
                 nome="Admin B",
                 email="admin-b@example.com",
                 senha_plana="senhaadmin1",

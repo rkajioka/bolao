@@ -173,7 +173,7 @@ def test_insights_isolam_empresa_nos_destaques(client) -> None:
         empresa_b_id = empresa_b.id
         usuario_service.create_usuario(
             db,
-            UsuarioCreate(
+            UsuarioCreate.model_construct(
                 nome="Usuário B",
                 email="user-insights-b@example.com",
                 senha_plana="senhausuario1",

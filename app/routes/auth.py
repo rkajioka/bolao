@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Resp
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_active_user
+from app.auth.request_origin import assert_bolao_client_request
 from app.core.config import get_settings
 from app.database import get_db
 from app.models.usuario import Usuario
@@ -9,7 +10,6 @@ from app.schemas.convite import AtivarContaRequest, AtivarContaResponse, AvatarP
 from app.schemas.password_reset import (
     ForgotPasswordRequest,
     ForgotPasswordResponse,
-    PasswordResetTokenInfo,
     ResetPasswordRequest,
 )
 from app.schemas.usuario import (
@@ -88,6 +88,7 @@ def post_refresh(
     response: Response,
     db: Session = Depends(get_db),
 ) -> AccessTokenResponse:
+    assert_bolao_client_request(request)
     ip = request.client.host if request.client else "unknown"
     enforce_limit(
         key=f"auth:refresh:{ip}",
@@ -108,6 +109,7 @@ def post_logout(
     response: Response,
     db: Session = Depends(get_db),
 ) -> None:
+    assert_bolao_client_request(request)
     cookie = request.cookies.get(settings.jwt_refresh_cookie_name)
     auth_service.logout(db, cookie)
     _clear_refresh_cookie(response)
@@ -141,11 +143,26 @@ def post_change_password(
 
 @router.post("/avatar-pre-ativacao", response_model=AvatarPreAtivacaoResponse)
 async def post_avatar_pre_ativacao(
+    request: Request,
     db: Session = Depends(get_db),
     token: str = Form(...),
     file: UploadFile = File(...),
 ) -> AvatarPreAtivacaoResponse:
     """Upload de foto antes de ativar conta — exige token de convite válido (sem JWT)."""
+    import hashlib
+
+    ip = request.client.host if request.client else "unknown"
+    enforce_limit(
+        key=f"auth:avatar-pre:{ip}",
+        limit=settings.rate_limit_avatar_pre_ip_requests,
+        window_seconds=settings.rate_limit_window_seconds,
+    )
+    token_key = hashlib.sha256(token.encode("utf-8")).hexdigest()[:16]
+    enforce_limit(
+        key=f"auth:avatar-pre:token:{token_key}",
+        limit=settings.rate_limit_avatar_pre_token_requests,
+        window_seconds=settings.rate_limit_window_seconds,
+    )
     convite_service.validar_token(db, token)
     raw = await avatar_upload_service.read_upload_limited(
         file, avatar_upload_service.AVATAR_MAX_BYTES
@@ -201,41 +218,3 @@ def post_redefinir_senha(
     access_token, refresh_token = auth_service.issue_token_pair(db, usuario)
     _set_refresh_cookie(response, refresh_token)
     return AtivarContaResponse(access_token=access_token)
-
-
-@router.get("/reset-token-dev/{email}", response_model=PasswordResetTokenInfo)
-def get_reset_token_dev(
-    email: str,
-    request: Request,
-    db: Session = Depends(get_db),
-) -> PasswordResetTokenInfo:
-    """
-    Endpoint temporário para obter token de reset em ambiente de desenvolvimento/testes.
-    Deve ser desabilitado em produção via variável de ambiente.
-    """
-    from sqlalchemy import and_, select
-    from app.models.password_reset import PasswordReset
-    from app.services import usuario_service
-    from datetime import UTC, datetime
-
-    if not settings.debug:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
-
-    usuario = usuario_service.get_by_email(db, email)
-    if usuario is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado")
-
-    agora = datetime.now(UTC)
-    pr = db.scalar(
-        select(PasswordReset).where(
-            and_(
-                PasswordReset.usuario_id == usuario.id,
-                PasswordReset.usado.is_(False),
-                PasswordReset.expiracao > agora,
-            )
-        ).order_by(PasswordReset.created_at.desc())
-    )
-    if pr is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Token não encontrado")
-
-    return PasswordResetTokenInfo(token=pr.token, expiracao=pr.expiracao.isoformat())

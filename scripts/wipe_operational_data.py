@@ -6,6 +6,9 @@ Uso (com DATABASE_URL no ambiente ou .env):
 
 Modo legado (apenas um owner):
   py scripts/wipe_operational_data.py --confirm --keep-email owner@empresa.com
+
+Modo apenas paises + owner novo:
+  py scripts/wipe_operational_data.py --confirm --keep-only-paises --replace-owner --create-owner-email owner@o.com.br --create-owner-senha admin --create-owner-nome Owner --allow-short-owner-senha
 """
 
 from __future__ import annotations
@@ -50,6 +53,15 @@ TRUNCATE_TABLES = (
     "empresa_temas",
 )
 
+TRUNCATE_ALL_EXCEPT_PAISES = (
+    *TRUNCATE_TABLES,
+    "usuarios",
+    "jogos",
+    "empresas",
+    "configuracao_email",
+    "plataforma_temas",
+)
+
 
 def _count(db: Session, model) -> int:
     return int(db.scalar(select(func.count()).select_from(model)) or 0)
@@ -63,6 +75,7 @@ def _resolve_owner_id(
     create_nome: str | None,
     *,
     replace_owner: bool = False,
+    allow_short_owner_senha: bool = False,
 ) -> int:
     if keep_email:
         email = keep_email.strip().lower()
@@ -85,7 +98,7 @@ def _resolve_owner_id(
             "Nenhum owner encontrado. Informe --keep-email ou "
             "--create-owner-email, --create-owner-senha e --create-owner-nome."
         )
-    if len(create_senha) < 8:
+    if not allow_short_owner_senha and len(create_senha) < 8:
         raise SystemExit("Erro: --create-owner-senha deve ter pelo menos 8 caracteres.")
 
     email = create_email.strip().lower()
@@ -113,6 +126,19 @@ def _resolve_owner_id(
 
 def _truncate_operational_tables(db: Session) -> None:
     tables = ",\n            ".join(TRUNCATE_TABLES)
+    db.execute(
+        text(
+            f"""
+            TRUNCATE TABLE
+                {tables}
+            RESTART IDENTITY CASCADE;
+            """
+        )
+    )
+
+
+def _truncate_all_except_paises(db: Session) -> None:
+    tables = ",\n            ".join(TRUNCATE_ALL_EXCEPT_PAISES)
     db.execute(
         text(
             f"""
@@ -238,6 +264,16 @@ def main() -> None:
         action="store_true",
         help="Preserva todos os usuários cadastrados (remove empresas e dados operacionais).",
     )
+    parser.add_argument(
+        "--keep-only-paises",
+        action="store_true",
+        help="Remove todos os dados exceto a tabela paises (inclui jogos e usuarios).",
+    )
+    parser.add_argument(
+        "--allow-short-owner-senha",
+        action="store_true",
+        help="Permite senha do owner com menos de 8 caracteres (uso local).",
+    )
     args = parser.parse_args()
 
     if not args.confirm:
@@ -252,17 +288,16 @@ def main() -> None:
 
         if args.replace_owner and args.keep_email:
             raise SystemExit("Use apenas --replace-owner ou --keep-email, não os dois.")
-        if args.keep_all_users and (args.keep_email or args.replace_owner):
+        if args.keep_all_users and (args.keep_email or args.replace_owner or args.keep_only_paises):
             raise SystemExit("Use --keep-all-users sozinho ou o modo legado de owner.")
+        if args.keep_only_paises and not args.replace_owner:
+            raise SystemExit("--keep-only-paises exige --replace-owner e --create-owner-*.")
 
-        _truncate_operational_tables(db)
-        removed_empresas = _delete_empresas(db)
-        jogos_reiniciados = _reset_jogos_agenda(db)
-        owner_id: int | None = None
-        if args.keep_all_users:
+        if args.keep_only_paises:
+            _truncate_all_except_paises(db)
+            removed_empresas = 0
+            jogos_reiniciados = 0
             removed_users = 0
-        elif args.replace_owner:
-            removed_users = _delete_all_users(db)
             owner_id = _resolve_owner_id(
                 db,
                 None,
@@ -270,16 +305,36 @@ def main() -> None:
                 args.create_owner_senha,
                 args.create_owner_nome,
                 replace_owner=True,
+                allow_short_owner_senha=args.allow_short_owner_senha,
             )
         else:
-            owner_id = _resolve_owner_id(
-                db,
-                args.keep_email,
-                args.create_owner_email,
-                args.create_owner_senha,
-                args.create_owner_nome,
-            )
-            removed_users = _delete_other_users(db, owner_id)
+            _truncate_operational_tables(db)
+            removed_empresas = _delete_empresas(db)
+            jogos_reiniciados = _reset_jogos_agenda(db)
+            owner_id: int | None = None
+            if args.keep_all_users:
+                removed_users = 0
+            elif args.replace_owner:
+                removed_users = _delete_all_users(db)
+                owner_id = _resolve_owner_id(
+                    db,
+                    None,
+                    args.create_owner_email,
+                    args.create_owner_senha,
+                    args.create_owner_nome,
+                    replace_owner=True,
+                    allow_short_owner_senha=args.allow_short_owner_senha,
+                )
+            else:
+                owner_id = _resolve_owner_id(
+                    db,
+                    args.keep_email,
+                    args.create_owner_email,
+                    args.create_owner_senha,
+                    args.create_owner_nome,
+                    allow_short_owner_senha=args.allow_short_owner_senha,
+                )
+                removed_users = _delete_other_users(db, owner_id)
         if owner_id is not None:
             _normalize_owner(db, owner_id)
         _ensure_configuracao_email(db)
@@ -288,10 +343,21 @@ def main() -> None:
 
         paises_depois = _count(db, Pais)
         jogos_depois = _count(db, Jogo)
-        if paises_depois != paises_antes or jogos_depois != jogos_antes:
+        if paises_depois != paises_antes:
             raise SystemExit(
-                "Erro: contagem de paises/jogos mudou após o reset "
-                f"(paises {paises_antes}->{paises_depois}, jogos {jogos_antes}->{jogos_depois})."
+                "Erro: contagem de paises mudou após o reset "
+                f"(paises {paises_antes}->{paises_depois})."
+            )
+        if args.keep_only_paises:
+            if jogos_depois != 0:
+                raise SystemExit(
+                    "Erro: jogos deveriam estar vazios após --keep-only-paises "
+                    f"(jogos={jogos_depois})."
+                )
+        elif jogos_depois != jogos_antes:
+            raise SystemExit(
+                "Erro: contagem de jogos mudou após o reset "
+                f"(jogos {jogos_antes}->{jogos_depois})."
             )
 
         _print_summary(

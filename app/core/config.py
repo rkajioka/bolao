@@ -17,9 +17,12 @@ class Settings(BaseSettings):
     jwt_refresh_cookie_path: str = "/auth"
     rate_limit_login_requests: int = 5
     rate_limit_refresh_requests: int = 20
+    rate_limit_avatar_pre_ip_requests: int = 10
+    rate_limit_avatar_pre_token_requests: int = 5
     rate_limit_window_seconds: int = 60
     debug: bool = False
     public_app_url: str = "http://localhost:5173"
+    cors_allowed_origins: str | None = None
     azure_client_id: str | None = None
     azure_client_secret: str | None = None
     azure_tenant_id: str | None = None
@@ -34,3 +37,22 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+def cors_origins_for_settings(settings: Settings) -> list[str]:
+    if settings.cors_allowed_origins:
+        origins = [
+            origin.strip().rstrip("/")
+            for origin in settings.cors_allowed_origins.split(",")
+            if origin.strip()
+        ]
+        if origins:
+            return origins
+    origins: list[str] = []
+    public = settings.public_app_url.strip().rstrip("/")
+    if public:
+        origins.append(public)
+    dev_origin = "http://localhost:5173"
+    if dev_origin not in origins:
+        origins.append(dev_origin)
+    return origins

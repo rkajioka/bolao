@@ -10,7 +10,7 @@ from app.auth.password import hash_password
 from app.models.empresa import Empresa
 from app.models.password_reset import PasswordReset
 from app.models.usuario import Usuario
-from app.services import audit_log_service, email_dispatch_service, email_service, usuario_service
+from app.services import audit_log_service, auth_service, email_dispatch_service, email_service, usuario_service
 
 
 _TOKEN_BYTES = 48
@@ -164,6 +164,7 @@ def redefinir_senha(
         ip=ip,
     )
 
+    auth_service.revogar_refresh_tokens_usuario(db, usuario.id)
     db.commit()
     db.refresh(usuario)
     return usuario

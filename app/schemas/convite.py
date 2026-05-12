@@ -2,6 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
+from app.core.avatar_url import validar_avatar_url
 from app.core.password_policy import validar_complexidade_senha
 
 
@@ -41,12 +42,11 @@ class ConviteRead(BaseModel):
 
 
 class ConviteReadPublic(BaseModel):
-    """Resposta pública para o admin — expõe token temporariamente (sem e-mail real)."""
+    """Resposta pública para o admin — sem token de convite."""
     model_config = {"from_attributes": True}
 
     id: int
     email: str
-    token: str
     expiracao: datetime
     status: str
     criado_por: int | None
@@ -56,7 +56,6 @@ class ConviteReadPublic(BaseModel):
 class ConviteResultadoItem(BaseModel):
     email: str
     status: str
-    token: str | None = None
     expiracao: str | None = None
     convite_enviado_por_email: bool | None = None
     email_tentativas: int | None = None
@@ -99,6 +98,11 @@ class AtivarContaRequest(BaseModel):
             raise ValueError("Senha e confirmação devem coincidir")
         validar_complexidade_senha(self.senha)
         return self
+
+    @field_validator("avatar_url")
+    @classmethod
+    def validar_avatar(cls, value: str | None) -> str | None:
+        return validar_avatar_url(value)
 
 
 class AtivarContaResponse(BaseModel):

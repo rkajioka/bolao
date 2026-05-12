@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.auth.password import hash_password
 from app.core.password_defaults import SENHA_PADRAO_TEMPORARIA
+from app.core.password_policy import validar_complexidade_senha
 from app.models.usuario import Usuario
 from app.schemas.usuario import UsuarioCreate, UsuarioRead, UsuarioUpdate
 from app.services import email_dispatch_service, email_service, empresa_quota_service, empresa_service, password_reset_service
@@ -192,8 +193,21 @@ def set_ativo(db: Session, usuario: Usuario, ativo: bool) -> Usuario:
     return usuario
 
 
+def _gerar_senha_temporaria_valida() -> str:
+    alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*"
+    for _ in range(20):
+        senha = "".join(secrets.choice(alphabet) for _ in range(16))
+        try:
+            validar_complexidade_senha(senha)
+            return senha
+        except ValueError:
+            continue
+    raise RuntimeError("Não foi possível gerar senha temporária válida")
+
+
 def reset_password(db: Session, usuario: Usuario) -> EmailEntregaResultado:
-    usuario.senha_hash = hash_password(SENHA_PADRAO_TEMPORARIA)
+    senha_temporaria = _gerar_senha_temporaria_valida()
+    usuario.senha_hash = hash_password(senha_temporaria)
     usuario.primeiro_login = True
     db.commit()
 
@@ -201,7 +215,7 @@ def reset_password(db: Session, usuario: Usuario) -> EmailEntregaResultado:
         db,
         destinatario=usuario.email,
         empresa_nome=_empresa_nome(db, usuario.empresa_id),
-        senha_temporaria=SENHA_PADRAO_TEMPORARIA,
+        senha_temporaria=senha_temporaria,
     )
     if resultado.sucesso:
         return EmailEntregaResultado(

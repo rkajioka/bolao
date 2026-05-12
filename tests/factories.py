@@ -64,7 +64,7 @@ def seed_owner_admin_e_usuario(db: Session) -> tuple[int, int, int]:
     empresa = seed_empresa(db)
     owner, _ = usuario_service.create_usuario(
         db,
-        UsuarioCreate(
+        UsuarioCreate.model_construct(
             nome="Owner Teste",
             email="owner-etapa13@example.com",
             senha_plana="senhaowner1",
@@ -76,7 +76,7 @@ def seed_owner_admin_e_usuario(db: Session) -> tuple[int, int, int]:
     )
     admin, _ = usuario_service.create_usuario(
         db,
-        UsuarioCreate(
+        UsuarioCreate.model_construct(
             nome="Admin Teste",
             email="admin-etapa13@example.com",
             senha_plana="senhaadmin1",
@@ -89,7 +89,7 @@ def seed_owner_admin_e_usuario(db: Session) -> tuple[int, int, int]:
     )
     user, _ = usuario_service.create_usuario(
         db,
-        UsuarioCreate(
+        UsuarioCreate.model_construct(
             nome="Usuário Teste",
             email="user-etapa13@example.com",
             senha_plana="senhausuario1",

@@ -202,4 +202,5 @@ def change_password(db: Session, user: Usuario, data: ChangePasswordRequest) -> 
             detail="A nova senha deve ser diferente da senha atual",
         )
     user.senha_hash = hash_password(data.nova_senha)
+    revogar_refresh_tokens_usuario(db, user.id)
     db.commit()

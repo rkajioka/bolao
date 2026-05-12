@@ -28,7 +28,9 @@ export function mensagemPodioRepetidoEspeciais(
 
 export function imgUrl(url: string | null | undefined): string {
   if (!url) return ''
-  if (url.startsWith('http')) return url
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('//')) {
+    return ''
+  }
   return url.startsWith('/') ? url : `/${url}`
 }
 

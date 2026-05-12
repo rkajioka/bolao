@@ -30,9 +30,7 @@ export interface Empresa {
 export interface ConviteResultado {
   email: string
   status: 'convite_criado' | 'convite_pendente' | 'ja_cadastrado' | 'limite_usuarios'
-  token?: string
   expiracao?: string
-  /** Quando true, o link foi enviado por e-mail (token omitido na API). */
   convite_enviado_por_email?: boolean
   email_tentativas?: number
   email_erro?: string | null
@@ -75,7 +73,6 @@ export interface MembroEquipe {
   created_at: string
   // campos de convite
   convite_id?: number
-  token?: string
   expiracao?: string
   status?: string
   criado_por?: number | null

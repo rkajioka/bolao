@@ -1,3 +1,7 @@
+from unittest.mock import patch
+
+import re
+
 from app.core.password_policy import SENHA_COMPLEXIDADE_MSG, validar_complexidade_senha
 from app.database import SessionLocal
 from app.models.empresa import Empresa
@@ -32,7 +36,7 @@ def test_redefinir_senha_rejeita_senha_fraca(client) -> None:
         db.refresh(emp)
         user, _ = usuario_service.create_usuario(
             db,
-            UsuarioCreate(
+            UsuarioCreate.model_construct(
                 nome="Usuario Senha Fraca",
                 email="senha-fraca@example.com",
                 senha_plana="senha12345",
@@ -62,7 +66,16 @@ def test_redefinir_senha_rejeita_senha_fraca(client) -> None:
     assert r.status_code == 422, r.text
 
 
-def test_primeiro_acesso_mantem_sessao_apos_trocar_senha(client) -> None:
+def _senha_temporaria_do_mock(mock_send) -> str:
+    mock_send.assert_called_once()
+    html = mock_send.call_args.kwargs.get("corpo_html", "")
+    matches = re.findall(r"<strong>([^<]+)</strong>", html)
+    assert matches
+    return matches[-1]
+
+
+@patch("app.services.email_service.enviar_email_outlook")
+def test_primeiro_acesso_mantem_sessao_apos_trocar_senha(mock_send, client) -> None:
     db = SessionLocal()
     try:
         _, _, user_id = seed_owner_admin_e_usuario(db)
@@ -78,10 +91,11 @@ def test_primeiro_acesso_mantem_sessao_apos_trocar_senha(client) -> None:
         headers={"Authorization": f"Bearer {owner_token}"},
     )
     assert r.status_code == 200, r.text
+    senha_temporaria = _senha_temporaria_do_mock(mock_send)
 
     login = client.post(
         "/auth/login",
-        json={"email": "user-etapa13@example.com", "senha": "Bolao123"},
+        json={"email": "user-etapa13@example.com", "senha": senha_temporaria},
     )
     assert login.status_code == 200, login.text
     user_token = login.json()["access_token"]

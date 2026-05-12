@@ -89,7 +89,6 @@ def criar_bulk_convites(
                 ConviteResultadoItem(
                     email=email,
                     status="convite_pendente",
-                    token=convite_existente.token,
                     expiracao=convite_existente.expiracao.isoformat(),
                 )
             )
@@ -145,7 +144,6 @@ def criar_bulk_convites(
         else:
             item.convite_enviado_por_email = False
             item.email_erro = resultado_envio.erro
-            item.token = token
             falhas += 1
             falhas_envio.append(
                 email_dispatch_service.FalhaEnvioItem(
@@ -155,7 +153,7 @@ def criar_bulk_convites(
                 )
             )
             print(
-                f"[bolao:email] convite criado para {email}: token na resposta da API (e-mail não enviado)",
+                f"[bolao:email] convite criado para {email}: reenvie o convite por e-mail",
                 flush=True,
             )
 

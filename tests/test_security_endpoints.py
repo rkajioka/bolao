@@ -467,7 +467,10 @@ def test_refresh_apos_bloquear_via_equipe_retorna_401(client) -> None:
     )
 
     client.cookies.set("bolao_refresh_token", r_login.cookies.get("bolao_refresh_token"), path="/auth")
-    assert client.post("/auth/refresh").status_code == 401
+    assert client.post(
+        "/auth/refresh",
+        headers={"X-Bolao-Client": "1", "Origin": "http://localhost:5173"},
+    ).status_code == 401
 
 
 def test_marcadores_oficiais_soma_invalida_retorna_400(client) -> None:

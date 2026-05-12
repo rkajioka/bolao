@@ -47,7 +47,7 @@ def test_owner_ranking_filtra_por_empresa(client) -> None:
         empresa_b_id = empresa_b.id
         usuario_service.create_usuario(
             db,
-            UsuarioCreate(
+            UsuarioCreate.model_construct(
                 nome="Usuário B",
                 email="user-b@example.com",
                 senha_plana="senhausuario1",
@@ -100,7 +100,7 @@ def test_membro_ignora_empresa_id_na_query(client) -> None:
         empresa_b_id = empresa_b.id
         usuario_service.create_usuario(
             db,
-            UsuarioCreate(
+            UsuarioCreate.model_construct(
                 nome="Usuário B",
                 email="user-b2@example.com",
                 senha_plana="senhausuario1",
@@ -134,7 +134,7 @@ def test_insights_respeitam_empresa_id(client) -> None:
         empresa_b_id = empresa_b.id
         usuario_service.create_usuario(
             db,
-            UsuarioCreate(
+            UsuarioCreate.model_construct(
                 nome="Usuário B",
                 email="user-b3@example.com",
                 senha_plana="senhausuario1",

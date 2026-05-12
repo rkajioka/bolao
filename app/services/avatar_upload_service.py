@@ -42,18 +42,36 @@ async def read_upload_limited(file: UploadFile, max_bytes: int) -> bytes:
     return b"".join(chunks)
 
 
+def _detect_image_type(data: bytes) -> tuple[str, str]:
+    if data.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg", ".jpg"
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png", ".png"
+    if len(data) >= 12 and data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp", ".webp"
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="Use imagem JPEG, PNG ou WebP",
+    )
+
+
 def persist_avatar(data: bytes, content_type: str | None) -> str:
-    if not content_type or content_type not in _CONTENT_EXT:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Use imagem JPEG, PNG ou WebP",
-        )
     if not data:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Arquivo vazio",
         )
-    ext = _CONTENT_EXT[content_type]
+    detected_type, ext = _detect_image_type(data)
+    if not content_type or content_type not in _CONTENT_EXT:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Use imagem JPEG, PNG ou WebP",
+        )
+    if content_type != detected_type:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Use imagem JPEG, PNG ou WebP",
+        )
     upload_dir = avatar_upload_dir()
     upload_dir.mkdir(parents=True, exist_ok=True)
     name = f"{uuid.uuid4().hex}{ext}"

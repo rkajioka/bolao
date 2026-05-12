@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import re
 from unittest.mock import patch
 
 from app.database import SessionLocal
+from app.core.password_defaults import SENHA_PADRAO_TEMPORARIA
 from tests.factories import (
     seed_admin_e_usuario,
     seed_dois_paises,
@@ -18,6 +20,14 @@ def _login(client, email: str, senha: str) -> str:
     r = client.post("/auth/login", json={"email": email, "senha": senha})
     assert r.status_code == 200, r.text
     return r.json()["access_token"]
+
+
+def _senha_temporaria_do_mock(mock_send) -> str:
+    mock_send.assert_called_once()
+    html = mock_send.call_args.kwargs.get("corpo_html", "")
+    matches = re.findall(r"<strong>([^<]+)</strong>", html)
+    assert matches
+    return matches[-1]
 
 
 def test_usuario_comum_nao_lista_usuarios(client) -> None:
@@ -230,7 +240,8 @@ def test_owner_nao_pode_salvar_palpite_especial(client) -> None:
     assert r.status_code == 403
 
 
-def test_owner_reset_senha_define_padrao_e_exige_primeiro_acesso(client) -> None:
+@patch("app.services.email_service.enviar_email_outlook")
+def test_owner_reset_senha_define_padrao_e_exige_primeiro_acesso(mock_send, client) -> None:
     db = SessionLocal()
     try:
         _, _, user_id = seed_owner_admin_e_usuario(db)
@@ -241,10 +252,11 @@ def test_owner_reset_senha_define_padrao_e_exige_primeiro_acesso(client) -> None
     h_owner = {"Authorization": f"Bearer {owner_token}"}
     r = client.patch(f"/usuarios/{user_id}/reset-password", headers=h_owner)
     assert r.status_code == 200, r.text
+    senha_temporaria = _senha_temporaria_do_mock(mock_send)
 
     login = client.post(
         "/auth/login",
-        json={"email": "user-etapa13@example.com", "senha": "Bolao123"},
+        json={"email": "user-etapa13@example.com", "senha": senha_temporaria},
     )
     assert login.status_code == 200, login.text
     assert login.json()["primeiro_login"] is True
@@ -294,8 +306,9 @@ def test_primeiro_acesso_rejeita_senha_padrao(mock_send, client) -> None:
     h_owner = {"Authorization": f"Bearer {owner_token}"}
     r = client.patch(f"/usuarios/{user_id}/reset-password", headers=h_owner)
     assert r.status_code == 200, r.text
+    senha_temporaria = _senha_temporaria_do_mock(mock_send)
 
-    user_token = _login(client, "user-etapa13@example.com", "Bolao123")
+    user_token = _login(client, "user-etapa13@example.com", senha_temporaria)
     h_user = {"Authorization": f"Bearer {user_token}"}
     r = client.post(
         "/auth/primeiro-acesso",
@@ -303,8 +316,8 @@ def test_primeiro_acesso_rejeita_senha_padrao(mock_send, client) -> None:
         json={
             "nome": "Usuário Teste",
             "funcao": "Jogador",
-            "nova_senha": "Bolao123",
-            "confirmar_senha": "Bolao123",
+            "nova_senha": SENHA_PADRAO_TEMPORARIA,
+            "confirmar_senha": SENHA_PADRAO_TEMPORARIA,
         },
     )
     assert r.status_code == 422, r.text

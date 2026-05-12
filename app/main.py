@@ -3,9 +3,11 @@ import app.models  # noqa: F401 — garante registro dos models no metadata
 from pathlib import Path
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from app.core.config import cors_origins_for_settings, get_settings
 from app.routes import (
     auth,
     configuracao_bolao,
@@ -25,6 +27,8 @@ from app.routes import (
     tema,
     usuarios,
 )
+
+settings = get_settings()
 
 _root = Path(__file__).resolve().parent.parent
 _static_root = _root / "static"
@@ -56,7 +60,31 @@ _SPA_HTML_PATHS = frozenset(
 app = FastAPI(
     title="Bolão da Copa do Mundo — MVP",
     version="0.2.0",
+    docs_url="/docs" if settings.debug else None,
+    redoc_url="/redoc" if settings.debug else None,
+    openapi_url="/openapi.json" if settings.debug else None,
 )
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins_for_settings(settings),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    if not settings.debug:
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; frame-ancestors 'none'; base-uri 'self'"
+        )
+    return response
 
 
 @app.middleware("http")

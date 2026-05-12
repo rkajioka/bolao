@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { CheckCircle, XCircle, X } from 'lucide-react'
+import { CheckCircle, XCircle } from 'lucide-react'
 
 interface Toast {
   id: string
@@ -15,6 +15,30 @@ interface ToastContextValue {
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null)
+
+const TOAST_STYLES: Record<
+  Toast['type'],
+  { icon: typeof CheckCircle; iconColor: string; iconBg: string; border: string }
+> = {
+  success: {
+    icon: CheckCircle,
+    iconColor: 'var(--accent)',
+    iconBg: 'var(--accent-dim)',
+    border: 'rgba(53, 208, 127, 0.28)',
+  },
+  error: {
+    icon: XCircle,
+    iconColor: 'var(--danger)',
+    iconBg: 'var(--danger-dim)',
+    border: 'rgba(255, 92, 122, 0.32)',
+  },
+  info: {
+    icon: CheckCircle,
+    iconColor: 'var(--text)',
+    iconBg: 'rgba(255, 255, 255, 0.08)',
+    border: 'var(--border)',
+  },
+}
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
@@ -36,43 +60,45 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={{ toast, success, error }}>
       {children}
       <motion.div
-        className="fixed inset-x-0 top-0 z-[200] flex flex-col gap-1.5 items-center pointer-events-none px-3"
-        style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top, 0px))' }}
+        className="fixed inset-x-0 z-[200] flex flex-col items-center gap-2 px-4 pointer-events-none"
+        style={{ top: 'calc(var(--safe-top) + 4.25rem)' }}
+        aria-live="polite"
+        aria-relevant="additions"
       >
         <AnimatePresence>
-          {toasts.map((t) => (
-            <motion.div
-              key={t.id}
-              initial={{ opacity: 0, y: -8, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -6, scale: 0.98 }}
-              transition={{ duration: 0.16, ease: [0.4, 0, 0.2, 1] }}
-              className="pointer-events-auto flex items-start gap-2.5 px-4 py-2.5 rounded-2xl text-sm font-medium shadow-lg max-w-[min(92vw,28rem)]"
-              style={{
-                background: t.type === 'error'
-                  ? 'rgba(40, 18, 22, 0.96)'
-                  : 'rgba(12, 18, 32, 0.96)',
-                border: `1px solid ${t.type === 'error'
-                  ? 'rgba(255, 92, 122, 0.4)'
-                  : t.type === 'success'
-                    ? 'rgba(53, 208, 127, 0.3)'
-                    : 'rgba(255,255,255,0.08)'}`,
-                color: '#F8FAFC',
-              }}
-            >
-              {t.type === 'success' && <CheckCircle size={16} style={{ color: 'var(--accent)', flexShrink: 0, marginTop: 1 }} />}
-              {t.type === 'error' && <XCircle size={16} style={{ color: 'var(--danger)', flexShrink: 0, marginTop: 1 }} />}
-              <span className="flex-1 min-w-0 leading-snug">{t.message}</span>
-              <button
-                type="button"
-                onClick={() => remove(t.id)}
-                className="opacity-50 hover:opacity-100 transition-opacity shrink-0 mt-0.5"
-                aria-label="Fechar aviso"
+          {toasts.map((t) => {
+            const style = TOAST_STYLES[t.type]
+            const Icon = style.icon
+
+            return (
+              <motion.div
+                key={t.id}
+                role="status"
+                initial={{ opacity: 0, y: -10, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.98 }}
+                transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
+                className="pointer-events-none flex w-full max-w-md items-center gap-3 rounded-2xl px-3.5 py-3 shadow-lg"
+                style={{
+                  background: 'var(--topbar-bg)',
+                  border: `1px solid ${style.border}`,
+                  backdropFilter: 'blur(16px)',
+                  WebkitBackdropFilter: 'blur(16px)',
+                  boxShadow: 'var(--elevated-shadow)',
+                  color: 'var(--text)',
+                }}
               >
-                <X size={14} />
-              </button>
-            </motion.div>
-          ))}
+                <span
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+                  style={{ background: style.iconBg }}
+                  aria-hidden="true"
+                >
+                  <Icon size={16} style={{ color: style.iconColor }} />
+                </span>
+                <p className="min-w-0 flex-1 text-sm font-medium leading-snug">{t.message}</p>
+              </motion.div>
+            )
+          })}
         </AnimatePresence>
       </motion.div>
     </ToastContext.Provider>

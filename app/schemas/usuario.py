@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
+from pydantic import BaseModel, EmailStr, Field, ValidationInfo, field_validator, model_validator
 
 from app.core.password_defaults import SENHA_PADRAO_TEMPORARIA
 from app.core.password_policy import validar_complexidade_senha
@@ -32,6 +32,13 @@ class UsuarioBase(BaseModel):
 
 class UsuarioCreate(UsuarioBase):
     senha_plana: str | None = Field(default=None, min_length=8, max_length=128)
+
+    @field_validator("senha_plana")
+    @classmethod
+    def validar_senha_plana(cls, value: str | None, info: ValidationInfo) -> str | None:
+        if value is not None and not (info.context or {}).get("skip_password_complexity"):
+            validar_complexidade_senha(value)
+        return value
 
 
 class UsuarioRead(UsuarioBase):
