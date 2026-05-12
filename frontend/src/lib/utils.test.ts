@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
-import { deadlineText, jogoBloqueado, mensagemPodioRepetidoEspeciais, nomeSelecaoParaCard } from '@/lib/utils'
+import {
+  comparePalpiteSegmentKeys,
+  deadlineText,
+  jogoBloqueado,
+  mensagemPodioRepetidoEspeciais,
+  nomeSelecaoParaCard,
+  palpiteSegmentOptionsFromJogos,
+} from '@/lib/utils'
 import type { Jogo, Pais } from '@/types'
 
 const paisA: Pais = {
@@ -112,5 +119,84 @@ describe('jogoBloqueado', () => {
     const jogo = jogoBase()
     expect(jogoBloqueado(jogo, [jogo])).toBe(false)
     vi.useRealTimers()
+  })
+})
+
+describe('palpiteSegmentOptionsFromJogos', () => {
+  it('ordena rodadas pelo número da rodada, não pela data do jogo', () => {
+    const jogos = [
+      jogoBase({ id: 1, rodada: 3, data_jogo: '2030-06-10T18:00:00Z' }),
+      jogoBase({ id: 2, rodada: 1, data_jogo: '2030-06-20T18:00:00Z' }),
+      jogoBase({ id: 3, rodada: 2, data_jogo: '2030-06-15T18:00:00Z' }),
+    ]
+
+    expect(palpiteSegmentOptionsFromJogos(jogos).map((item) => item.label)).toEqual([
+      'Rodada 1',
+      'Rodada 2',
+      'Rodada 3',
+    ])
+  })
+
+  it('coloca mata-mata após as rodadas de grupos', () => {
+    const jogos = [
+      jogoBase({ id: 1, rodada: 3, data_jogo: '2030-06-10T18:00:00Z' }),
+      jogoBase({
+        id: 2,
+        tipo_fase: 'mata_mata',
+        rodada: null,
+        fase: 'dezesseis_avos',
+        data_jogo: '2030-06-05T18:00:00Z',
+      }),
+      jogoBase({
+        id: 3,
+        tipo_fase: 'mata_mata',
+        rodada: null,
+        fase: 'oitavas',
+        data_jogo: '2030-06-12T18:00:00Z',
+      }),
+      jogoBase({
+        id: 4,
+        tipo_fase: 'mata_mata',
+        rodada: null,
+        fase: 'quartas',
+        data_jogo: '2030-06-14T18:00:00Z',
+      }),
+      jogoBase({
+        id: 5,
+        tipo_fase: 'mata_mata',
+        rodada: null,
+        fase: 'semi',
+        data_jogo: '2030-06-16T18:00:00Z',
+      }),
+    ]
+
+    expect(palpiteSegmentOptionsFromJogos(jogos).map((item) => item.label)).toEqual([
+      'Rodada 3',
+      '16-avos',
+      'Oitavas',
+      'Quartas',
+      'Semifinal',
+    ])
+  })
+
+  it('omite rodadas ausentes no conjunto filtrado', () => {
+    const jogos = [
+      jogoBase({ id: 1, rodada: 1, data_jogo: '2030-06-10T18:00:00Z' }),
+      jogoBase({ id: 2, rodada: 3, data_jogo: '2030-06-20T18:00:00Z' }),
+    ]
+
+    expect(palpiteSegmentOptionsFromJogos(jogos).map((item) => item.label)).toEqual([
+      'Rodada 1',
+      'Rodada 3',
+    ])
+  })
+})
+
+describe('comparePalpiteSegmentKeys', () => {
+  it('mantém a ordem canônica entre grupos e mata-mata', () => {
+    expect(comparePalpiteSegmentKeys('grupos:rodada:1', 'grupos:rodada:2')).toBeLessThan(0)
+    expect(comparePalpiteSegmentKeys('grupos:rodada:3', 'mata:dezesseis_avos')).toBeLessThan(0)
+    expect(comparePalpiteSegmentKeys('mata:oitavas', 'mata:quartas')).toBeLessThan(0)
+    expect(comparePalpiteSegmentKeys('mata:semi', 'mata:final')).toBeLessThan(0)
   })
 })

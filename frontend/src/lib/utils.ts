@@ -107,23 +107,45 @@ export interface PalpiteSegmentOption {
   label: string
 }
 
-/** Opções de segmento a partir dos jogos já filtrados; ordenadas pelo primeiro horário de cada segmento. */
+const GRUPOS_RODADA_PREFIX = 'grupos:rodada:'
+const MATA_SEGMENT_PREFIX = 'mata:'
+const UNKNOWN_PALPITE_SEGMENT_RANK = 10_000
+
+function palpiteSegmentSortRank(key: string): number {
+  if (key.startsWith(GRUPOS_RODADA_PREFIX)) {
+    const rodada = Number(key.slice(GRUPOS_RODADA_PREFIX.length))
+    return Number.isFinite(rodada) ? rodada : UNKNOWN_PALPITE_SEGMENT_RANK
+  }
+  if (key.startsWith(MATA_SEGMENT_PREFIX)) {
+    const slug = key.slice(MATA_SEGMENT_PREFIX.length)
+    if (slug.startsWith('raw:')) return UNKNOWN_PALPITE_SEGMENT_RANK
+    const idx = FASE_MATA_SLUGS.indexOf(slug as (typeof FASE_MATA_SLUGS)[number])
+    return idx === -1 ? UNKNOWN_PALPITE_SEGMENT_RANK - 1 : 100 + idx
+  }
+  return UNKNOWN_PALPITE_SEGMENT_RANK
+}
+
+export function comparePalpiteSegmentKeys(a: string, b: string): number {
+  const diff = palpiteSegmentSortRank(a) - palpiteSegmentSortRank(b)
+  return diff !== 0 ? diff : a.localeCompare(b)
+}
+
+/** Opções de segmento a partir dos jogos já filtrados; ordenadas pela sequência do torneio. */
 export function palpiteSegmentOptionsFromJogos(jogos: Jogo[]): PalpiteSegmentOption[] {
   if (!jogos.length) return []
-  const byKey = new Map<string, { label: string; minMs: number }>()
+  const byKey = new Map<string, string>()
   for (const j of jogos) {
     const k = palpiteSegmentKey(j)
-    const label = palpiteSegmentLabel(j)
-    const ms = dataJogoParaMs(j.data_jogo)
-    const t = Number.isFinite(ms) ? ms : Number.POSITIVE_INFINITY
-    const prev = byKey.get(k)
-    if (!prev || t < prev.minMs) {
-      byKey.set(k, { label, minMs: t })
+    if (!byKey.has(k)) {
+      byKey.set(k, palpiteSegmentLabel(j))
     }
   }
   return [...byKey.entries()]
-    .sort((a, b) => a[1].minMs - b[1].minMs || a[0].localeCompare(b[0]))
-    .map(([key, v]) => ({ key, label: v.label }))
+    .sort(([keyA, labelA], [keyB, labelB]) => {
+      const cmp = comparePalpiteSegmentKeys(keyA, keyB)
+      return cmp !== 0 ? cmp : labelA.localeCompare(labelB)
+    })
+    .map(([key, label]) => ({ key, label }))
 }
 
 /**
