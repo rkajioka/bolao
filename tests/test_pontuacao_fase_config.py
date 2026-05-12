@@ -5,6 +5,7 @@ from __future__ import annotations
 from app.database import SessionLocal
 from app.schemas.usuario import UsuarioCreate
 from app.services import pontuacao_fase_service, usuario_service
+from app.services.pontuacao_fase_service import DEFAULTS
 from tests.factories import seed_empresa, seed_owner_admin_e_usuario
 
 
@@ -27,6 +28,30 @@ def _fases_payload(rows: list[dict]) -> dict:
             }
             for row in rows
         ]
+    }
+
+
+def test_defaults_mata_mata_labels_alinhados() -> None:
+    labels = {
+        str(row["fase_key"]): str(row["label"])
+        for row in DEFAULTS
+        if str(row["fase_key"])
+        in {
+            "dezesseis_avos",
+            "oitavas",
+            "quartas",
+            "semi",
+            "terceiro_lugar",
+            "final",
+        }
+    }
+    assert labels == {
+        "dezesseis_avos": "16-avos",
+        "oitavas": "Oitavas",
+        "quartas": "Quartas",
+        "semi": "Semifinal",
+        "terceiro_lugar": "3º lugar",
+        "final": "Final",
     }
 
 

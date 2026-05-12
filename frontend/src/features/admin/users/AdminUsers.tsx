@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ChevronDown } from 'lucide-react'
 import { UserAvatar } from '@/components/UserAvatar'
+import { fieldControlStyle } from '@/lib/fieldStyles'
 import { adminService } from '@/services/admin.service'
 import { empresaService } from '@/services/empresa.service'
 import type { User, UsuarioEmailEntrega } from '@/types'
@@ -54,11 +55,7 @@ function usuarioAtendeBusca(
   return tokens.every((token) => corpus.includes(token))
 }
 
-const inputStyle = {
-  background: 'rgba(255,255,255,0.06)',
-  border: '1px solid rgba(255,255,255,0.10)',
-  color: 'var(--text)',
-} as const
+const inputStyle = fieldControlStyle
 
 function mensagemEntregaEmail(entrega: UsuarioEmailEntrega | undefined, sucessoPadrao: string): string {
   if (entrega?.email_enviado) {

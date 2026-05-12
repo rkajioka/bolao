@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Lock, LockOpen, Pencil } from 'lucide-react'
 import { CountryFlag } from '@/components/CountryFlag'
 import { SelectInput } from '@/components/SelectInput'
+import { FASES_MATA_MATA_OPTIONS } from '@/lib/faseMataLabels'
 import { faseLabel, formatDate, normalizeFaseSlug } from '@/lib/utils'
 import {
   labelPreenchimentoResultadoDisponivel,
@@ -11,15 +12,6 @@ import { gamesService, type UpdateResultadoPayload } from '@/services/games.serv
 import type { Jogo, Pais } from '@/types'
 
 const GRUPOS_DISPONIVEIS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'] as const
-
-const FASES_MATA_MATA = [
-  { value: 'dezesseis_avos', label: '16-avos' },
-  { value: 'oitavas', label: 'Oitavas' },
-  { value: 'quartas', label: 'Quartas' },
-  { value: 'semi', label: 'Semifinal' },
-  { value: 'terceiro_lugar', label: '3º lugar' },
-  { value: 'final', label: 'Final' },
-] as const
 
 interface OfficialGameResultCardProps {
   jogo: Jogo
@@ -353,7 +345,7 @@ export function OfficialGameResultCard({
                 <SelectInput
                   value={metaFaseMata}
                   onChange={(value) => setMetaFaseMata(value)}
-                  options={FASES_MATA_MATA.map((f) => ({ value: f.value, label: f.label }))}
+                  options={FASES_MATA_MATA_OPTIONS}
                   placeholder="Fase mata-mata"
                 />
               </div>

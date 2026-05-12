@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, Check } from 'lucide-react'
 import { CountryFlag } from '@/components/CountryFlag'
+import { dropdownOptionStyle, dropdownPanelStyle, fieldControlStyle } from '@/lib/fieldStyles'
 import type { Pais } from '@/types'
 
 interface CountrySelectProps {
@@ -76,11 +77,7 @@ export function CountrySelect({
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
         className="w-full px-3 py-3 rounded-xl text-sm transition-all duration-150 disabled:opacity-40 flex items-center gap-2"
-        style={{
-          background: 'var(--glass)',
-          border: '1px solid var(--border)',
-          color: 'var(--text)',
-        }}
+        style={fieldControlStyle}
       >
         {selected ? (
           <>
@@ -103,11 +100,7 @@ export function CountrySelect({
       {open && (
         <div
           className="absolute z-40 mt-2 w-full max-h-64 overflow-auto rounded-xl p-1"
-          style={{
-            background: 'var(--bg)',
-            border: '1px solid var(--border)',
-            boxShadow: '0 12px 30px rgba(0,0,0,0.25)',
-          }}
+          style={dropdownPanelStyle}
         >
           <div className="p-1">
             <input
@@ -116,11 +109,7 @@ export function CountrySelect({
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Digite para filtrar..."
               className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-              style={{
-                background: 'var(--glass)',
-                border: '1px solid var(--border)',
-                color: 'var(--text)',
-              }}
+              style={fieldControlStyle}
             />
           </div>
 
@@ -149,10 +138,7 @@ export function CountrySelect({
                   setOpen(false)
                 }}
                 className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left text-sm transition-colors"
-                style={{
-                  background: isSelected ? 'rgba(53,208,127,0.12)' : 'transparent',
-                  color: isSelected ? 'var(--text)' : 'var(--text)',
-                }}
+                style={dropdownOptionStyle({ selected: isSelected })}
               >
                 <CountryFlag pais={country} size="sm" />
                 <span className="truncate flex-1">{country.nome}</span>

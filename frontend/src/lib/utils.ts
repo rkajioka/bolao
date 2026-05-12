@@ -1,6 +1,9 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import { FASE_MATA_SLUGS, labelFaseMataPorSlug } from '@/lib/faseMataLabels'
 import type { Jogo } from '@/types'
+
+export { labelFaseMataPorSlug }
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -52,27 +55,7 @@ export function formatTime(iso: string): string {
   })
 }
 
-const FASE_MATA_SLUGS = new Set([
-  'dezesseis_avos',
-  'oitavas',
-  'quartas',
-  'semi',
-  'terceiro_lugar',
-  'final',
-])
-
-const FASE_MATA_LABELS: Record<string, string> = {
-  dezesseis_avos: 'Dezesseis avos',
-  oitavas: 'Oitavas de final',
-  quartas: 'Quartas de final',
-  semi: 'Semifinal',
-  terceiro_lugar: '3º lugar',
-  final: 'Final',
-}
-
-export function labelFaseMataPorSlug(slug: string): string {
-  return FASE_MATA_LABELS[slug] || slug
-}
+const FASE_MATA_SLUG_SET = new Set<string>(FASE_MATA_SLUGS)
 
 export function normalizeFaseSlug(fase: string): string | null {
   const t = fase.trim().toLowerCase().replace(/\s+/g, '_')
@@ -82,13 +65,13 @@ export function normalizeFaseSlug(fase: string): string | null {
     oitavas_de_final: 'oitavas',
   }
   const x = aliases[t] || t
-  return FASE_MATA_SLUGS.has(x) ? x : null
+  return FASE_MATA_SLUG_SET.has(x) ? x : null
 }
 
 export function faseLabel(jogo: Jogo): string {
   if (jogo.tipo_fase === 'mata_mata') {
     const slug = normalizeFaseSlug(jogo.fase)
-    return slug ? FASE_MATA_LABELS[slug] || jogo.fase : jogo.fase
+    return slug ? labelFaseMataPorSlug(slug) : jogo.fase
   }
   return jogo.fase
 }

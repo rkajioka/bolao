@@ -11,11 +11,11 @@ DEFAULTS: list[dict[str, int | str]] = [
     {"fase_key": "grupo_rodada_1", "label": "Grupos - Rodada 1", "ordem": 10, "pontos_placar_exato": 10, "pontos_resultado_correto": 5, "pontos_classificado_mata_mata": 0},
     {"fase_key": "grupo_rodada_2", "label": "Grupos - Rodada 2", "ordem": 20, "pontos_placar_exato": 10, "pontos_resultado_correto": 5, "pontos_classificado_mata_mata": 0},
     {"fase_key": "grupo_rodada_3", "label": "Grupos - Rodada 3", "ordem": 30, "pontos_placar_exato": 10, "pontos_resultado_correto": 5, "pontos_classificado_mata_mata": 0},
-    {"fase_key": "dezesseis_avos", "label": "32-avos", "ordem": 40, "pontos_placar_exato": 12, "pontos_resultado_correto": 6, "pontos_classificado_mata_mata": 6},
-    {"fase_key": "oitavas", "label": "16-avos", "ordem": 50, "pontos_placar_exato": 14, "pontos_resultado_correto": 7, "pontos_classificado_mata_mata": 7},
+    {"fase_key": "dezesseis_avos", "label": "16-avos", "ordem": 40, "pontos_placar_exato": 12, "pontos_resultado_correto": 6, "pontos_classificado_mata_mata": 6},
+    {"fase_key": "oitavas", "label": "Oitavas", "ordem": 50, "pontos_placar_exato": 14, "pontos_resultado_correto": 7, "pontos_classificado_mata_mata": 7},
     {"fase_key": "quartas", "label": "Quartas", "ordem": 60, "pontos_placar_exato": 16, "pontos_resultado_correto": 8, "pontos_classificado_mata_mata": 8},
     {"fase_key": "semi", "label": "Semifinal", "ordem": 70, "pontos_placar_exato": 18, "pontos_resultado_correto": 9, "pontos_classificado_mata_mata": 9},
-    {"fase_key": "terceiro_lugar", "label": "Disputa 3º", "ordem": 80, "pontos_placar_exato": 20, "pontos_resultado_correto": 10, "pontos_classificado_mata_mata": 10},
+    {"fase_key": "terceiro_lugar", "label": "3º lugar", "ordem": 80, "pontos_placar_exato": 20, "pontos_resultado_correto": 10, "pontos_classificado_mata_mata": 10},
     {"fase_key": "final", "label": "Final", "ordem": 90, "pontos_placar_exato": 24, "pontos_resultado_correto": 12, "pontos_classificado_mata_mata": 12},
 ]
 

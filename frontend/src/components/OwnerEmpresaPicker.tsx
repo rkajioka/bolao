@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Building2 } from 'lucide-react'
+import { fieldControlStyle } from '@/lib/fieldStyles'
 import { empresaService } from '@/services/empresa.service'
 
 interface OwnerEmpresaPickerProps {
@@ -34,11 +35,7 @@ export function OwnerEmpresaPicker({ value, onChange }: OwnerEmpresaPickerProps)
           value={value ?? ''}
           onChange={(e) => onChange(Number(e.target.value))}
           className="w-full px-3 py-3 rounded-xl text-sm outline-none"
-          style={{
-            background: 'rgba(255,255,255,0.06)',
-            border: '1px solid rgba(255,255,255,0.10)',
-            color: 'var(--text)',
-          }}
+          style={fieldControlStyle}
         >
           <option value="" disabled>
             Selecione uma empresa

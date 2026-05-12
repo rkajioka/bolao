@@ -1,5 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { ChevronDown, Check } from 'lucide-react'
+import { dropdownOptionStyle, dropdownPanelStyle, fieldControlStyle } from '@/lib/fieldStyles'
 
 export interface SelectOption {
   value: string
@@ -158,8 +159,7 @@ export function SelectInput({
         onKeyDown={onTriggerKeyDown}
         className="w-full px-3 py-2 rounded-xl text-sm transition-all duration-150 disabled:opacity-40 flex items-center gap-2 outline-none"
         style={{
-          background: 'var(--glass)',
-          border: '1px solid var(--border)',
+          ...fieldControlStyle,
           color: selected ? 'var(--text)' : 'var(--text-muted)',
         }}
       >
@@ -181,11 +181,7 @@ export function SelectInput({
           tabIndex={-1}
           onKeyDown={onListKeyDown}
           className="absolute z-50 mt-2 w-full max-h-64 overflow-auto rounded-xl p-1"
-          style={{
-            background: 'var(--bg)',
-            border: '1px solid var(--border)',
-            boxShadow: '0 12px 30px rgba(0,0,0,0.25)',
-          }}
+          style={dropdownPanelStyle}
         >
           {options.map((option) => {
             const isSelected = option.value === value
@@ -204,10 +200,7 @@ export function SelectInput({
                 }}
                 onClick={() => selectOption(option)}
                 className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left text-sm disabled:opacity-40"
-                style={{
-                  background: isFocused ? 'rgba(255,255,255,0.08)' : isSelected ? 'rgba(53,208,127,0.12)' : 'transparent',
-                  color: isSelected ? 'var(--text)' : 'var(--text)',
-                }}
+                style={dropdownOptionStyle({ selected: isSelected, focused: isFocused })}
               >
                 <span className="truncate flex-1">{option.label}</span>
                 {isSelected ? <Check size={14} style={{ color: 'var(--accent)' }} /> : null}

@@ -109,7 +109,7 @@ export function EspeciaisPage() {
       {somenteConsulta && (
         <div
           className="flex items-center gap-3 px-4 py-3 rounded-2xl"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)' }}
+          style={{ background: 'var(--glass)', border: '1px solid var(--border)' }}
         >
           <Lock size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
@@ -184,10 +184,18 @@ export function EspeciaisPage() {
             <div key={key}>
               <label
                 className="block text-xs font-bold mb-2 uppercase tracking-wider flex items-center gap-1.5"
-                style={{ color: idx === 0 ? 'var(--highlight)' : 'var(--text-muted)' }}
+                style={{ color: 'var(--text-muted)' }}
               >
-                {idx === 0 ? <Star size={12} /> : null}
-                {label}
+                {idx === 0 ? (
+                  <span
+                    className="inline-flex items-center justify-center rounded-md p-0.5 shrink-0"
+                    style={{ background: 'var(--highlight-dim)', color: 'var(--highlight)' }}
+                    aria-hidden
+                  >
+                    <Star size={12} />
+                  </span>
+                ) : null}
+                <span style={{ color: idx === 0 ? 'var(--text)' : 'var(--text-muted)' }}>{label}</span>
               </label>
               <CountrySelect
                 value={form[key as keyof typeof form]}
@@ -201,7 +209,7 @@ export function EspeciaisPage() {
           ))}
 
           {/* Resumo da seleção com bandeiras */}
-          <div className="pt-2 space-y-2" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+          <div className="pt-2 space-y-2" style={{ borderTop: '1px solid var(--border)' }}>
             <p className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>Resumo</p>
             {[
               { label: 'Campeão', pais: selectedPais },
@@ -209,7 +217,7 @@ export function EspeciaisPage() {
               { label: '3º lugar', pais: selectedTerceiro },
               { label: 'País do artilheiro', pais: selectedArtilheiroPais },
             ].map(({ label, pais }) => (
-              <div key={label} className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)' }}>
+              <div key={label} className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl" style={{ background: 'var(--segmented-bg)' }}>
                 <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{label}</span>
                 {pais ? (
                   <div className="flex items-center gap-2 min-w-0">
@@ -227,7 +235,7 @@ export function EspeciaisPage() {
           {palpite && (
             <div
               className="flex flex-wrap gap-2 pt-3"
-              style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}
+              style={{ borderTop: '1px solid var(--border)' }}
             >
               <p className="w-full text-xs font-semibold mb-1" style={{ color: 'var(--text-muted)' }}>
                 Pontuação atual
@@ -242,8 +250,8 @@ export function EspeciaisPage() {
                   key={label}
                   className="text-xs px-2.5 py-1 rounded-full font-medium"
                   style={{
-                    background: pts > 0 ? 'var(--accent-dim)' : 'rgba(255,255,255,0.05)',
-                    border: `1px solid ${pts > 0 ? 'rgba(53,208,127,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                    background: pts > 0 ? 'var(--accent-dim)' : 'var(--segmented-bg)',
+                    border: `1px solid ${pts > 0 ? 'var(--accent)' : 'var(--border)'}`,
                     color: pts > 0 ? 'var(--accent)' : 'var(--text-muted)',
                   }}
                 >

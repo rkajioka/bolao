@@ -9,6 +9,7 @@ import {
   labelDataFiltro,
 } from '@/features/official-results/officialResultUtils'
 import type { Jogo, Pais } from '@/types'
+import { FASES_MATA_MATA_OPTIONS } from '@/lib/faseMataLabels'
 import { compareJogosPorDataJogoAsc, faseLabel } from '@/lib/utils'
 import { gamesService } from '@/services/games.service'
 import { adminService } from '@/services/admin.service'
@@ -19,15 +20,6 @@ interface AdminGamesProps {
 }
 
 const GRUPOS_DISPONIVEIS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'] as const
-
-const FASES_MATA_MATA = [
-  { value: 'dezesseis_avos', label: '16-avos' },
-  { value: 'oitavas', label: 'Oitavas' },
-  { value: 'quartas', label: 'Quartas' },
-  { value: 'semi', label: 'Semifinal' },
-  { value: 'terceiro_lugar', label: '3º lugar' },
-  { value: 'final', label: 'Final' },
-] as const
 
 export function AdminGames({ success, error }: AdminGamesProps) {
   const queryClient = useQueryClient()
@@ -76,7 +68,7 @@ export function AdminGames({ success, error }: AdminGamesProps) {
     { value: 'mata_mata', label: 'Mata-mata' },
   ]
   const grupoOptions = GRUPOS_DISPONIVEIS.map((g) => ({ value: g, label: `Grupo ${g}` }))
-  const faseMataOptions = FASES_MATA_MATA.map((f) => ({ value: f.value, label: f.label }))
+  const faseMataOptions = FASES_MATA_MATA_OPTIONS
   const rodadaOptions = [
     { value: '1', label: 'Rodada 1' },
     { value: '2', label: 'Rodada 2' },

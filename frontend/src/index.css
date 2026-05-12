@@ -26,6 +26,7 @@
     --segmented-border: rgba(255, 255, 255, 0.08);
     --segmented-active-bg: rgba(255, 255, 255, 0.12);
     --segmented-active-border: rgba(255, 255, 255, 0.14);
+    --elevated-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
   }
 
   /* ── Light mode ── */
@@ -50,6 +51,7 @@
     --segmented-border: rgba(0, 0, 0, 0.09);
     --segmented-active-bg: rgba(255, 255, 255, 0.92);
     --segmented-active-border: rgba(0, 0, 0, 0.10);
+    --elevated-shadow: 0 12px 30px rgba(15, 17, 23, 0.12);
   }
 
   * {
@@ -76,6 +78,17 @@
 
   input, button, select, textarea {
     font: inherit;
+  }
+
+  select {
+    background-color: var(--glass);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  select option {
+    background-color: var(--bg-2);
+    color: var(--text);
   }
 
   ::selection {

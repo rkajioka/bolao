@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { dropdownOptionStyle, dropdownPanelStyle, fieldControlStyle } from '@/lib/fieldStyles'
 
 interface AutocompleteInputProps {
   value: string
@@ -48,20 +49,12 @@ export function AutocompleteInput({
         disabled={disabled}
         placeholder={placeholder}
         className="w-full px-3 py-2 rounded-xl text-sm disabled:opacity-40 outline-none"
-        style={{
-          background: 'rgba(255,255,255,0.06)',
-          border: '1px solid rgba(255,255,255,0.10)',
-          color: 'var(--text)',
-        }}
+        style={fieldControlStyle}
       />
       {open && !disabled && filteredOptions.length > 0 && (
         <div
           className="absolute z-40 mt-1 w-full max-h-44 overflow-auto rounded-xl p-1"
-          style={{
-            background: 'var(--bg)',
-            border: '1px solid var(--border)',
-            boxShadow: '0 8px 22px rgba(0,0,0,0.25)',
-          }}
+          style={dropdownPanelStyle}
         >
           {filteredOptions.map((opt) => (
             <button
@@ -72,7 +65,7 @@ export function AutocompleteInput({
                 setOpen(false)
               }}
               className="w-full text-left px-3 py-2 rounded-lg text-sm"
-              style={{ color: 'var(--text)' }}
+              style={dropdownOptionStyle({})}
             >
               {opt}
             </button>
