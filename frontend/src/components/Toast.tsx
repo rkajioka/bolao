@@ -35,17 +35,19 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ toast, success, error }}>
       {children}
-      <div className="fixed bottom-safe-bottom left-1/2 -translate-x-1/2 z-[200] flex flex-col gap-2 items-center pointer-events-none"
-        style={{ bottom: 'calc(var(--nav-h) + var(--safe-bottom) + 1rem)' }}>
+      <motion.div
+        className="fixed inset-x-0 top-0 z-[200] flex flex-col gap-1.5 items-center pointer-events-none px-3"
+        style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top, 0px))' }}
+      >
         <AnimatePresence>
           {toasts.map((t) => (
             <motion.div
               key={t.id}
-              initial={{ opacity: 0, y: 12, scale: 0.95 }}
+              initial={{ opacity: 0, y: -8, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -8, scale: 0.95 }}
-              transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
-              className="pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-full text-sm font-medium shadow-xl max-w-[min(92vw,380px)]"
+              exit={{ opacity: 0, y: -6, scale: 0.98 }}
+              transition={{ duration: 0.16, ease: [0.4, 0, 0.2, 1] }}
+              className="pointer-events-auto flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium shadow-lg max-w-[min(88vw,260px)]"
               style={{
                 background: t.type === 'error'
                   ? 'rgba(40, 18, 22, 0.96)'
@@ -58,19 +60,21 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 color: '#F8FAFC',
               }}
             >
-              {t.type === 'success' && <CheckCircle size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />}
-              {t.type === 'error' && <XCircle size={16} style={{ color: 'var(--danger)', flexShrink: 0 }} />}
-              <span className="flex-1 text-center">{t.message}</span>
+              {t.type === 'success' && <CheckCircle size={14} style={{ color: 'var(--accent)', flexShrink: 0 }} />}
+              {t.type === 'error' && <XCircle size={14} style={{ color: 'var(--danger)', flexShrink: 0 }} />}
+              <span className="flex-1 text-center leading-tight">{t.message}</span>
               <button
+                type="button"
                 onClick={() => remove(t.id)}
                 className="opacity-50 hover:opacity-100 transition-opacity shrink-0"
+                aria-label="Fechar aviso"
               >
-                <X size={14} />
+                <X size={12} />
               </button>
             </motion.div>
           ))}
         </AnimatePresence>
-      </div>
+      </motion.div>
     </ToastContext.Provider>
   )
 }

@@ -103,8 +103,7 @@ export function BrazilScorers({
             <div className="pt-3 space-y-2">
               {golsBrasil <= 0 && (
                 <p className="text-xs px-0.5" style={{ color: 'var(--text-muted)' }}>
-                  Com 0 gols do Brasil no palpite, não há marcadores para informar. Use Salvar para limpar marcadores
-                  já registrados.
+                  Com 0 gols do Brasil no palpite, não há marcadores para informar.
                 </p>
               )}
               {golsBrasil > 0 && (
@@ -154,21 +153,23 @@ export function BrazilScorers({
                   </div>
                 ))}
 
-              <div className="pt-1">
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={bloqueado || saving || linhasIncompletas}
-                  className="w-full py-2 rounded-xl text-xs font-semibold transition-colors disabled:opacity-40"
-                  style={{
-                    background: 'var(--highlight-dim)',
-                    border: '1px solid rgba(246,198,91,0.3)',
-                    color: 'var(--highlight)',
-                  }}
-                >
-                  {saving ? 'Salvando…' : 'Salvar marcadores'}
-                </button>
-              </div>
+              {golsBrasil > 0 && (
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={bloqueado || saving || linhasIncompletas}
+                    className="w-full py-2 rounded-xl text-xs font-semibold transition-colors disabled:opacity-40"
+                    style={{
+                      background: 'var(--highlight-dim)',
+                      border: '1px solid rgba(246,198,91,0.3)',
+                      color: 'var(--highlight)',
+                    }}
+                  >
+                    {saving ? 'Salvando…' : 'Salvar marcadores'}
+                  </button>
+                </div>
+              )}
             </div>
           </motion.div>
         )}
