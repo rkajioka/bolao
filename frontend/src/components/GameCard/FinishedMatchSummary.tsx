@@ -212,7 +212,7 @@ export function FinishedMatchSummary({
         </div>
       )}
 
-      {marcadoresValidos.length > 0 && (
+      {marcadoresBrasilHabilitado && marcadoresValidos.length > 0 && (
         <div
           className="rounded-xl p-3 space-y-2"
           style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}

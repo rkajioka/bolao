@@ -8,20 +8,31 @@ interface MarcadorItem {
   quantidade_gols: number
 }
 
-function clampMarcadoresAoPlacar(items: MarcadorItem[], golsBrasil: number): MarcadorItem[] {
-  const g = Math.max(0, golsBrasil)
-  let acc = 0
-  return items.map((m) => {
-    const qRaw = Math.min(Math.max(0, m.quantidade_gols), g)
-    const q = Math.min(qRaw, Math.max(0, g - acc))
-    acc += q
-    return { nome_jogador: m.nome_jogador, quantidade_gols: q }
-  })
+function expandirMarcadoresSalvos(marcadores: MarcadorItem[]): MarcadorItem[] {
+  const linhas: MarcadorItem[] = []
+  for (const marcador of marcadores) {
+    const quantidade = Math.max(0, marcador.quantidade_gols)
+    for (let i = 0; i < quantidade; i += 1) {
+      linhas.push({ nome_jogador: marcador.nome_jogador, quantidade_gols: 1 })
+    }
+  }
+  return linhas
 }
 
-function linhaInicial(golsBrasil: number): MarcadorItem[] {
-  if (golsBrasil <= 0) return [{ nome_jogador: '', quantidade_gols: 0 }]
-  return [{ nome_jogador: '', quantidade_gols: Math.min(1, golsBrasil) }]
+function sincronizarLinhasMarcadores(marcadores: MarcadorItem[], golsBrasil: number): MarcadorItem[] {
+  if (golsBrasil <= 0) return []
+
+  const base = marcadores.length > 0 ? expandirMarcadoresSalvos(marcadores) : []
+  const linhas = base.slice(0, golsBrasil).map((marcador) => ({
+    nome_jogador: marcador.nome_jogador,
+    quantidade_gols: 1,
+  }))
+
+  while (linhas.length < golsBrasil) {
+    linhas.push({ nome_jogador: '', quantidade_gols: 1 })
+  }
+
+  return linhas
 }
 
 interface BrazilScorersProps {
@@ -42,39 +53,26 @@ export function BrazilScorers({
   onSave,
 }: BrazilScorersProps) {
   const [open, setOpen] = useState(false)
-  const [local, setLocal] = useState<MarcadorItem[]>(() =>
-    marcadores.length > 0 ? clampMarcadoresAoPlacar(marcadores, golsBrasil) : linhaInicial(golsBrasil),
-  )
+  const [local, setLocal] = useState<MarcadorItem[]>(() => sincronizarLinhasMarcadores(marcadores, golsBrasil))
 
   useEffect(() => {
-    const base =
-      marcadores.length > 0 ? marcadores : golsBrasil <= 0 ? [{ nome_jogador: '', quantidade_gols: 0 }] : linhaInicial(golsBrasil)
-    setLocal(clampMarcadoresAoPlacar(base, golsBrasil))
+    setLocal(sincronizarLinhasMarcadores(marcadores, golsBrasil))
   }, [marcadores, golsBrasil])
+
+  const linhasIncompletas =
+    golsBrasil > 0 && local.some((marcador) => !marcador.nome_jogador.trim())
 
   const handleSave = async () => {
     if (golsBrasil <= 0) {
       await onSave([])
       return
     }
-    const valid = local.filter((m) => m.nome_jogador.trim() && m.quantidade_gols > 0)
-    await onSave(valid)
-  }
-
-  const setQuantidade = (i: number, raw: number) => {
-    const g = Math.max(0, golsBrasil)
-    const v = Math.max(0, Math.min(Number.isFinite(raw) ? raw : 0, g))
-    setLocal((prev) => {
-      const others = prev.reduce((s, m, j) => (j === i ? s : s + m.quantidade_gols), 0)
-      const capped = Math.min(v, Math.max(0, g - others))
-      const next = [...prev]
-      next[i] = { ...next[i], quantidade_gols: capped }
-      return next
-    })
+    if (linhasIncompletas) return
+    await onSave(local.map((marcador) => ({ nome_jogador: marcador.nome_jogador.trim(), quantidade_gols: 1 })))
   }
 
   return (
-    <div
+    <motion.div
       className="mt-3"
       style={{ borderTop: '1px dashed rgba(255,255,255,0.08)', paddingTop: '0.75rem' }}
     >
@@ -109,80 +107,59 @@ export function BrazilScorers({
                   já registrados.
                 </p>
               )}
+              {golsBrasil > 0 && (
+                <p className="text-xs px-0.5" style={{ color: 'var(--text-muted)' }}>
+                  Escolha exatamente {golsBrasil} jogador{golsBrasil === 1 ? '' : 'es'}, um por gol do Brasil no
+                  palpite. Para repetir um jogador, use linhas separadas.
+                </p>
+              )}
               {golsBrasil > 0 && candidatos.length === 0 && (
                 <p className="text-xs px-0.5" style={{ color: 'var(--text-muted)' }}>
                   Nenhum jogador cadastrado como candidato. Peça a um admin para incluir nomes no painel.
                 </p>
               )}
               {golsBrasil > 0 &&
-                local.map((m, i) => (
-                <div key={i} className="flex gap-2 items-center">
-                  <select
-                    value={m.nome_jogador}
-                    onChange={(e) => {
-                      const next = [...local]
-                      next[i] = { ...next[i], nome_jogador: e.target.value }
-                      setLocal(next)
-                    }}
-                    disabled={bloqueado || golsBrasil <= 0}
-                    className="min-w-0 flex-1 px-3 py-2 rounded-xl text-sm disabled:opacity-40"
-                    style={{
-                      background: 'rgba(255,255,255,0.06)',
-                      border: '1px solid rgba(255,255,255,0.10)',
-                      color: 'var(--text)',
-                    }}
-                    aria-label={`Jogador marcador ${i + 1}`}
-                  >
-                    <option value="">Selecione o jogador</option>
-                    {candidatos.map((c) => (
-                      <option key={c.id} value={c.nome}>
-                        {c.nome}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    type="number"
-                    min={0}
-                    max={golsBrasil}
-                    aria-label={`Gols do jogador ${i + 1}`}
-                    value={m.quantidade_gols}
-                    onChange={(e) => setQuantidade(i, parseInt(e.target.value, 10) || 0)}
-                    disabled={bloqueado || golsBrasil <= 0}
-                    className="w-16 px-2 py-2 rounded-xl text-sm text-center font-bold disabled:opacity-40"
-                    style={{
-                      background: 'rgba(255,255,255,0.06)',
-                      border: '1px solid rgba(255,255,255,0.10)',
-                      color: 'var(--text)',
-                    }}
-                  />
-                </div>
+                local.map((marcador, i) => (
+                  <div key={i} className="flex gap-2 items-center">
+                    <span
+                      className="w-6 shrink-0 text-center text-xs font-semibold tabular-nums"
+                      style={{ color: 'var(--text-muted)' }}
+                      aria-hidden
+                    >
+                      {i + 1}
+                    </span>
+                    <select
+                      value={marcador.nome_jogador}
+                      onChange={(e) => {
+                        const next = [...local]
+                        next[i] = { ...next[i], nome_jogador: e.target.value, quantidade_gols: 1 }
+                        setLocal(next)
+                      }}
+                      disabled={bloqueado}
+                      className="min-w-0 flex-1 px-3 py-2 rounded-xl text-sm disabled:opacity-40"
+                      style={{
+                        background: 'rgba(255,255,255,0.06)',
+                        border: '1px solid rgba(255,255,255,0.10)',
+                        color: 'var(--text)',
+                      }}
+                      aria-label={`Jogador marcador ${i + 1}`}
+                    >
+                      <option value="">Selecione o jogador</option>
+                      {candidatos.map((candidato) => (
+                        <option key={candidato.id} value={candidato.nome}>
+                          {candidato.nome}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 ))}
 
-              <div className="flex gap-2 pt-1">
-                {!bloqueado && golsBrasil > 0 && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setLocal((prev) => {
-                        const next = [...prev, { nome_jogador: '', quantidade_gols: Math.min(1, golsBrasil) }]
-                        return clampMarcadoresAoPlacar(next, golsBrasil)
-                      })
-                    }
-                    className="flex-1 py-2 rounded-xl text-xs font-medium transition-colors"
-                    style={{
-                      background: 'rgba(255,255,255,0.06)',
-                      border: '1px solid rgba(255,255,255,0.10)',
-                      color: 'var(--text-muted)',
-                    }}
-                  >
-                    + Adicionar
-                  </button>
-                )}
+              <div className="pt-1">
                 <button
                   type="button"
                   onClick={handleSave}
-                  disabled={bloqueado || saving}
-                  className="flex-1 py-2 rounded-xl text-xs font-semibold transition-colors disabled:opacity-40"
+                  disabled={bloqueado || saving || linhasIncompletas}
+                  className="w-full py-2 rounded-xl text-xs font-semibold transition-colors disabled:opacity-40"
                   style={{
                     background: 'var(--highlight-dim)',
                     border: '1px solid rgba(246,198,91,0.3)',
@@ -196,6 +173,6 @@ export function BrazilScorers({
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   )
 }

@@ -49,6 +49,45 @@ def _gols_brasil_no_placar_oficial(jogo: Jogo) -> int:
     raise ValueError("Jogo não envolve o Brasil")
 
 
+def _validar_e_normalizar_marcadores_palpite(
+    marcadores: list[MarcadorBrasilPalpiteItem],
+    gols_brasil: int,
+    nomes_canonicos: dict[str, str],
+) -> list[tuple[str, int]]:
+    if gols_brasil <= 0:
+        for m in marcadores:
+            if m.nome_jogador.strip() or int(m.quantidade_gols) > 0:
+                raise ValueError("Com 0 gols do Brasil no palpite, não envie marcadores")
+        return []
+
+    linhas: list[tuple[str, int]] = []
+    for m in marcadores:
+        q = int(m.quantidade_gols)
+        nome_in = m.nome_jogador.strip()
+        if not nome_in:
+            if q > 0:
+                raise ValueError("Informe o jogador em cada linha de marcador")
+            continue
+        if q != 1:
+            raise ValueError(
+                "Cada linha de marcador deve valer exatamente 1 gol; "
+                "para repetir um jogador, adicione outra linha"
+            )
+        chave = nome_in.casefold()
+        if chave not in nomes_canonicos:
+            raise ValueError(
+                f'Jogador "{nome_in}" não está na lista de candidatos a marcador do Brasil (ativos)'
+            )
+        linhas.append((nomes_canonicos[chave], 1))
+
+    if len(linhas) != gols_brasil:
+        raise ValueError(
+            f"Informe exatamente {gols_brasil} marcador(es), um por gol do Brasil no palpite "
+            f"(você enviou {len(linhas)})"
+        )
+    return linhas
+
+
 def _gols_brasil_no_palpite(palpite: PalpiteJogo, jogo: Jogo) -> int:
     """Gols do Brasil no palpite (casa ou fora), conforme o lado do BR no jogo."""
     casa = jogo.pais_casa
@@ -112,31 +151,7 @@ def sincronizar_marcadores_palpite(
     candidatos_ativos = candidato_marcador_brasil_service.listar_ativos(db)
     nomes_canonicos = {c.nome.strip().casefold(): c.nome.strip() for c in candidatos_ativos}
 
-    linhas: list[tuple[str, int]] = []
-    for m in marcadores:
-        q = int(m.quantidade_gols)
-        if q <= 0:
-            continue
-        nome_in = m.nome_jogador.strip()
-        if not nome_in:
-            continue
-        chave = nome_in.casefold()
-        if chave not in nomes_canonicos:
-            raise ValueError(
-                f'Jogador "{nome_in}" não está na lista de candidatos a marcador do Brasil (ativos)'
-            )
-        if q > gols_brasil:
-            raise ValueError(
-                f"Gols do marcador ({q}) não podem ultrapassar os gols do Brasil no palpite ({gols_brasil})"
-            )
-        linhas.append((nomes_canonicos[chave], q))
-
-    total_marc = sum(q for _, q in linhas)
-    if total_marc > gols_brasil:
-        raise ValueError(
-            f"A soma dos gols dos marcadores ({total_marc}) não pode ultrapassar os gols do Brasil "
-            f"no palpite ({gols_brasil})"
-        )
+    linhas = _validar_e_normalizar_marcadores_palpite(marcadores, gols_brasil, nomes_canonicos)
 
     jogo_atual = obter_jogo_para_edicao_palpite(db, jogo_id)
     assert_palpite_aberto(db, jogo_atual)

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
+import pytest
+
 from app.database import SessionLocal
 from app.schemas.candidato_marcador_brasil import CandidatoMarcadorBrasilCreate
 from app.schemas.empresa import EmpresaCreate
@@ -181,7 +183,7 @@ def test_participante_marcadores_403_quando_feature_off(client) -> None:
 
     token = _login(client, "user-off2@example.com", "senhausuariooff2")
     h = _headers(token)
-    detail = "Bônus de marcadores desabilitado para esta empresa."
+    detail = "Bônus de marcadores desabilitado no bolão."
 
     r_cand = client.get("/marcadores-brasil/candidatos", headers=h)
     assert r_cand.status_code == 403
@@ -343,3 +345,63 @@ def test_owner_candidatos_independente_do_flag_empresa(client) -> None:
     assert r.status_code == 200
     nomes = {row["nome"] for row in r.json()}
     assert "Richarlison" in nomes
+
+
+def test_marcadores_palpite_exige_um_por_gol() -> None:
+    db = SessionLocal()
+    try:
+        seed_owner_admin_e_usuario(db)
+        jogo_id = _seed_jogo_brasil(db)
+        user = usuario_service.get_by_email(db, "user-etapa13@example.com")
+        assert user is not None
+        palpite_jogo_service.create_palpite(
+            db,
+            user.id,
+            PalpiteJogoCreate(jogo_id=jogo_id, palpite_casa=2, palpite_fora=0),
+        )
+        with pytest.raises(ValueError, match="exatamente 2 marcador"):
+            marcador_brasil_service.sincronizar_marcadores_palpite(
+                db,
+                user.id,
+                jogo_id,
+                [MarcadorBrasilPalpiteItem(nome_jogador="Neymar", quantidade_gols=1)],
+                empresa_id=user.empresa_id,
+            )
+        salvos = marcador_brasil_service.sincronizar_marcadores_palpite(
+            db,
+            user.id,
+            jogo_id,
+            [
+                MarcadorBrasilPalpiteItem(nome_jogador="Neymar", quantidade_gols=1),
+                MarcadorBrasilPalpiteItem(nome_jogador="Neymar", quantidade_gols=1),
+            ],
+            empresa_id=user.empresa_id,
+        )
+        assert len(salvos) == 2
+        assert all(row.quantidade_gols == 1 for row in salvos)
+    finally:
+        db.close()
+
+
+def test_marcadores_palpite_rejeita_quantidade_diferente_de_um() -> None:
+    db = SessionLocal()
+    try:
+        seed_owner_admin_e_usuario(db)
+        jogo_id = _seed_jogo_brasil(db)
+        user = usuario_service.get_by_email(db, "user-etapa13@example.com")
+        assert user is not None
+        palpite_jogo_service.create_palpite(
+            db,
+            user.id,
+            PalpiteJogoCreate(jogo_id=jogo_id, palpite_casa=2, palpite_fora=0),
+        )
+        with pytest.raises(ValueError, match="exatamente 1 gol"):
+            marcador_brasil_service.sincronizar_marcadores_palpite(
+                db,
+                user.id,
+                jogo_id,
+                [MarcadorBrasilPalpiteItem(nome_jogador="Neymar", quantidade_gols=2)],
+                empresa_id=user.empresa_id,
+            )
+    finally:
+        db.close()
