@@ -300,7 +300,7 @@ export function OfficialGameResultCard({
           {jogo.finalizado && (
             <span
               className="text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-full"
-              style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}
+              style={{ background: 'var(--highlight-dim)', border: '1px solid var(--border)', color: 'var(--text)' }}
             >
               Finalizado
             </span>

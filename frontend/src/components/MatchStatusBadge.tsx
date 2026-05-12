@@ -10,24 +10,24 @@ interface MatchStatusBadgeProps {
 const config = {
   open: {
     label: 'Palpite aberto',
-    color: 'var(--accent)',
-    bg: 'var(--accent-dim)',
-    border: 'rgba(53,208,127,0.3)',
+    textColor: 'var(--text)',
+    surface: { background: 'var(--accent-dim)', border: '1px solid var(--border)' },
     dot: true,
+    dotColor: 'var(--accent)',
   },
   locked: {
     label: 'Palpite fechado',
-    color: 'var(--text-muted)',
-    bg: 'rgba(255,255,255,0.05)',
-    border: 'rgba(255,255,255,0.08)',
+    textColor: 'var(--text-muted)',
+    surface: { background: 'var(--segmented-bg)', border: '1px solid var(--border)' },
     dot: false,
+    dotColor: 'var(--text-muted)',
   },
   done: {
     label: 'Finalizado',
-    color: 'var(--highlight)',
-    bg: 'var(--highlight-dim)',
-    border: 'rgba(246,198,91,0.3)',
+    textColor: 'var(--text)',
+    surface: { background: 'var(--highlight-dim)', border: '1px solid var(--border)' },
     dot: false,
+    dotColor: 'var(--highlight)',
   },
 }
 
@@ -36,12 +36,12 @@ export function MatchStatusBadge({ status, className }: MatchStatusBadgeProps) {
   return (
     <span
       className={cn('inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold', className)}
-      style={{ color: c.color, background: c.bg, border: `1px solid ${c.border}` }}
+      style={{ color: c.textColor, ...c.surface }}
     >
       {c.dot && (
         <span
           className="w-1.5 h-1.5 rounded-full animate-pulse"
-          style={{ background: c.color }}
+          style={{ background: c.dotColor }}
         />
       )}
       {c.label}
