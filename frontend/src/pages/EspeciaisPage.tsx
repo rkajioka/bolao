@@ -256,6 +256,18 @@ export function EspeciaisPage() {
             </div>
           ))}
 
+          {!bloqueadoEdicao && (
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="w-full py-3 rounded-xl text-sm font-semibold transition-all duration-150 disabled:opacity-40"
+              style={{ background: 'var(--highlight)', color: '#070A12' }}
+            >
+              {saving ? 'Salvando…' : palpite ? 'Atualizar palpites' : 'Salvar palpites'}
+            </button>
+          )}
+
           {/* Resumo da seleção com bandeiras */}
           <div className="pt-2 space-y-2" style={{ borderTop: '1px solid var(--border)' }}>
             <p className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>Resumo</p>
@@ -307,18 +319,6 @@ export function EspeciaisPage() {
                 </span>
               ))}
             </div>
-          )}
-
-          {!bloqueadoEdicao && (
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving}
-              className="w-full py-3 rounded-xl text-sm font-semibold transition-all duration-150 disabled:opacity-40"
-              style={{ background: 'var(--highlight)', color: '#070A12' }}
-            >
-              {saving ? 'Salvando…' : palpite ? 'Atualizar palpites' : 'Salvar palpites'}
-            </button>
           )}
         </motion.div>
       )}
