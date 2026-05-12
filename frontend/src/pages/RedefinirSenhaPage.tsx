@@ -7,6 +7,59 @@ import { perfilService } from '@/services/perfil.service'
 import { ApiError, setToken } from '@/lib/api'
 import { validarSenhaSegura } from '@/lib/passwordPolicy'
 
+interface PasswordFieldProps {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  placeholder: string
+  showSenha: boolean
+  onToggleShowSenha: () => void
+  autoFocus?: boolean
+}
+
+function PasswordField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  showSenha,
+  onToggleShowSenha,
+  autoFocus,
+}: PasswordFieldProps) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-sm font-medium" style={{ color: 'var(--text)' }}>
+        {label}
+      </label>
+      <div
+        className="flex h-11 items-center gap-2 px-3 rounded-xl"
+        style={{ background: 'var(--glass)', border: '1px solid var(--border)' }}
+      >
+        <Lock size={16} className="shrink-0" style={{ color: 'var(--text-muted)' }} />
+        <input
+          type={showSenha ? 'text' : 'password'}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          required
+          autoFocus={autoFocus}
+          className="min-w-0 flex-1 bg-transparent outline-none text-sm"
+          style={{ color: 'var(--text)' }}
+        />
+        <button
+          type="button"
+          onClick={onToggleShowSenha}
+          className="flex h-8 w-8 shrink-0 items-center justify-center"
+          style={{ color: 'var(--text-muted)' }}
+          aria-label={showSenha ? 'Ocultar senha' : 'Mostrar senha'}
+        >
+          {showSenha ? <EyeOff size={14} /> : <Eye size={14} />}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function RedefinirSenhaPage() {
   const [params] = useSearchParams()
   const token = params.get('token') ?? ''
@@ -112,55 +165,24 @@ export function RedefinirSenhaPage() {
           </motion.div>
         ) : (
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium" style={{ color: 'var(--text)' }}>
-                Nova senha
-              </label>
-              <div
-                className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
-                style={{ background: 'var(--glass)', border: '1px solid var(--border)' }}
-              >
-                <Lock size={16} style={{ color: 'var(--text-muted)' }} />
-                <input
-                  type={showSenha ? 'text' : 'password'}
-                  value={senha}
-                  onChange={(e) => setSenha(e.target.value)}
-                  placeholder="8+ caracteres, 1 maiúscula e 1 especial"
-                  required
-                  autoFocus
-                  className="flex-1 bg-transparent outline-none text-sm"
-                  style={{ color: 'var(--text)' }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowSenha((v) => !v)}
-                  style={{ color: 'var(--text-muted)' }}
-                >
-                  {showSenha ? <EyeOff size={14} /> : <Eye size={14} />}
-                </button>
-              </div>
-            </div>
+            <PasswordField
+              label="Nova senha"
+              value={senha}
+              onChange={setSenha}
+              placeholder="8+ caracteres, 1 maiúscula e 1 especial"
+              showSenha={showSenha}
+              onToggleShowSenha={() => setShowSenha((v) => !v)}
+              autoFocus
+            />
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium" style={{ color: 'var(--text)' }}>
-                Confirmar senha
-              </label>
-              <div
-                className="flex items-center gap-2 px-3 py-2.5 rounded-xl"
-                style={{ background: 'var(--glass)', border: '1px solid var(--border)' }}
-              >
-                <Lock size={16} style={{ color: 'var(--text-muted)' }} />
-                <input
-                  type={showSenha ? 'text' : 'password'}
-                  value={confirmar}
-                  onChange={(e) => setConfirmar(e.target.value)}
-                  placeholder="Repita a senha"
-                  required
-                  className="flex-1 bg-transparent outline-none text-sm"
-                  style={{ color: 'var(--text)' }}
-                />
-              </div>
-            </div>
+            <PasswordField
+              label="Confirmar senha"
+              value={confirmar}
+              onChange={setConfirmar}
+              placeholder="Repita a senha"
+              showSenha={showSenha}
+              onToggleShowSenha={() => setShowSenha((v) => !v)}
+            />
 
             {error && (
               <p
