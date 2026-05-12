@@ -24,6 +24,7 @@ def seed_empresa(db: Session, codigo: str = "TESTE") -> Empresa:
             nome="Empresa Teste",
             codigo_empresa=codigo,
             marcadores_brasil_habilitado=True,
+            max_usuarios=100,
         ),
     )
 
@@ -105,6 +106,33 @@ def seed_owner_admin_e_usuario(db: Session) -> tuple[int, int, int]:
 def seed_admin_e_usuario(db: Session) -> tuple[int, int]:
     _, admin_id, user_id = seed_owner_admin_e_usuario(db)
     return admin_id, user_id
+
+
+def seed_brasil_e_adversario(db: Session) -> tuple[int, int]:
+    br = pais_service.create_pais(
+        db,
+        PaisCreate(nome="Brasil", sigla="BR", bandeira_url="https://example.com/br.png", grupo="A"),
+    )
+    adv = pais_service.create_pais(
+        db,
+        PaisCreate(nome="Time B", sigla="TB", bandeira_url="https://example.com/b.png", grupo="A"),
+    )
+    return br.id, adv.id
+
+
+def seed_jogo_brasil_em_breve(db: Session, brasil_id: int, fora_id: int) -> Jogo:
+    return jogo_service.create_jogo(
+        db,
+        JogoCreate(
+            fase="Grupo A",
+            grupo="A",
+            tipo_fase="grupos",
+            rodada=1,
+            pais_casa_id=brasil_id,
+            pais_fora_id=fora_id,
+            data_jogo=datetime.now(UTC) + timedelta(days=2),
+        ),
+    )
 
 
 def seed_dois_paises(db: Session) -> tuple[int, int]:

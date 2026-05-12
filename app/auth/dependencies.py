@@ -149,6 +149,11 @@ def require_participante_bolao(user: Usuario = Depends(require_primeiro_login_co
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Proprietário da plataforma não participa do bolão",
         )
+    if user.empresa_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Usuário não está vinculado a uma empresa",
+        )
     return user
 
 

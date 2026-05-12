@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 from app.database import SessionLocal
 from app.schemas.candidato_marcador_brasil import CandidatoMarcadorBrasilCreate
 from app.schemas.empresa import EmpresaCreate
-from app.schemas.jogo import JogoCreate
+from app.schemas.jogo import JogoCreate, JogoResultadoPatch
 from app.schemas.marcador_brasil import (
     MarcadorBrasilPalpiteItem,
     MarcadorBrasilResultadoBase,
@@ -37,6 +37,29 @@ def _login(client, email: str, senha: str) -> str:
 
 def _headers(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
+
+
+def _finalizar_jogo_com_marcadores_resultado(
+    db,
+    jogo_id: int,
+    placar_casa: int,
+    placar_fora: int,
+    marcadores: MarcadoresBrasilResultadoSync,
+) -> None:
+    jogo = jogo_service.get_by_id(db, jogo_id)
+    assert jogo is not None
+    jogo_service.patch_resultado(
+        db,
+        jogo,
+        JogoResultadoPatch(placar_casa=placar_casa, placar_fora=placar_fora),
+    )
+    marcador_brasil_service.sincronizar_marcadores_resultado_admin(db, jogo_id, marcadores)
+    jogo = jogo_service.get_by_id(db, jogo_id)
+    assert jogo is not None
+    jogo.data_jogo = datetime.now(UTC) - timedelta(hours=3)
+    db.commit()
+    db.refresh(jogo)
+    jogo_service.patch_finalizar(db, jogo)
 
 
 def _seed_jogo_brasil(db) -> int:
@@ -79,7 +102,7 @@ def test_nova_empresa_flag_false_exposta_em_config_minha(client) -> None:
     r_create = client.post(
         "/empresas/",
         headers=h_owner,
-        json={"nome": "Sem Marcadores", "marcadores_brasil_habilitado": False},
+        json={"nome": "Sem Marcadores", "marcadores_brasil_habilitado": False, "max_usuarios": 100},
     )
     assert r_create.status_code == 201, r_create.text
     empresa_id = r_create.json()["id"]
@@ -136,6 +159,7 @@ def test_participante_marcadores_403_quando_feature_off(client) -> None:
                 nome="Empresa Off",
                 codigo_empresa="OFF",
                 marcadores_brasil_habilitado=False,
+                max_usuarios=100,
             ),
         )
         usuario_service.create_usuario(
@@ -223,12 +247,11 @@ def test_pontuacao_marcadores_zero_quando_feature_off(client) -> None:
             user.id,
             PalpiteJogoCreate(jogo_id=jogo_id, palpite_casa=2, palpite_fora=0),
         )
-        jogo = jogo_service.get_by_id(db, jogo_id)
-        assert jogo is not None
-        finalizar_jogo(db, jogo, 2, 0)
-        marcador_brasil_service.sincronizar_marcadores_resultado_admin(
+        _finalizar_jogo_com_marcadores_resultado(
             db,
             jogo_id,
+            2,
+            0,
             MarcadoresBrasilResultadoSync(
                 marcadores=[MarcadorBrasilResultadoBase(nome_jogador="Neymar", quantidade_gols=1)]
             ),
@@ -259,12 +282,11 @@ def test_patch_empresa_desliga_recalcula_ranking_sem_bonus(client) -> None:
             [MarcadorBrasilPalpiteItem(nome_jogador="Neymar", quantidade_gols=1)],
             empresa_id=user.empresa_id,
         )
-        jogo = jogo_service.get_by_id(db, jogo_id)
-        assert jogo is not None
-        finalizar_jogo(db, jogo, 1, 0)
-        marcador_brasil_service.sincronizar_marcadores_resultado_admin(
+        _finalizar_jogo_com_marcadores_resultado(
             db,
             jogo_id,
+            1,
+            0,
             MarcadoresBrasilResultadoSync(
                 marcadores=[MarcadorBrasilResultadoBase(nome_jogador="Neymar", quantidade_gols=1)]
             ),

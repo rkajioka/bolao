@@ -13,6 +13,7 @@ from app.models.configuracao_bolao import ConfiguracaoBolao
 from app.models.jogo import Jogo
 from app.schemas.configuracao_bolao import ConfiguracaoBolaoRead, ConfiguracaoBolaoWrite
 from app.services import empresa_service
+from app.services.regra_negocio import assert_pontuacao_editavel_empresa
 
 
 def _normalizar_data_utc(valor: datetime) -> datetime:
@@ -73,10 +74,29 @@ def ensure_configuracao_empresa(db: Session, empresa_id: int) -> ConfiguracaoBol
     return c
 
 
+def _pontos_alterados(c: ConfiguracaoBolao, data: ConfiguracaoBolaoWrite) -> bool:
+    return any(
+        getattr(c, field) != getattr(data, field)
+        for field in (
+            "pontos_campeao",
+            "pontos_vice_campeao",
+            "pontos_terceiro_lugar",
+            "pontos_artilheiro_pais",
+            "pontos_placar_exato",
+            "pontos_resultado_correto",
+            "pontos_classificado_mata_mata",
+            "pontos_marcador_brasil",
+            "pontos_marcador_brasil_com_quantidade",
+        )
+    )
+
+
 def atualizar_configuracao_empresa(
     db: Session, empresa_id: int, data: ConfiguracaoBolaoWrite
 ) -> ConfiguracaoBolao:
     c = ensure_configuracao_empresa(db, empresa_id)
+    if _pontos_alterados(c, data):
+        assert_pontuacao_editavel_empresa(db, empresa_id)
     if c.data_bloqueio_palpites_especiais is not None:
         if not _datas_bloqueio_especiais_equivalentes(
             c.data_bloqueio_palpites_especiais,
@@ -103,6 +123,12 @@ def atualizar_configuracao_empresa(
 
 
 def get_data_bloqueio_palpites_especiais_efetiva(db: Session, empresa_id: int) -> datetime | None:
+    """Data efetiva de bloqueio dos palpites especiais do tenant.
+
+    Usa a data configurada na empresa quando existir; caso contrário, aplica fallback
+    global: início do primeiro jogo de grupos da rodada 1 no calendário do owner.
+    Alterações na agenda global portanto afetam tenants sem data própria.
+    """
     cfg = get_configuracao_empresa(db, empresa_id)
     if cfg and cfg.data_bloqueio_palpites_especiais is not None:
         return cfg.data_bloqueio_palpites_especiais

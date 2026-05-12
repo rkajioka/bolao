@@ -8,6 +8,7 @@ from app.models.palpite_jogo import PalpiteJogo
 from app.models.usuario import Usuario
 from app.schemas.palpite_jogo import PalpiteJogoCreate, PalpiteJogoRead, PalpiteJogoUpdate
 from app.services import palpite_jogo_service
+from app.services.regra_negocio import ConflitoRegraNegocioError
 
 router = APIRouter(prefix="/palpites-jogos", tags=["palpites-jogos"])
 
@@ -37,6 +38,8 @@ def post_palpite_jogo(
 ) -> PalpiteJogo:
     try:
         return palpite_jogo_service.create_palpite(db, user.id, data)
+    except ConflitoRegraNegocioError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
     except ValueError as e:
         raise _http_from_value_error(e) from e
     except IntegrityError as e:
@@ -55,6 +58,8 @@ def put_palpite_jogo(
 ) -> PalpiteJogo:
     try:
         return palpite_jogo_service.update_palpite(db, user.id, palpite_id, data)
+    except ConflitoRegraNegocioError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
     except ValueError as e:
         raise _http_from_value_error(e) from e
     except IntegrityError as e:

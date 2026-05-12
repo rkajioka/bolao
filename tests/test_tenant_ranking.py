@@ -42,7 +42,7 @@ def test_owner_ranking_filtra_por_empresa(client) -> None:
         seed_owner_admin_e_usuario(db)
         empresa_a_id = db.scalar(select(Usuario.empresa_id).where(Usuario.email == "user-etapa13@example.com"))
         empresa_b = empresa_service.create_empresa(
-            db, EmpresaCreate(nome="Empresa B", codigo_empresa="EMPB")
+            db, EmpresaCreate(nome="Empresa B", codigo_empresa="EMPB", max_usuarios=100)
         )
         empresa_b_id = empresa_b.id
         usuario_service.create_usuario(
@@ -95,7 +95,7 @@ def test_membro_ignora_empresa_id_na_query(client) -> None:
     try:
         seed_owner_admin_e_usuario(db)
         empresa_b = empresa_service.create_empresa(
-            db, EmpresaCreate(nome="Empresa B", codigo_empresa="EMP2")
+            db, EmpresaCreate(nome="Empresa B", codigo_empresa="EMP2", max_usuarios=100)
         )
         empresa_b_id = empresa_b.id
         usuario_service.create_usuario(
@@ -129,7 +129,7 @@ def test_insights_respeitam_empresa_id(client) -> None:
         seed_owner_admin_e_usuario(db)
         empresa_a_id = db.scalar(select(Usuario.empresa_id).where(Usuario.email == "user-etapa13@example.com"))
         empresa_b = empresa_service.create_empresa(
-            db, EmpresaCreate(nome="Empresa B", codigo_empresa="EMP3")
+            db, EmpresaCreate(nome="Empresa B", codigo_empresa="EMP3", max_usuarios=100)
         )
         empresa_b_id = empresa_b.id
         usuario_service.create_usuario(
@@ -174,7 +174,7 @@ def test_post_empresas_cria_bootstrap(client) -> None:
     r = client.post(
         "/empresas/",
         headers=h,
-        json={"nome": "Nova Corp"},
+        json={"nome": "Nova Corp", "max_usuarios": 100},
     )
     assert r.status_code == 201, r.text
     body = r.json()
@@ -207,10 +207,10 @@ def test_post_empresas_gera_codigo_automatico_e_unico(client) -> None:
     token = _login(client, "owner-etapa13@example.com", "senhaowner1")
     h = {"Authorization": f"Bearer {token}"}
 
-    r1 = client.post("/empresas/", headers=h, json={"nome": "LPC Latina"})
+    r1 = client.post("/empresas/", headers=h, json={"nome": "LPC Latina", "max_usuarios": 100})
     assert r1.status_code == 201, r1.text
     assert r1.json()["codigo_empresa"] == "LPC_LATINA"
 
-    r2 = client.post("/empresas/", headers=h, json={"nome": "LPC Latina"})
+    r2 = client.post("/empresas/", headers=h, json={"nome": "LPC Latina", "max_usuarios": 100})
     assert r2.status_code == 201, r2.text
     assert r2.json()["codigo_empresa"] == "LPC_LATINA_2"

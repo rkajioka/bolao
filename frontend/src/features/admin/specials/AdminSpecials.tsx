@@ -111,6 +111,7 @@ export function AdminSpecials({ success, error, variant, empresaId }: AdminSpeci
 
   const marcadoresBrasilHabilitado = Boolean(form?.marcadores_brasil_habilitado)
   const bloqueioEspeciaisTravado = config?.data_bloqueio_palpites_especiais != null
+  const resultadoEspecialFinalizado = Boolean(resultadoEspecial?.finalizado)
 
   const handleSaveConfiguracao = async () => {
     if (!form || empresaId == null) return
@@ -161,6 +162,10 @@ export function AdminSpecials({ success, error, variant, empresaId }: AdminSpeci
   }
 
   const handleSaveResultadoEspecial = async () => {
+    if (resultadoEspecialFinalizado) {
+      error('O resultado de especiais está finalizado e não pode ser alterado.')
+      return
+    }
     setSavingResultado(true)
     try {
       const payload = {
@@ -168,7 +173,6 @@ export function AdminSpecials({ success, error, variant, empresaId }: AdminSpeci
         vice_campeao_id: resultadoForm.vice_campeao_id ? Number(resultadoForm.vice_campeao_id) : null,
         terceiro_lugar_id: resultadoForm.terceiro_lugar_id ? Number(resultadoForm.terceiro_lugar_id) : null,
         artilheiro_pais_id: resultadoForm.artilheiro_pais_id ? Number(resultadoForm.artilheiro_pais_id) : null,
-        finalizado: resultadoEspecial?.finalizado ?? false,
       }
       await adminService.saveResultadoEspecial(payload, !!resultadoEspecial)
       await queryClient.invalidateQueries({ queryKey: ['resultados-especiais', 'admin'] })
@@ -222,31 +226,35 @@ export function AdminSpecials({ success, error, variant, empresaId }: AdminSpeci
               onChange={(value) => setResultadoForm((old) => ({ ...old, campeao_id: value }))}
               options={paisOptions}
               placeholder="Campeão"
+              disabled={resultadoEspecialFinalizado}
             />
             <SelectInput
               value={resultadoForm.vice_campeao_id}
               onChange={(value) => setResultadoForm((old) => ({ ...old, vice_campeao_id: value }))}
               options={paisOptions}
               placeholder="Vice-campeão"
+              disabled={resultadoEspecialFinalizado}
             />
             <SelectInput
               value={resultadoForm.terceiro_lugar_id}
               onChange={(value) => setResultadoForm((old) => ({ ...old, terceiro_lugar_id: value }))}
               options={paisOptions}
               placeholder="3º lugar"
+              disabled={resultadoEspecialFinalizado}
             />
             <SelectInput
               value={resultadoForm.artilheiro_pais_id}
               onChange={(value) => setResultadoForm((old) => ({ ...old, artilheiro_pais_id: value }))}
               options={paisOptions}
               placeholder="País do artilheiro"
+              disabled={resultadoEspecialFinalizado}
             />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={() => void handleSaveResultadoEspecial()}
-              disabled={savingResultado}
+              disabled={savingResultado || resultadoEspecialFinalizado}
               className="w-full py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40"
               style={{ background: 'var(--highlight-dim)', border: '1px solid rgba(246,198,91,0.3)', color: 'var(--highlight)' }}
             >

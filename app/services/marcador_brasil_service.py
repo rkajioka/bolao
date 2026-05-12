@@ -6,8 +6,6 @@ Após salvar resultado oficial, dispara `pontuacao_service.recalcular_todos_palp
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
-
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
@@ -16,6 +14,7 @@ from app.models.marcador_brasil import MarcadorBrasilPalpite, MarcadorBrasilResu
 from app.models.palpite_jogo import PalpiteJogo
 from app.schemas.marcador_brasil import MarcadorBrasilPalpiteItem, MarcadoresBrasilResultadoSync
 from app.services import candidato_marcador_brasil_service, empresa_service, jogo_service, palpite_jogo_service
+from app.services.regra_negocio import assert_jogo_nao_finalizado, assert_palpite_aberto, obter_jogo_para_edicao_palpite
 
 MARCADORES_BRASIL_EMPRESA_DESABILITADO = "Bônus de marcadores desabilitado para esta empresa."
 
@@ -29,21 +28,25 @@ def exigir_marcadores_brasil_habilitado_empresa(db: Session, empresa_id: int | N
         raise MarcadoresBrasilEmpresaDesabilitadoError(MARCADORES_BRASIL_EMPRESA_DESABILITADO)
 
 
-def _agora_utc() -> datetime:
-    return datetime.now(UTC)
-
-
 def _assert_jogo_editavel_marcadores_usuario(db: Session, jogo: Jogo) -> None:
-    if jogo.finalizado:
-        raise ValueError("O jogo está finalizado; os marcadores não podem ser alterados")
-    agora = _agora_utc()
-    limite = jogo_service.momento_fim_edicao_palpite(db, jogo)
-    if limite.tzinfo is None:
-        limite = limite.replace(tzinfo=UTC)
-    if agora >= limite:
-        raise ValueError(
-            "Os marcadores não podem ser alterados: prazo encerrado (mesma regra dos palpites por jogo)"
-        )
+    assert_palpite_aberto(
+        db,
+        jogo,
+    )
+
+
+def _gols_brasil_no_placar_oficial(jogo: Jogo) -> int:
+    casa = jogo.pais_casa
+    fora = jogo.pais_fora
+    if casa is not None and str(casa.sigla).upper() == "BR":
+        if jogo.placar_casa is None:
+            raise ValueError("Informe o placar oficial do Brasil antes dos marcadores")
+        return int(jogo.placar_casa)
+    if fora is not None and str(fora.sigla).upper() == "BR":
+        if jogo.placar_fora is None:
+            raise ValueError("Informe o placar oficial do Brasil antes dos marcadores")
+        return int(jogo.placar_fora)
+    raise ValueError("Jogo não envolve o Brasil")
 
 
 def _gols_brasil_no_palpite(palpite: PalpiteJogo, jogo: Jogo) -> int:
@@ -135,6 +138,9 @@ def sincronizar_marcadores_palpite(
             f"no palpite ({gols_brasil})"
         )
 
+    jogo_atual = obter_jogo_para_edicao_palpite(db, jogo_id)
+    assert_palpite_aberto(db, jogo_atual)
+
     db.execute(delete(MarcadorBrasilPalpite).where(MarcadorBrasilPalpite.palpite_jogo_id == palpite.id))
     for nome_jogador, quantidade_gols in linhas:
         db.add(
@@ -161,15 +167,38 @@ def listar_marcadores_resultado_admin(db: Session, jogo_id: int) -> list[Marcado
 def sincronizar_marcadores_resultado_admin(
     db: Session, jogo_id: int, body: MarcadoresBrasilResultadoSync
 ) -> list[MarcadorBrasilResultado]:
-    obter_jogo_que_envolve_brasil(db, jogo_id)
+    jogo = obter_jogo_que_envolve_brasil(db, jogo_id)
+    assert_jogo_nao_finalizado(jogo)
+    gols_brasil = _gols_brasil_no_placar_oficial(jogo)
+
+    linhas: list[tuple[str, int]] = []
+    for m in body.marcadores:
+        q = int(m.quantidade_gols)
+        if q <= 0:
+            continue
+        nome = m.nome_jogador.strip()
+        if not nome:
+            continue
+        if q > gols_brasil:
+            raise ValueError(
+                f"Gols do marcador ({q}) não podem ultrapassar os gols do Brasil no resultado ({gols_brasil})"
+            )
+        linhas.append((nome, q))
+
+    total_marc = sum(q for _, q in linhas)
+    if total_marc > gols_brasil:
+        raise ValueError(
+            f"A soma dos gols dos marcadores ({total_marc}) não pode ultrapassar os gols do Brasil "
+            f"no resultado ({gols_brasil})"
+        )
 
     db.execute(delete(MarcadorBrasilResultado).where(MarcadorBrasilResultado.jogo_id == jogo_id))
-    for m in body.marcadores:
+    for nome_jogador, quantidade_gols in linhas:
         db.add(
             MarcadorBrasilResultado(
                 jogo_id=jogo_id,
-                nome_jogador=m.nome_jogador.strip(),
-                quantidade_gols=m.quantidade_gols,
+                nome_jogador=nome_jogador,
+                quantidade_gols=quantidade_gols,
             )
         )
     db.commit()

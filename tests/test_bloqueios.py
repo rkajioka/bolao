@@ -36,7 +36,7 @@ def test_palpite_bloqueado_apos_inicio_jogo(client) -> None:
         headers=h,
         json={"jogo_id": jogo_id, "palpite_casa": 1, "palpite_fora": 0},
     )
-    assert r.status_code == 400
+    assert r.status_code == 409
 
 
 def _payload_configuracao(client, token: str) -> dict:
@@ -183,13 +183,13 @@ def test_palpite_grupo_bloqueado_1h_antes_primeiro_jogo_da_mesma_rodada(client) 
     token = _login(client, "user-etapa13@example.com", "senhausuario1")
     h = {"Authorization": f"Bearer {token}"}
     agora_bloq = t_primeiro - timedelta(minutes=30)
-    with patch("app.services.palpite_jogo_service._agora_utc", return_value=agora_bloq):
+    with patch("app.services.regra_negocio.agora_utc", return_value=agora_bloq):
         r = client.post(
             "/palpites-jogos",
             headers=h,
             json={"jogo_id": jid, "palpite_casa": 1, "palpite_fora": 0},
         )
-    assert r.status_code == 400, r.text
+    assert r.status_code == 409, r.text
 
 
 def test_marcadores_brasil_sem_jogo_brasil_retorna_erro(client) -> None:

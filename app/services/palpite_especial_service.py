@@ -32,9 +32,15 @@ def _loaders():
 
 def _assert_nao_bloqueado(db: Session, empresa_id: int | None) -> None:
     if empresa_id is None:
-        return
+        raise ValueError("Participação requer vínculo com uma empresa")
     if configuracao_bolao_service.palpites_especiais_esta_bloqueado(db, empresa_id):
         raise ValueError("Palpites especiais bloqueados após o início da primeira rodada")
+
+
+def _assert_escrita_permitida(db: Session, empresa_id: int | None, palpite: PalpiteEspecial | None) -> None:
+    _assert_nao_bloqueado(db, empresa_id)
+    if palpite is not None and palpite.bloqueado:
+        raise ValueError("Palpites especiais bloqueados para este usuário")
 
 
 def _validar_campeao(db: Session, campeao_id: int | None) -> None:
@@ -88,6 +94,7 @@ def get_por_usuario(db: Session, usuario_id: int) -> PalpiteEspecial | None:
 
 
 def listar_todos_admin(db: Session) -> list[PalpiteEspecial]:
+    """Lista global de palpites especiais para o owner (cross-tenant por design)."""
     q = (
         select(PalpiteEspecial)
         .options(*_loaders())
@@ -100,7 +107,7 @@ def create_palpite(db: Session, usuario_id: int, data: PalpiteEspecialCreate, em
     if get_por_usuario(db, usuario_id) is not None:
         raise ValueError("Palpite especial já existe; use PUT /palpites-especiais/me para alterar")
 
-    _assert_nao_bloqueado(db, empresa_id)
+    _assert_escrita_permitida(db, empresa_id, None)
     _validar_campeao(db, data.campeao_id)
     _validar_pais_generico(db, data.vice_campeao_id, "vice-campeão")
     _validar_pais_generico(db, data.terceiro_lugar_id, "terceiro lugar")
@@ -131,7 +138,7 @@ def update_palpite_me(db: Session, usuario_id: int, data: PalpiteEspecialUpdate,
     if p is None:
         raise ValueError("Palpite especial não encontrado; use POST para criar")
 
-    _assert_nao_bloqueado(db, empresa_id)
+    _assert_escrita_permitida(db, empresa_id, p)
 
     raw = data.model_dump(exclude_unset=True)
     if "campeao_id" in raw:

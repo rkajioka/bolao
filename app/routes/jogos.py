@@ -15,6 +15,7 @@ from app.schemas.jogo import (
     JogosPorGrupoResponse,
 )
 from app.services import auditoria_admin_service, jogo_service
+from app.services.regra_negocio import ConflitoRegraNegocioError
 
 router = APIRouter(prefix="/jogos", tags=["jogos"])
 
@@ -113,6 +114,8 @@ def put_jogo(
             db, admin, acao="jogos.put", entidade="jogo", entidade_id=jogo_id, status="success"
         )
         return row
+    except ConflitoRegraNegocioError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
     except ValueError as e:
         auditoria_admin_service.registrar_evento(
             db, admin, acao="jogos.put", entidade="jogo", entidade_id=jogo_id, status="error", detalhes={"erro": str(e)}
@@ -150,6 +153,8 @@ def patch_jogo_resultado(
             db, admin, acao="jogos.patch_resultado", entidade="jogo", entidade_id=jogo_id, status="success"
         )
         return row
+    except ConflitoRegraNegocioError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
     except ValueError as e:
         auditoria_admin_service.registrar_evento(
             db,

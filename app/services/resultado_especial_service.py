@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.models.resultado_especial import ResultadoEspecial
 from app.schemas.resultado_especial import ResultadoEspecialWrite
 from app.services import pais_service
+from app.services.regra_negocio import ConflitoRegraNegocioError
 
 
 def obter_singleton(db: Session) -> ResultadoEspecial | None:
@@ -64,6 +65,12 @@ def atualizar(db: Session, data: ResultadoEspecialWrite) -> ResultadoEspecial:
     row = obter_singleton(db)
     if row is None:
         raise ValueError("Resultado especial não encontrado; use POST para criar")
+    if row.finalizado:
+        raise ConflitoRegraNegocioError(
+            "O resultado especial está finalizado e não pode ser alterado"
+        )
+    if data.finalizado is False:
+        raise ValueError("Não é permitido desfinalizar o resultado especial")
     _validar_campeao(db, data.campeao_id)
     _validar_pais_generico(db, data.vice_campeao_id, "vice-campeão")
     _validar_pais_generico(db, data.terceiro_lugar_id, "terceiro lugar")
@@ -72,7 +79,6 @@ def atualizar(db: Session, data: ResultadoEspecialWrite) -> ResultadoEspecial:
     row.vice_campeao_id = data.vice_campeao_id
     row.terceiro_lugar_id = data.terceiro_lugar_id
     row.artilheiro_pais_id = data.artilheiro_pais_id
-    row.finalizado = data.finalizado
     try:
         db.commit()
     except IntegrityError:

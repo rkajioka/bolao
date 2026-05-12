@@ -8,6 +8,7 @@ from app.models.resultado_especial import ResultadoEspecial
 from app.models.usuario import Usuario
 from app.schemas.resultado_especial import ResultadoEspecialRead, ResultadoEspecialWrite
 from app.services import auditoria_admin_service, resultado_especial_service
+from app.services.regra_negocio import ConflitoRegraNegocioError
 
 router = APIRouter(prefix="/resultados-especiais", tags=["resultados-especiais"])
 
@@ -78,6 +79,8 @@ def put_resultado_especial(
             db, admin, acao="resultados_especiais.put", entidade="resultado_especial", entidade_id=row.id, status="success"
         )
         return row
+    except ConflitoRegraNegocioError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
     except ValueError as e:
         auditoria_admin_service.registrar_evento(
             db,

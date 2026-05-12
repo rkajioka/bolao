@@ -6,6 +6,7 @@ from app.database import get_db
 from app.models.usuario import Usuario
 from app.schemas.configuracao_bolao import ConfiguracaoBolaoRead, ConfiguracaoBolaoWrite
 from app.services import auditoria_admin_service, configuracao_bolao_service, pontuacao_service
+from app.services.regra_negocio import ConflitoRegraNegocioError
 
 router = APIRouter(prefix="/configuracao-bolao", tags=["configuracao-bolao"])
 
@@ -39,6 +40,8 @@ def put_configuracao_bolao(
 ) -> ConfiguracaoBolaoRead:
     try:
         row = configuracao_bolao_service.atualizar_configuracao_empresa(db, empresa_id, data)
+    except ConflitoRegraNegocioError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     pontuacao_service.recalcular_pontuacao_empresa(db, empresa_id)

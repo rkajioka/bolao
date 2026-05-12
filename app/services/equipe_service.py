@@ -8,7 +8,7 @@ from app.models.convite import Convite
 from app.models.usuario import Usuario
 from app.schemas.perfil import AlterarSenhaRequest, PerfilUpdate
 from app.auth.password import hash_password, verify_password
-from app.services import audit_log_service, convite_service
+from app.services import audit_log_service, auth_service, convite_service
 
 
 def listar_equipe(db: Session, empresa_id: int) -> list[dict]:
@@ -77,6 +77,8 @@ def bloquear_usuario(
 ) -> Usuario:
     usuario = get_usuario_empresa(db, empresa_id, usuario_id)
     usuario.bloqueado = bloqueado
+    if bloqueado:
+        auth_service.revogar_refresh_tokens_usuario(db, usuario_id)
     acao = "equipe.bloqueado" if bloqueado else "equipe.desbloqueado"
     audit_log_service.log(
         db, acao=acao, usuario_id=solicitante_id,

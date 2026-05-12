@@ -7,8 +7,6 @@ Marcadores Brasil: Etapa 8.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
-
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
@@ -17,10 +15,7 @@ from app.models.jogo import Jogo
 from app.models.palpite_jogo import PalpiteJogo
 from app.schemas.palpite_jogo import PalpiteJogoCreate, PalpiteJogoUpdate
 from app.services import jogo_service, pais_service
-
-
-def _agora_utc() -> datetime:
-    return datetime.now(UTC)
+from app.services.regra_negocio import assert_palpite_aberto, obter_jogo_para_edicao_palpite
 
 
 def _palpite_loaders():
@@ -30,20 +25,6 @@ def _palpite_loaders():
         joinedload(PalpiteJogo.jogo).joinedload(Jogo.classificado),
         joinedload(PalpiteJogo.palpite_classificado),
     )
-
-
-def _assert_palpite_aberto(db: Session, jogo: Jogo) -> None:
-    if jogo.finalizado:
-        raise ValueError("O jogo está finalizado; o palpite não pode ser alterado")
-    agora = _agora_utc()
-    limite = jogo_service.momento_fim_edicao_palpite(db, jogo)
-    if limite.tzinfo is None:
-        limite = limite.replace(tzinfo=UTC)
-    if agora >= limite:
-        raise ValueError(
-            "O palpite não pode ser alterado: prazo encerrado (1h antes do primeiro jogo "
-            "da mesma rodada ou da mesma fase de mata-mata) ou o jogo já começou"
-        )
 
 
 def _assert_classificado_no_jogo(jogo: Jogo, classificado_id: int) -> None:
@@ -97,7 +78,7 @@ def create_palpite(db: Session, usuario_id: int, data: PalpiteJogoCreate) -> Pal
     if get_by_usuario_jogo(db, usuario_id, data.jogo_id) is not None:
         raise ValueError("Você já possui palpite neste jogo; use PUT para alterar")
 
-    _assert_palpite_aberto(db, jogo)
+    assert_palpite_aberto(db, jogo)
 
     classificado = _classificado_efetivo(db, jogo, data.palpite_classificado_id)
 
@@ -110,6 +91,8 @@ def create_palpite(db: Session, usuario_id: int, data: PalpiteJogoCreate) -> Pal
     )
     db.add(p)
     try:
+        jogo_atual = obter_jogo_para_edicao_palpite(db, data.jogo_id)
+        assert_palpite_aberto(db, jogo_atual)
         db.commit()
     except IntegrityError:
         db.rollback()
@@ -127,7 +110,7 @@ def update_palpite(db: Session, usuario_id: int, palpite_id: int, data: PalpiteJ
     if jogo is None:
         raise ValueError("Jogo não encontrado")
 
-    _assert_palpite_aberto(db, jogo)
+    assert_palpite_aberto(db, jogo)
 
     casa = data.palpite_casa if data.palpite_casa is not None else p.palpite_casa
     fora = data.palpite_fora if data.palpite_fora is not None else p.palpite_fora
@@ -146,6 +129,8 @@ def update_palpite(db: Session, usuario_id: int, palpite_id: int, data: PalpiteJ
     p.palpite_fora = fora
     p.palpite_classificado_id = classificado
 
+    jogo_atual = obter_jogo_para_edicao_palpite(db, p.jogo_id)
+    assert_palpite_aberto(db, jogo_atual)
     db.commit()
     db.refresh(p)
     return get_by_id_for_usuario(db, p.id, usuario_id)  # type: ignore[return-value]

@@ -79,6 +79,7 @@ export function GameCard({
   }, [jogo.id, palpite?.id, palpite?.palpite_casa, palpite?.palpite_fora, palpite?.palpite_classificado_id])
 
   const handleSave = async () => {
+    if (bloqueado) return
     if (casa === null || fora === null) return
     if (jogo.tipo_fase === 'mata_mata' && !classificado) return
     setSaving(true)
@@ -92,7 +93,7 @@ export function GameCard({
   }
 
   const handleSaveMarcadores = async (marcadoresData: { nome_jogador: string; quantidade_gols: number }[]) => {
-    if (!onSaveMarcadores) return
+    if (bloqueado || !onSaveMarcadores) return
     setSavingMarcadores(true)
     try {
       await onSaveMarcadores(jogo.id, marcadoresData)

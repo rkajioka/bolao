@@ -44,7 +44,7 @@ export interface ResultadoEspecialPayload {
   vice_campeao_id: number | null
   terceiro_lugar_id: number | null
   artilheiro_pais_id: number | null
-  finalizado: boolean
+  finalizado?: boolean
 }
 
 export interface TemaTokensWrite {

@@ -83,8 +83,13 @@ def test_alterar_resultado_apos_finalizar_recalcula(client) -> None:
     palpite = next(p for p in r_ok.json() if p["jogo_id"] == jid)
     assert palpite["pontuacao_placar"] >= 10
 
-    assert client.patch(f"/jogos/{jid}/resultado", headers=ah, json={"placar_casa": 0, "placar_fora": 0}).status_code == 200
+    r_patch = client.patch(
+        f"/jogos/{jid}/resultado",
+        headers=ah,
+        json={"placar_casa": 0, "placar_fora": 0},
+    )
+    assert r_patch.status_code == 409, r_patch.text
 
     r_new = client.get("/palpites-jogos/me", headers=uh)
     palpite2 = next(p for p in r_new.json() if p["jogo_id"] == jid)
-    assert palpite2["pontuacao_placar"] == 0
+    assert palpite2["pontuacao_placar"] == palpite["pontuacao_placar"]

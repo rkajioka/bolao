@@ -108,6 +108,11 @@ export function JogosPage() {
     fora: number,
     classificado?: number | null,
   ) => {
+    const jogo = jogosCrono.find((item) => item.id === jogoId)
+    if (jogo && jogoBloqueado(jogo, jogosCrono)) {
+      error('O prazo para este palpite já encerrou.')
+      return
+    }
     const existing = palpiteMap.get(jogoId)
     try {
       if (existing) {
@@ -147,6 +152,11 @@ export function JogosPage() {
     jogoId: number,
     marcadores: { nome_jogador: string; quantidade_gols: number }[],
   ) => {
+    const jogo = jogosCrono.find((item) => item.id === jogoId)
+    if (jogo && jogoBloqueado(jogo, jogosCrono)) {
+      error('O prazo para os marcadores deste jogo já encerrou.')
+      return
+    }
     const existing = palpiteMap.get(jogoId)
     if (!existing) return
     try {

@@ -24,6 +24,7 @@ from app.schemas.marcador_brasil import (
     MarcadoresBrasilResultadoSync,
 )
 from app.services import auditoria_admin_service, candidato_marcador_brasil_service, marcador_brasil_service
+from app.services.regra_negocio import ConflitoRegraNegocioError
 
 router = APIRouter(prefix="/marcadores-brasil", tags=["marcadores-brasil"])
 
@@ -123,6 +124,8 @@ def post_marcadores_jogo(
         )
     except marcador_brasil_service.MarcadoresBrasilEmpresaDesabilitadoError as e:
         raise _http_marcadores_desabilitado(e) from e
+    except ConflitoRegraNegocioError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
     except ValueError as e:
         raise _http_value_error(e) from e
     except IntegrityError as e:
@@ -145,6 +148,8 @@ def put_marcadores_jogo(
         )
     except marcador_brasil_service.MarcadoresBrasilEmpresaDesabilitadoError as e:
         raise _http_marcadores_desabilitado(e) from e
+    except ConflitoRegraNegocioError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
     except ValueError as e:
         raise _http_value_error(e) from e
     except IntegrityError as e:
@@ -184,6 +189,8 @@ def post_marcadores_resultado(
             detalhes={"linhas": len(rows)},
         )
         return rows
+    except ConflitoRegraNegocioError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
     except ValueError as e:
         auditoria_admin_service.registrar_evento(
             db,
@@ -220,6 +227,8 @@ def put_marcadores_resultado(
             detalhes={"linhas": len(rows)},
         )
         return rows
+    except ConflitoRegraNegocioError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
     except ValueError as e:
         auditoria_admin_service.registrar_evento(
             db,

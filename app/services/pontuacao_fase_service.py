@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.models.pontuacao_fase import PontuacaoFase
 from app.schemas.pontuacao_fase import PontuacaoFaseBulkWrite
+from app.services.regra_negocio import assert_pontuacao_editavel_empresa
 
 DEFAULTS: list[dict[str, int | str]] = [
     {"fase_key": "grupo_rodada_1", "label": "Grupos - Rodada 1", "ordem": 10, "pontos_placar_exato": 10, "pontos_resultado_correto": 5, "pontos_classificado_mata_mata": 0},
@@ -56,6 +57,7 @@ def ensure_defaults_empresa(db: Session, empresa_id: int) -> list[PontuacaoFase]
 def substituir_todos_empresa(
     db: Session, empresa_id: int, payload: PontuacaoFaseBulkWrite
 ) -> list[PontuacaoFase]:
+    assert_pontuacao_editavel_empresa(db, empresa_id)
     atuais = {x.fase_key: x for x in listar_empresa(db, empresa_id)}
     payload_keys = {i.fase_key for i in payload.itens}
     default_keys = {str(d["fase_key"]) for d in DEFAULTS}

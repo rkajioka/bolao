@@ -167,7 +167,9 @@ def test_insights_isolam_empresa_nos_destaques(client) -> None:
     try:
         seed_owner_admin_e_usuario(db)
         empresa_a_id = db.scalar(select(Usuario.empresa_id).where(Usuario.email == "user-etapa13@example.com"))
-        empresa_b = empresa_service.create_empresa(db, EmpresaCreate(nome="Empresa B", codigo_empresa="INSB"))
+        empresa_b = empresa_service.create_empresa(
+            db, EmpresaCreate(nome="Empresa B", codigo_empresa="INSB", max_usuarios=100)
+        )
         empresa_b_id = empresa_b.id
         usuario_service.create_usuario(
             db,

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useToast } from '@/components/Toast'
+import { ApiError } from '@/lib/api'
 
 export function LoginPage() {
   const [email, setEmail] = useState('')
@@ -25,7 +26,11 @@ export function LoginPage() {
         navigate('/jogos')
       }
     } catch (err) {
-      error(err instanceof Error ? err.message : 'Falha no login')
+      if (err instanceof ApiError && err.status === 403) {
+        error(err.message || 'Usuário bloqueado pelo administrador')
+      } else {
+        error(err instanceof Error ? err.message : 'Falha no login')
+      }
     } finally {
       setLoading(false)
     }

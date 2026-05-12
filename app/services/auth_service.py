@@ -53,6 +53,11 @@ def login(db: Session, data: LoginRequest) -> tuple[str, str, bool]:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Usuário inativo",
         )
+    if user.bloqueado:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Usuário bloqueado pelo administrador",
+        )
     access_token, refresh_token = issue_token_pair(db, user)
     return access_token, refresh_token, user.primeiro_login
 
@@ -98,6 +103,11 @@ def refresh_access_token(db: Session, refresh_token: str) -> tuple[str, str]:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuário inválido para refresh",
         )
+    if user.bloqueado:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Usuário bloqueado pelo administrador",
+        )
 
     token_row.revogado = True
     new_access_token = create_access_token(user.id)
@@ -112,6 +122,17 @@ def refresh_access_token(db: Session, refresh_token: str) -> tuple[str, str]:
     )
     db.commit()
     return new_access_token, new_refresh_token
+
+
+def revogar_refresh_tokens_usuario(db: Session, user_id: int) -> None:
+    tokens = db.scalars(
+        select(RefreshToken).where(
+            RefreshToken.usuario_id == user_id,
+            RefreshToken.revogado.is_(False),
+        )
+    ).all()
+    for token in tokens:
+        token.revogado = True
 
 
 def logout(db: Session, refresh_token: str | None) -> None:

@@ -6,6 +6,7 @@ from app.database import get_db
 from app.models.usuario import Usuario
 from app.schemas.pontuacao_fase import PontuacaoFaseBulkWrite, PontuacaoFaseRead
 from app.services import auditoria_admin_service, pontuacao_fase_service, pontuacao_service
+from app.services.regra_negocio import ConflitoRegraNegocioError
 
 router = APIRouter(prefix="/configuracao-pontuacao-fase", tags=["configuracao-pontuacao-fase"])
 
@@ -50,6 +51,16 @@ def put_pontuacao_fase(
             detalhes={"itens": len(rows), "empresa_id": empresa_id},
         )
         return rows
+    except ConflitoRegraNegocioError as e:
+        auditoria_admin_service.registrar_evento(
+            db,
+            admin,
+            acao="pontuacao_fase.put",
+            entidade="pontuacao_fase",
+            status="error",
+            detalhes={"erro": str(e)},
+        )
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
     except ValueError as e:
         auditoria_admin_service.registrar_evento(
             db,

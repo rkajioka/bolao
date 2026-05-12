@@ -85,6 +85,31 @@ def test_owner_lista_usuarios(client) -> None:
     assert len(r.json()) >= 3
 
 
+def test_admin_empresa_pode_criar_palpite_jogo(client) -> None:
+    db = SessionLocal()
+    try:
+        seed_owner_admin_e_usuario(db)
+        casa_id, fora_id = seed_dois_paises(db)
+        jogo = seed_jogo_grupo_em_breve(db, casa_id, fora_id)
+        jogo_id = jogo.id
+    finally:
+        db.close()
+
+    token = _login(client, "admin-etapa13@example.com", "senhaadmin1")
+    h = {"Authorization": f"Bearer {token}"}
+    r = client.post(
+        "/palpites-jogos",
+        headers=h,
+        json={
+            "jogo_id": jogo_id,
+            "palpite_casa": 1,
+            "palpite_fora": 0,
+            "palpite_classificado_id": None,
+        },
+    )
+    assert r.status_code == 201, r.text
+
+
 def test_owner_nao_pode_criar_palpite_jogo(client) -> None:
     db = SessionLocal()
     try:

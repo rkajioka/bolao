@@ -47,9 +47,17 @@ export function EspeciaisPage() {
 
   const bloqueado = palpite?.bloqueado ?? false
   const somenteConsulta = isOwner
-  const bloqueadoEdicao = bloqueado || somenteConsulta
+  const bloqueadoEdicao = bloqueado || somenteConsulta || loadingPalpite
 
   const handleSave = async () => {
+    if (loadingPalpite) {
+      error('Aguarde o carregamento dos palpites especiais.')
+      return
+    }
+    if (bloqueadoEdicao) {
+      error('Os palpites especiais estão bloqueados.')
+      return
+    }
     setSaving(true)
     try {
       const body = {

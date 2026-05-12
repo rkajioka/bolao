@@ -17,6 +17,7 @@ from app.jogo_fases import canonical_fase_mata_mata, fase_mata_mata_slug_ou_none
 from app.models.jogo import Jogo
 from app.schemas.jogo import JogoCreate, JogoResultadoPatch, JogoUpdate
 from app.services import pais_service
+from app.services.regra_negocio import assert_jogo_nao_finalizado
 
 HORAS_MINIMAS_APOS_INICIO_PARA_FINALIZAR = 2
 
@@ -258,6 +259,7 @@ def _bloqueia_mudanca_de_fase(jogo: Jogo, novo_tipo: str | None) -> None:
 
 
 def update_jogo(db: Session, jogo: Jogo, data: JogoUpdate) -> Jogo:
+    assert_jogo_nao_finalizado(jogo)
     if data.tipo_fase is not None:
         _bloqueia_mudanca_de_fase(jogo, data.tipo_fase)
 
@@ -317,6 +319,7 @@ def _assert_classificado_participa(jogo: Jogo, classificado_id: int) -> None:
 
 
 def patch_resultado(db: Session, jogo: Jogo, data: JogoResultadoPatch) -> Jogo:
+    assert_jogo_nao_finalizado(jogo)
     if data.placar_casa is not None:
         jogo.placar_casa = data.placar_casa
     if data.placar_fora is not None:
