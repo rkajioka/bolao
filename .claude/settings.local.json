@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(psql --version 2>&1)"
+      "PowerShell(psql --version 2>&1)",
+      "Bash(python -c ' *)",
+      "Bash(Select-String \"venv|\\\\.venv|env\")",
+      "PowerShell(ls \"c:\\\\Users\\\\Gianlucca Agostini\\\\Documents\\\\Projetos\\\\LPCopa\\\\bolao\" | Where-Object { $_.Name -match \"venv|env\" })"
     ]
   }
 }

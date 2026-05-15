@@ -1,6 +1,6 @@
 import { Suspense, useState, type ReactNode } from 'react'
 import { NavLink, useLocation, useNavigate, useOutlet } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
   CalendarDays,
   Star,
@@ -199,9 +199,19 @@ export function AppLayout() {
 
       {/* Main content */}
       <main id="conteudo-principal" className="flex-1 max-w-2xl w-full mx-auto px-4 pt-4 safe-bottom">
-        <Suspense key={location.pathname} fallback={<PageFallback />}>
-          {outlet}
-        </Suspense>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.18, ease: 'easeInOut' }}
+          >
+            <Suspense fallback={<PageFallback />}>
+              {outlet}
+            </Suspense>
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       {/* Bottom navigation */}

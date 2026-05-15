@@ -3,7 +3,7 @@ import { QueryClient } from '@tanstack/react-query'
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 30_000,
+      staleTime: 0,
       retry: (failureCount, error) => {
         if (error instanceof Error && 'status' in error) {
           const status = (error as { status: number }).status
