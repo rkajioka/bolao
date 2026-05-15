@@ -199,12 +199,11 @@ export function AppLayout() {
 
       {/* Main content */}
       <main id="conteudo-principal" className="flex-1 max-w-2xl w-full mx-auto px-4 pt-4 safe-bottom">
-        <AnimatePresence mode="wait" initial={false}>
+        <AnimatePresence initial={false}>
           <motion.div
             key={location.pathname}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.18, ease: 'easeInOut' }}
           >
             <Suspense fallback={<PageFallback />}>
