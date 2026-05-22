@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   comparePalpiteSegmentKeys,
   deadlineText,
+  flagImgUrl,
+  imgUrl,
   jogoBloqueado,
   mensagemPodioRepetidoEspeciais,
   nomeSelecaoParaCard,
@@ -48,6 +50,19 @@ function jogoBase(overrides: Partial<Jogo> = {}): Jogo {
     ...overrides,
   }
 }
+
+describe('imgUrl / flagImgUrl', () => {
+  it('imgUrl bloqueia URLs externas (avatar)', () => {
+    expect(imgUrl('https://evil.example/a.png')).toBe('')
+    expect(imgUrl('/static/uploads/avatars/abc.jpg')).toBe('/static/uploads/avatars/abc.jpg')
+  })
+
+  it('flagImgUrl permite flagcdn e caminhos locais', () => {
+    expect(flagImgUrl('https://flagcdn.com/w40/br.png')).toBe('https://flagcdn.com/w40/br.png')
+    expect(flagImgUrl('/static/bandeiras/br.png')).toBe('/static/bandeiras/br.png')
+    expect(flagImgUrl(null)).toBe('')
+  })
+})
 
 describe('mensagemPodioRepetidoEspeciais', () => {
   it('rejeita país repetido entre campeão, vice e terceiro', () => {

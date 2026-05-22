@@ -26,10 +26,20 @@ export function mensagemPodioRepetidoEspeciais(
   return null
 }
 
+/** Avatares e uploads: só caminhos locais (/static/...). */
 export function imgUrl(url: string | null | undefined): string {
   if (!url) return ''
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('//')) {
     return ''
+  }
+  return url.startsWith('/') ? url : `/${url}`
+}
+
+/** Bandeiras: aceita flagcdn (https) ou arquivos em /static/bandeiras/. */
+export function flagImgUrl(url: string | null | undefined): string {
+  if (!url) return ''
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('//')) {
+    return url
   }
   return url.startsWith('/') ? url : `/${url}`
 }

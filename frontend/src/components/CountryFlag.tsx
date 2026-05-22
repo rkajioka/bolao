@@ -1,4 +1,4 @@
-import { imgUrl } from '@/lib/utils'
+import { flagImgUrl } from '@/lib/utils'
 import type { Pais } from '@/types'
 
 interface CountryFlagProps {
@@ -16,7 +16,7 @@ const sizes = {
 
 export function CountryFlag({ pais, size = 'md', className }: CountryFlagProps) {
   const { width, height, radius } = sizes[size]
-  const url = imgUrl(pais.bandeira_url)
+  const url = flagImgUrl(pais.bandeira_url)
 
   if (!url) {
     return (

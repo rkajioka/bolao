@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, KeyRound, Pencil, UserCheck, UserX } from 'lucide-react'
 import { UserAvatar } from '@/components/UserAvatar'
 import { fieldControlStyle } from '@/lib/fieldStyles'
 import { adminService } from '@/services/admin.service'
@@ -368,7 +368,7 @@ export function AdminUsers({ success, error }: AdminUsersProps) {
                 </div>
 
                 <div
-                  className="rounded-xl overflow-x-auto overflow-y-auto max-h-[min(28rem,60vh)]"
+                  className="rounded-xl overflow-y-auto max-h-[min(28rem,60vh)]"
                   style={{ border: '1px solid rgba(255,255,255,0.08)' }}
                 >
                   {usuariosFiltrados.length === 0 ? (
@@ -378,145 +378,79 @@ export function AdminUsers({ success, error }: AdminUsersProps) {
                         : 'Nenhum resultado para essa busca.'}
                     </p>
                   ) : (
-                    <table className="w-full min-w-[44rem] text-sm">
-                      <thead>
-                        <tr
-                          className="text-left text-xs uppercase tracking-wide"
-                          style={{ color: 'var(--text-muted)', background: 'rgba(255,255,255,0.03)' }}
-                        >
-                          <th className="px-3 py-2 font-semibold">Usuário</th>
-                          <th className="px-3 py-2 font-semibold">Papel</th>
-                          <th className="px-3 py-2 font-semibold">Empresa</th>
-                          <th className="px-3 py-2 font-semibold">Status</th>
-                          <th className="px-3 py-2 font-semibold text-right">Ações</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {usuariosFiltrados.map((u) => {
-                          const empresaNome =
-                            u.empresa_id != null
-                              ? empresasPorId.get(u.empresa_id) ?? `Empresa #${u.empresa_id}`
-                              : '—'
+                    <ul className="divide-y divide-white/5">
+                      {usuariosFiltrados.map((u) => {
+                        const empresaNome =
+                          u.empresa_id != null
+                            ? empresasPorId.get(u.empresa_id) ?? `Empresa #${u.empresa_id}`
+                            : null
 
-                          return (
-                            <tr
-                              key={u.id}
-                              className="border-t border-white/5"
-                              style={{
-                                background: editingId === u.id ? 'rgba(53,208,127,0.06)' : 'transparent',
-                              }}
-                            >
-                              <td className="px-3 py-3 align-top">
-                                <div className="flex items-start gap-2 min-w-0">
-                                  <UserAvatar
-                                    src={u.avatar_url || u.imagem_perfil}
-                                    alt=""
-                                    size="sm"
-                                    className="shrink-0 mt-0.5"
-                                  />
-                                  <div className="min-w-0">
-                                    <p className="font-semibold truncate">{u.nome}</p>
-                                    <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
-                                      {u.email}
-                                    </p>
-                                    {u.funcao && (
-                                      <p className="text-xs truncate mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                                        {u.funcao}
-                                      </p>
-                                    )}
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-3 py-3 align-top">
-                                <span
-                                  className="inline-flex text-xs px-2 py-0.5 rounded-full font-medium"
-                                  style={
-                                    u.tipo_usuario === 'owner'
-                                      ? {
-                                          background: 'rgba(168,85,247,0.15)',
-                                          color: '#c084fc',
-                                          border: '1px solid rgba(168,85,247,0.35)',
-                                        }
-                                      : u.tipo_usuario === 'admin'
-                                        ? {
-                                            background: 'var(--danger-dim)',
-                                            color: 'var(--danger)',
-                                            border: '1px solid rgba(255,92,122,0.3)',
-                                          }
-                                        : {
-                                            background: 'rgba(255,255,255,0.06)',
-                                            color: 'var(--text-muted)',
-                                            border: '1px solid rgba(255,255,255,0.10)',
-                                          }
-                                  }
-                                >
-                                  {TIPO_LABEL[u.tipo_usuario]}
-                                </span>
-                              </td>
-                              <td className="px-3 py-3 align-top">
-                                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                                  {empresaNome}
+                        return (
+                          <li
+                            key={u.id}
+                            className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-2 px-3 py-3"
+                            style={{
+                              background: editingId === u.id ? 'rgba(53,208,127,0.06)' : 'transparent',
+                            }}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <UserAvatar
+                                src={u.avatar_url || u.imagem_perfil}
+                                alt=""
+                                size="sm"
+                                className="shrink-0"
+                              />
+                              <div className="min-w-0">
+                                <p className="font-semibold text-sm truncate">{u.nome}</p>
+                                <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
+                                  {u.email}
                                 </p>
-                              </td>
-                              <td className="px-3 py-3 align-top">
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1 shrink-0 self-start">
+                              <UserIconAction
+                                label={`Editar ${u.nome}`}
+                                onClick={() => startEdit(u)}
+                              >
+                                <Pencil size={14} strokeWidth={2} />
+                              </UserIconAction>
+                              <UserIconAction
+                                label={u.ativo ? `Desativar ${u.nome}` : `Ativar ${u.nome}`}
+                                onClick={() => toggleStatus(u.id, u.ativo)}
+                                tone={u.ativo ? 'danger' : 'accent'}
+                              >
+                                {u.ativo ? (
+                                  <UserX size={14} strokeWidth={2} />
+                                ) : (
+                                  <UserCheck size={14} strokeWidth={2} />
+                                )}
+                              </UserIconAction>
+                              <UserIconAction
+                                label={`Resetar senha de ${u.nome}`}
+                                onClick={() => resetPassword(u.id, u.nome)}
+                              >
+                                <KeyRound size={14} strokeWidth={2} />
+                              </UserIconAction>
+                            </div>
+
+                            <div className="col-span-2 flex flex-wrap items-center gap-1.5 min-w-0">
+                              <UserRoleBadge tipo={u.tipo_usuario} />
+                              <UserStatusBadge ativo={u.ativo} />
+                              {empresaNome && (
                                 <span
-                                  className="inline-flex text-xs px-2 py-0.5 rounded-full font-medium"
-                                  style={{
-                                    background: u.ativo ? 'var(--accent-dim)' : 'var(--danger-dim)',
-                                    color: u.ativo ? 'var(--accent)' : 'var(--danger)',
-                                    border: `1px solid ${u.ativo ? 'rgba(53,208,127,0.3)' : 'rgba(255,92,122,0.3)'}`,
-                                  }}
+                                  className="text-xs truncate max-w-full"
+                                  style={{ color: 'var(--text-muted)' }}
+                                  title={empresaNome}
                                 >
-                                  {u.ativo ? 'Ativo' : 'Inativo'}
+                                  {empresaNome}
                                 </span>
-                              </td>
-                              <td className="px-3 py-3 align-top">
-                                <div className="flex flex-wrap justify-end gap-1.5">
-                                  <button
-                                    type="button"
-                                    onClick={() => startEdit(u)}
-                                    className="text-xs px-2 py-1 rounded-lg font-medium transition-all"
-                                    style={{
-                                      background: 'rgba(255,255,255,0.06)',
-                                      border: '1px solid rgba(255,255,255,0.10)',
-                                      color: 'var(--text-muted)',
-                                    }}
-                                  >
-                                    Editar
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => toggleStatus(u.id, u.ativo)}
-                                    aria-label={`${u.ativo ? 'Desativar' : 'Ativar'} usuário ${u.nome}`}
-                                    className="text-xs px-2 py-1 rounded-lg font-medium transition-all"
-                                    style={{
-                                      background: 'rgba(255,255,255,0.06)',
-                                      border: '1px solid rgba(255,255,255,0.10)',
-                                      color: 'var(--text-muted)',
-                                    }}
-                                  >
-                                    {u.ativo ? 'Desativar' : 'Ativar'}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => resetPassword(u.id, u.nome)}
-                                    aria-label={`Resetar senha de ${u.nome}`}
-                                    className="text-xs px-2 py-1 rounded-lg font-medium transition-all"
-                                    style={{
-                                      background: 'rgba(255,255,255,0.06)',
-                                      border: '1px solid rgba(255,255,255,0.10)',
-                                      color: 'var(--text-muted)',
-                                    }}
-                                  >
-                                    Reset senha
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
+                              )}
+                            </div>
+                          </li>
+                        )
+                      })}
+                    </ul>
                   )}
                 </div>
               </div>
@@ -525,6 +459,88 @@ export function AdminUsers({ success, error }: AdminUsersProps) {
         </AnimatePresence>
       </div>
     </div>
+  )
+}
+
+function UserRoleBadge({ tipo }: { tipo: TipoUsuario }) {
+  const style =
+    tipo === 'owner'
+      ? {
+          background: 'rgba(168,85,247,0.15)',
+          color: '#c084fc',
+          border: '1px solid rgba(168,85,247,0.35)',
+        }
+      : tipo === 'admin'
+        ? {
+            background: 'var(--danger-dim)',
+            color: 'var(--danger)',
+            border: '1px solid rgba(255,92,122,0.3)',
+          }
+        : {
+            background: 'rgba(255,255,255,0.06)',
+            color: 'var(--text-muted)',
+            border: '1px solid rgba(255,255,255,0.10)',
+          }
+
+  return (
+    <span
+      className="inline-flex text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0"
+      style={style}
+    >
+      {TIPO_LABEL[tipo]}
+    </span>
+  )
+}
+
+function UserStatusBadge({ ativo }: { ativo: boolean }) {
+  return (
+    <span
+      className="inline-flex text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0"
+      style={{
+        background: ativo ? 'var(--accent-dim)' : 'var(--danger-dim)',
+        color: ativo ? 'var(--accent)' : 'var(--danger)',
+        border: `1px solid ${ativo ? 'rgba(53,208,127,0.3)' : 'rgba(255,92,122,0.3)'}`,
+      }}
+    >
+      {ativo ? 'Ativo' : 'Inativo'}
+    </span>
+  )
+}
+
+function UserIconAction({
+  label,
+  onClick,
+  children,
+  tone = 'neutral',
+}: {
+  label: string
+  onClick: () => void
+  children: React.ReactNode
+  tone?: 'neutral' | 'accent' | 'danger'
+}) {
+  const colors =
+    tone === 'accent'
+      ? { color: 'var(--accent)', border: 'rgba(53,208,127,0.25)', bg: 'rgba(53,208,127,0.08)' }
+      : tone === 'danger'
+        ? { color: 'var(--danger)', border: 'rgba(255,92,122,0.25)', bg: 'rgba(255,92,122,0.08)' }
+        : { color: 'var(--text-muted)', border: 'rgba(255,255,255,0.10)', bg: 'rgba(255,255,255,0.04)' }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className="inline-flex items-center justify-center w-7 h-7 rounded-md transition-colors hover:brightness-125 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
+      style={{
+        color: colors.color,
+        background: colors.bg,
+        border: `1px solid ${colors.border}`,
+        outlineColor: 'var(--accent)',
+      }}
+    >
+      {children}
+    </button>
   )
 }
 
