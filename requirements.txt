@@ -11,4 +11,5 @@ bcrypt==5.0.0
 python-multipart==0.0.20
 httpx==0.28.1
 redis==5.2.1
+boto3==1.38.23
 # resend>=2.0.0
