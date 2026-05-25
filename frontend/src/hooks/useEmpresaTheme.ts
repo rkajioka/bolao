@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useTheme } from '@/hooks/useTheme'
@@ -43,6 +43,7 @@ export function useEmpresaTheme() {
   const { data } = useQuery({
     queryKey: ['tema-ui', user?.empresa_id ?? 'plataforma'],
     enabled: isAuthenticated,
+    staleTime: Infinity,
     queryFn: async (): Promise<TemaTokensResponse> => {
       if (user?.empresa_id) {
         return api.get<EmpresaTemaResponse>(`/empresas/${user.empresa_id}/tema`)
@@ -51,17 +52,24 @@ export function useEmpresaTheme() {
     },
   })
 
+  const appliedKeyRef = useRef<string | null>(null)
+
   useEffect(() => {
     if (!isAuthenticated) {
+      appliedKeyRef.current = null
       clearAppliedTokens()
       return
     }
     if (!data) {
-      clearAppliedTokens()
       return
     }
 
     const tokens = theme === 'light' ? data.tokens_light : data.tokens_dark
+    const fingerprint = `${theme}:${JSON.stringify(tokens)}`
+    if (appliedKeyRef.current === fingerprint) {
+      return
+    }
+    appliedKeyRef.current = fingerprint
     clearAppliedTokens()
     const root = document.documentElement
     for (const [key, value] of Object.entries(tokens)) {

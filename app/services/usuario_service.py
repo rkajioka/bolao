@@ -11,6 +11,7 @@ from app.core.password_defaults import SENHA_PADRAO_TEMPORARIA
 from app.core.password_policy import validar_complexidade_senha
 from app.models.usuario import Usuario
 from app.schemas.usuario import UsuarioCreate, UsuarioRead, UsuarioUpdate
+from app.database import SessionLocal
 from app.services import email_dispatch_service, email_service, empresa_quota_service, empresa_service, password_reset_service
 
 
@@ -228,6 +229,17 @@ def reset_password(db: Session, usuario: Usuario) -> EmailEntregaResultado:
         operacao="reset de senha",
         resultado=resultado,
     )
+
+
+def reset_password_background(usuario_id: int) -> None:
+    db = SessionLocal()
+    try:
+        usuario = db.get(Usuario, usuario_id)
+        if usuario is None:
+            return
+        reset_password(db, usuario)
+    finally:
+        db.close()
 
 
 def usuario_para_read(db: Session, usuario: Usuario) -> UsuarioRead:

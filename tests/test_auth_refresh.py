@@ -47,6 +47,35 @@ def test_refresh_rotaciona_token_e_reuso_falha(client) -> None:
     assert r_reuso.status_code == 401
 
 
+def test_change_password_revoga_refresh_tokens_anteriores(client) -> None:
+    db = SessionLocal()
+    try:
+        seed_admin_e_usuario(db)
+    finally:
+        db.close()
+
+    r_login = client.post("/auth/login", json={"email": "user-etapa13@example.com", "senha": "senhausuario1"})
+    assert r_login.status_code == 200, r_login.text
+    access = r_login.json()["access_token"]
+    cookie_antigo = r_login.cookies.get("bolao_refresh_token")
+    assert cookie_antigo
+
+    r_pw = client.post(
+        "/auth/change-password",
+        headers={"Authorization": f"Bearer {access}"},
+        json={
+            "senha_atual": "senhausuario1",
+            "nova_senha": "NovaSenhaSegura1!",
+            "confirmar_senha": "NovaSenhaSegura1!",
+        },
+    )
+    assert r_pw.status_code == 204, r_pw.text
+
+    client.cookies.set("bolao_refresh_token", cookie_antigo, path="/auth")
+    r_refresh = client.post("/auth/refresh", headers=_AUTH_CLIENT_HEADERS)
+    assert r_refresh.status_code == 401
+
+
 def test_logout_revoga_cookie_refresh(client) -> None:
     db = SessionLocal()
     try:

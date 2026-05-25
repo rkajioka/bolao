@@ -36,14 +36,16 @@ function SectionTitle({
 }
 
 export function RegrasPage() {
-  const { data: config, isLoading: loadCfg, isError: errCfg } = useQuery({
+  const { data: config, isLoading: loadCfg, isError: errCfg, refetch: refetchCfg } = useQuery({
     queryKey: ['configuracao-bolao', 'minha'],
     queryFn: () => regrasService.getConfigMinha(),
+    staleTime: Infinity,
   })
 
-  const { data: fases = [], isLoading: loadFases, isError: errFases } = useQuery({
+  const { data: fases = [], isLoading: loadFases, isError: errFases, refetch: refetchFases } = useQuery({
     queryKey: ['configuracao-pontuacao-fase', 'minha'],
     queryFn: () => regrasService.getFasesMinha(),
+    staleTime: Infinity,
   })
 
   const fasesSorted = [...fases].sort((a, b) => a.ordem - b.ordem)
@@ -59,9 +61,22 @@ export function RegrasPage() {
       )}
 
       {(errCfg || errFases) && (
-        <p className="text-xs px-1" style={{ color: 'var(--danger)' }}>
-          Não foi possível carregar todas as regras.
-        </p>
+        <div className="flex flex-wrap items-center gap-2 px-1">
+          <p className="text-xs" style={{ color: 'var(--danger)' }}>
+            Não foi possível carregar todas as regras.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              if (errCfg) void refetchCfg()
+              if (errFases) void refetchFases()
+            }}
+            className="text-xs font-semibold px-2 py-1 rounded-lg"
+            style={{ background: 'var(--accent)', color: '#fff' }}
+          >
+            Tentar novamente
+          </button>
+        </div>
       )}
 
       <div className="glass rounded-2xl p-4">

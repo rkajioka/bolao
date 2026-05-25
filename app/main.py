@@ -82,8 +82,21 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     if not settings.debug:
         response.headers["Content-Security-Policy"] = (
-            "default-src 'self'; frame-ancestors 'none'; base-uri 'self'"
+            "default-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'self'"
         )
+        if settings.public_app_url.startswith("https://"):
+            response.headers["Strict-Transport-Security"] = (
+                "max-age=31536000; includeSubDomains"
+            )
+    return response
+
+
+@app.middleware("http")
+async def cache_hashed_assets(request: Request, call_next):
+    response = await call_next(request)
+    path = request.url.path
+    if path.startswith("/assets/") and response.status_code == 200:
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
     return response
 
 

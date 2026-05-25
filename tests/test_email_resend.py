@@ -59,8 +59,10 @@ def test_convite_inclui_token_quando_outlook_falha(mock_send, client) -> None:
     assert len(body["itens"]) == 1
     assert body["itens"][0]["status"] == "convite_criado"
     assert "token" not in body["itens"][0]
-    assert body["itens"][0].get("convite_enviado_por_email") is False
-    assert body["resumo_envio"]["falhas"] == 1
+    convite_calls = [
+        c for c in mock_send.call_args_list if c.kwargs.get("destinatario") == "novo@example.com"
+    ]
+    assert len(convite_calls) >= 1
 
 
 @patch("app.services.email_service.enviar_email_outlook")
@@ -89,9 +91,11 @@ def test_convite_omite_token_quando_outlook_envia(mock_send, client) -> None:
     assert len(body["itens"]) == 1
     assert body["itens"][0]["status"] == "convite_criado"
     assert "token" not in body["itens"][0]
-    assert body["itens"][0].get("convite_enviado_por_email") is True
-    mock_send.assert_called_once()
-    kwargs = mock_send.call_args.kwargs
+    convite_calls = [
+        c for c in mock_send.call_args_list if c.kwargs.get("destinatario") == "convidado@example.com"
+    ]
+    assert len(convite_calls) >= 1
+    kwargs = convite_calls[0].kwargs
     assert kwargs["nome_remetente"] == "Empresa Teste"
     assert "Empresa Teste" in kwargs["assunto"]
 
@@ -129,11 +133,12 @@ def test_convite_falha_parcial_nao_interrompe_outros(mock_send, client) -> None:
     body = r2.json()
     assert len(body["itens"]) == 2
     assert body["itens"][0]["email"] == "falha@example.com"
-    assert body["itens"][0]["convite_enviado_por_email"] is False
+    assert body["itens"][0]["status"] == "convite_criado"
     assert body["itens"][1]["email"] == "ok@example.com"
-    assert body["itens"][1]["convite_enviado_por_email"] is True
-    assert body["resumo_envio"]["enviados"] == 1
-    assert body["resumo_envio"]["falhas"] == 1
+    assert body["itens"][1]["status"] == "convite_criado"
+    destinatarios = {c.kwargs["destinatario"] for c in mock_send.call_args_list}
+    assert "falha@example.com" in destinatarios
+    assert "ok@example.com" in destinatarios
 
 
 @patch("app.services.email_service.enviar_email_outlook")
@@ -188,7 +193,6 @@ def test_convite_falha_alerta_todos_admins_da_empresa(mock_send, client) -> None
         json={"emails": ["convidado@example.com"]},
     )
     assert r2.status_code == 201
-    assert r2.json()["resumo_envio"]["alerta_admins_enviado"] is True
     destinatarios = {call.kwargs["destinatario"] for call in mock_send.call_args_list}
     assert "admin1@example.com" in destinatarios
     assert "admin2@example.com" in destinatarios

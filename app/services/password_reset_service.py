@@ -131,13 +131,15 @@ def redefinir_senha(
 ) -> Usuario:
     agora = datetime.now(UTC)
     pr = db.scalar(
-        select(PasswordReset).where(
+        select(PasswordReset)
+        .where(
             and_(
                 PasswordReset.token == token,
                 PasswordReset.usado.is_(False),
                 PasswordReset.expiracao > agora,
             )
         )
+        .with_for_update()
     )
     if pr is None:
         raise HTTPException(

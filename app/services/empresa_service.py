@@ -1,13 +1,15 @@
 import re
 import unicodedata
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from fastapi import HTTPException, status
 
+from app.models.convite import Convite
 from app.models.empresa import Empresa
+from app.models.usuario import Usuario
 from app.schemas.empresa import EmpresaCreate, EmpresaRead, EmpresaUpdate
 from app.services import empresa_bootstrap_service, empresa_quota_service
 
@@ -55,7 +57,54 @@ def empresa_para_read(db: Session, empresa: Empresa) -> EmpresaRead:
 
 
 def list_empresas_read(db: Session) -> list[EmpresaRead]:
-    return [empresa_para_read(db, empresa) for empresa in list_empresas(db)]
+    from datetime import UTC, datetime
+
+    empresas = list_empresas(db)
+    if not empresas:
+        return []
+
+    empresa_ids = [e.id for e in empresas]
+    usuarios_por_empresa = dict(
+        db.execute(
+            select(Usuario.empresa_id, func.count())
+            .where(Usuario.empresa_id.in_(empresa_ids))
+            .group_by(Usuario.empresa_id)
+        ).all()
+    )
+    agora = datetime.now(UTC)
+    convites_por_empresa = dict(
+        db.execute(
+            select(Convite.empresa_id, func.count())
+            .where(
+                Convite.empresa_id.in_(empresa_ids),
+                Convite.usado_em.is_(None),
+                Convite.expiracao > agora,
+            )
+            .group_by(Convite.empresa_id)
+        ).all()
+    )
+
+    reads: list[EmpresaRead] = []
+    for empresa in empresas:
+        total_usuarios = int(usuarios_por_empresa.get(empresa.id, 0))
+        convites_pendentes = int(convites_por_empresa.get(empresa.id, 0))
+        ocupacao = total_usuarios + convites_pendentes
+        reads.append(
+            EmpresaRead(
+                id=empresa.id,
+                nome=empresa.nome,
+                codigo_empresa=empresa.codigo_empresa,
+                ativo=empresa.ativo,
+                marcadores_brasil_habilitado=empresa.marcadores_brasil_habilitado,
+                max_usuarios=empresa.max_usuarios,
+                total_usuarios=total_usuarios,
+                convites_pendentes=convites_pendentes,
+                vagas_restantes=max(0, empresa.max_usuarios - ocupacao),
+                created_at=empresa.created_at,
+                updated_at=empresa.updated_at,
+            )
+        )
+    return reads
 
 
 def _codigo_base_from_nome(nome: str) -> str:

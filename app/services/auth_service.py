@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.auth.jwt import create_access_token, create_refresh_token, decode_refresh_token_safe
@@ -91,7 +91,22 @@ def refresh_access_token(db: Session, refresh_token: str) -> tuple[str, str]:
             RefreshToken.revogado.is_(False),
         )
     )
-    if token_row is None or _is_expired(token_row.expires_at):
+    if token_row is None:
+        reused = db.scalar(
+            select(RefreshToken).where(
+                RefreshToken.usuario_id == user_id,
+                RefreshToken.jti == str(jti),
+                RefreshToken.revogado.is_(True),
+            )
+        )
+        if reused is not None:
+            revogar_refresh_tokens_usuario(db, user_id)
+            db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token inválido ou expirado",
+        )
+    if _is_expired(token_row.expires_at):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Refresh token inválido ou expirado",
@@ -125,14 +140,14 @@ def refresh_access_token(db: Session, refresh_token: str) -> tuple[str, str]:
 
 
 def revogar_refresh_tokens_usuario(db: Session, user_id: int) -> None:
-    tokens = db.scalars(
-        select(RefreshToken).where(
+    db.execute(
+        update(RefreshToken)
+        .where(
             RefreshToken.usuario_id == user_id,
             RefreshToken.revogado.is_(False),
         )
-    ).all()
-    for token in tokens:
-        token.revogado = True
+        .values(revogado=True)
+    )
 
 
 def logout(db: Session, refresh_token: str | None) -> None:

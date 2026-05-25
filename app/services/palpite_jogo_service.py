@@ -60,6 +60,7 @@ def get_by_usuario_jogo(db: Session, usuario_id: int, jogo_id: int) -> PalpiteJo
 
 
 def list_me(db: Session, usuario_id: int) -> list[PalpiteJogo]:
+    """Leitura pura — pontuação é persistida em finalizar/alterar resultado e recálculos explícitos."""
     q = (
         select(PalpiteJogo)
         .options(*_palpite_loaders())
@@ -67,16 +68,7 @@ def list_me(db: Session, usuario_id: int) -> list[PalpiteJogo]:
         .join(Jogo, PalpiteJogo.jogo_id == Jogo.id)
         .order_by(Jogo.data_jogo.asc(), PalpiteJogo.id.asc())
     )
-    palpites = list(db.scalars(q).unique().all())  # unique: join + loaders
-    alterou = False
-    for palpite in palpites:
-        antes = palpite.pontuacao_total
-        pontuacao_service.sincronizar_pontuacao_palpite(db, palpite)
-        if palpite.pontuacao_total != antes:
-            alterou = True
-    if alterou:
-        db.commit()
-    return palpites
+    return list(db.scalars(q).unique().all())
 
 
 def create_palpite(db: Session, usuario_id: int, data: PalpiteJogoCreate) -> PalpiteJogo:
