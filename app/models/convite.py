@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, text
+from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -8,6 +8,9 @@ from app.database import Base
 
 class Convite(Base):
     __tablename__ = "convites"
+    __table_args__ = (
+        UniqueConstraint("empresa_id", "email", name="uq_convite_empresa_email"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     empresa_id: Mapped[int] = mapped_column(

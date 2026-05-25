@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException, status
@@ -11,9 +12,12 @@ from app.core.config import get_settings
 from app.models.refresh_token import RefreshToken
 from app.models.usuario import Usuario
 from app.schemas.usuario import ChangePasswordRequest, LoginRequest, PrimeiroAcessoRequest
-from app.services import usuario_service
+from app.services import audit_log_service, usuario_service
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
+
+_LOGIN_FAIL_MSG = "E-mail ou senha incorretos"
 
 
 def _refresh_expires_at() -> datetime:
@@ -46,23 +50,30 @@ def login(db: Session, data: LoginRequest) -> tuple[str, str, bool]:
     if user is None or not verify_password(data.senha, user.senha_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="E-mail ou senha incorretos",
+            detail=_LOGIN_FAIL_MSG,
         )
     if not user.ativo:
+        logger.warning("Login recusado: usuário inativo (email=%s)", data.email)
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Usuário inativo",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=_LOGIN_FAIL_MSG,
         )
     if user.bloqueado:
+        logger.warning("Login recusado: usuário bloqueado (email=%s)", data.email)
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Usuário bloqueado pelo administrador",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=_LOGIN_FAIL_MSG,
         )
     access_token, refresh_token = issue_token_pair(db, user)
     return access_token, refresh_token, user.primeiro_login
 
 
-def refresh_access_token(db: Session, refresh_token: str) -> tuple[str, str]:
+def refresh_access_token(
+    db: Session,
+    refresh_token: str,
+    *,
+    ip: str | None = None,
+) -> tuple[str, str]:
     payload = decode_refresh_token_safe(refresh_token)
     if payload is None:
         raise HTTPException(
@@ -101,6 +112,17 @@ def refresh_access_token(db: Session, refresh_token: str) -> tuple[str, str]:
         )
         if reused is not None:
             revogar_refresh_tokens_usuario(db, user_id)
+            audit_log_service.log(
+                db,
+                acao="auth.refresh_replay_detectado",
+                usuario_id=user_id,
+                ip=ip,
+            )
+            logger.warning(
+                "Replay de refresh token detectado — revogando família (usuario_id=%s, ip=%s)",
+                user_id,
+                ip,
+            )
             db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

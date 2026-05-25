@@ -2,6 +2,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request,
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_resolved_empresa_id, is_owner, require_admin
+from app.core.client_ip import client_ip
 from app.core.config import get_settings
 from app.database import get_db
 from app.models.empresa import Empresa
@@ -41,7 +42,7 @@ def criar_convites(
         limit=settings.rate_limit_convites_bulk_requests,
         window_seconds=settings.rate_limit_convites_bulk_window_seconds,
     )
-    ip = request.client.host if request.client else None
+    ip = client_ip(request)
     response, pendentes = convite_service.criar_bulk_convites(db, empresa_id, data, admin.id, ip)
     if pendentes:
         empresa = db.get(Empresa, empresa_id)
@@ -84,7 +85,7 @@ def bloquear_usuario(
     admin: Usuario = Depends(require_admin),
     empresa_id: int = Depends(get_resolved_empresa_id),
 ) -> dict:
-    ip = request.client.host if request.client else None
+    ip = client_ip(request)
     usuario = equipe_service.bloquear_usuario(db, empresa_id, usuario_id, bloqueado, admin, ip)
     return {"id": usuario.id, "bloqueado": usuario.bloqueado}
 
@@ -114,5 +115,5 @@ def remover_usuario(
     admin: Usuario = Depends(require_admin),
     empresa_id: int = Depends(get_resolved_empresa_id),
 ) -> None:
-    ip = request.client.host if request.client else None
+    ip = client_ip(request)
     equipe_service.remover_usuario(db, empresa_id, usuario_id, admin, ip)

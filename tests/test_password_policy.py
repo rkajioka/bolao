@@ -1,13 +1,12 @@
 from unittest.mock import patch
 
-import re
-
 from app.core.password_policy import SENHA_COMPLEXIDADE_MSG, validar_complexidade_senha
 from app.database import SessionLocal
 from app.models.empresa import Empresa
 from app.schemas.usuario import UsuarioCreate
 from app.services import password_reset_service, usuario_service
 from tests.factories import seed_owner_admin_e_usuario
+from tests.helpers import token_redefinir_senha_do_mock
 
 
 def test_validar_complexidade_senha_rejeita_sem_maiuscula() -> None:
@@ -66,16 +65,8 @@ def test_redefinir_senha_rejeita_senha_fraca(client) -> None:
     assert r.status_code == 422, r.text
 
 
-def _senha_temporaria_do_mock(mock_send) -> str:
-    mock_send.assert_called_once()
-    html = mock_send.call_args.kwargs.get("corpo_html", "")
-    matches = re.findall(r"<strong>([^<]+)</strong>", html)
-    assert matches
-    return matches[-1]
-
-
 @patch("app.services.email_service.enviar_email_outlook")
-def test_primeiro_acesso_mantem_sessao_apos_trocar_senha(mock_send, client) -> None:
+def test_reset_gestor_envia_link_sem_senha_no_email(mock_send, client) -> None:
     db = SessionLocal()
     try:
         _, _, user_id = seed_owner_admin_e_usuario(db)
@@ -91,26 +82,27 @@ def test_primeiro_acesso_mantem_sessao_apos_trocar_senha(mock_send, client) -> N
         headers={"Authorization": f"Bearer {owner_token}"},
     )
     assert r.status_code == 200, r.text
-    senha_temporaria = _senha_temporaria_do_mock(mock_send)
+    html = mock_send.call_args.kwargs.get("corpo_html", "")
+    assert "senha temporária" not in html.lower()
+    assert "redefinir-senha?token=" in html
 
-    login = client.post(
+    token = token_redefinir_senha_do_mock(mock_send)
+    login_antigo = client.post(
         "/auth/login",
-        json={"email": "user-etapa13@example.com", "senha": senha_temporaria},
+        json={"email": "user-etapa13@example.com", "senha": "senhausuario1"},
     )
-    assert login.status_code == 200, login.text
-    user_token = login.json()["access_token"]
+    assert login_antigo.status_code == 401
 
-    r = client.post(
-        "/auth/primeiro-acesso",
-        headers={"Authorization": f"Bearer {user_token}"},
+    r_def = client.post(
+        "/auth/redefinir-senha",
         json={
-            "nome": "Usuário Teste",
-            "funcao": "Jogador",
+            "token": token,
             "nova_senha": "NovaSenha1!",
             "confirmar_senha": "NovaSenha1!",
         },
     )
-    assert r.status_code == 204, r.text
+    assert r_def.status_code == 200, r_def.text
+    user_token = r_def.json()["access_token"]
 
     me = client.get("/auth/me", headers={"Authorization": f"Bearer {user_token}"})
     assert me.status_code == 200, me.text

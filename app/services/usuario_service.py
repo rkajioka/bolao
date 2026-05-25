@@ -7,12 +7,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth.password import hash_password
-from app.core.password_defaults import SENHA_PADRAO_TEMPORARIA
+from app.core.avatar_url import resolver_url_avatar_publica, validar_avatar_url
 from app.core.password_policy import validar_complexidade_senha
 from app.models.usuario import Usuario
 from app.schemas.usuario import UsuarioCreate, UsuarioRead, UsuarioUpdate
 from app.database import SessionLocal
-from app.services import email_dispatch_service, email_service, empresa_quota_service, empresa_service, password_reset_service
+from app.services import email_dispatch_service, empresa_quota_service, empresa_service, password_reset_service
 
 
 def _validar_vinculo_empresa(tipo_usuario: str, empresa_id: int | None) -> None:
@@ -132,7 +132,7 @@ def create_usuario(db: Session, data: UsuarioCreate) -> tuple[Usuario, EmailEntr
         email=str(data.email).strip().lower(),
         senha_hash=hash_password(senha_inicial),
         funcao=data.funcao,
-        imagem_perfil=data.imagem_perfil,
+        imagem_perfil=validar_avatar_url(data.imagem_perfil) if data.imagem_perfil else None,
         tipo_usuario=data.tipo_usuario,
         ativo=data.ativo,
         primeiro_login=data.primeiro_login,
@@ -163,7 +163,7 @@ def update_usuario(db: Session, usuario: Usuario, data: UsuarioUpdate) -> Usuari
     if data.funcao is not None:
         usuario.funcao = data.funcao
     if data.imagem_perfil is not None:
-        usuario.imagem_perfil = data.imagem_perfil
+        usuario.imagem_perfil = validar_avatar_url(data.imagem_perfil)
     if data.tipo_usuario is not None:
         usuario.tipo_usuario = data.tipo_usuario
     if "empresa_id" in data.model_fields_set:
@@ -194,29 +194,18 @@ def set_ativo(db: Session, usuario: Usuario, ativo: bool) -> Usuario:
     return usuario
 
 
-def _gerar_senha_temporaria_valida() -> str:
-    alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*"
-    for _ in range(20):
-        senha = "".join(secrets.choice(alphabet) for _ in range(16))
-        try:
-            validar_complexidade_senha(senha)
-            return senha
-        except ValueError:
-            continue
-    raise RuntimeError("Não foi possível gerar senha temporária válida")
-
-
 def reset_password(db: Session, usuario: Usuario) -> EmailEntregaResultado:
-    senha_temporaria = _gerar_senha_temporaria_valida()
-    usuario.senha_hash = hash_password(senha_temporaria)
+    """Redefine acesso: senha aleatória no banco (desconhecida) + link por e-mail."""
+    usuario.senha_hash = hash_password(secrets.token_urlsafe(48))
     usuario.primeiro_login = True
-    db.commit()
+    db.flush()
 
-    resultado = email_service.tentar_enviar_senha_resetada_pelo_gestor(
+    _, resultado = password_reset_service.gerar_e_enviar_reset_para_usuario(
         db,
-        destinatario=usuario.email,
-        empresa_nome=_empresa_nome(db, usuario.empresa_id),
-        senha_temporaria=senha_temporaria,
+        usuario,
+        acao_auditoria="password_reset.solicitado_pelo_gestor",
+        motivo="reset_gestor",
+        commit=True,
     )
     if resultado.sucesso:
         return EmailEntregaResultado(

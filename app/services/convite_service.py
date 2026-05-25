@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException, status
 from sqlalchemy import and_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -181,7 +182,14 @@ def criar_bulk_convites(
             emails_bloqueados=emails_bloqueados_limite,
         )
 
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Já existe um convite ativo para um dos e-mails informados.",
+        ) from None
 
     response = BulkConviteResponse(
         itens=resultados,

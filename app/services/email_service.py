@@ -156,26 +156,16 @@ def tentar_enviar_senha_resetada_pelo_gestor(
     db: Session,
     destinatario: str,
     empresa_nome: str,
-    senha_temporaria: str,
+    token: str,
 ) -> email_dispatch_service.ResultadoEnvio:
+    """Legado: preferir gerar_e_enviar_reset com motivo reset_gestor."""
     del db
-    login_url = f"{_public_base_url()}/login"
-    assunto = f"Sua senha foi redefinida — {empresa_nome}"
-    corpo_html = (
-        f"<p>A senha da sua conta no bolão <strong>{empresa_nome}</strong> foi redefinida "
-        "por um administrador.</p>"
-        f"<p>Use seu e-mail <strong>{destinatario}</strong> e a senha temporária "
-        f"<strong>{senha_temporaria}</strong> para entrar.</p>"
-        f'<p><a href="{login_url}">Acessar o bolão</a></p>'
-        "<p>No primeiro acesso com essa senha, você precisará definir uma nova senha antes "
-        "de continuar.</p>"
-    )
-    return _enviar_com_log(
-        destinatario=destinatario,
-        assunto=assunto,
-        corpo_html=corpo_html,
-        nome_remetente=empresa_nome,
-        rotulo="senha-temporaria",
+    return tentar_enviar_reset_senha(
+        db,
+        destinatario,
+        token,
+        empresa_nome,
+        motivo="reset_gestor",
     )
 
 
@@ -197,6 +187,16 @@ def tentar_enviar_reset_senha(
             f"<strong>{destinatario}</strong>.</p>"
             f'<p><a href="{link}">Definir senha</a></p>'
             "<p>O link expira em breve. Se você não esperava este acesso, ignore este e-mail.</p>"
+        )
+    elif motivo == "reset_gestor":
+        assunto = f"Sua senha foi redefinida — {empresa_nome}"
+        corpo_html = (
+            f"<p>A senha da sua conta no bolão <strong>{empresa_nome}</strong> foi redefinida "
+            "por um administrador.</p>"
+            f"<p>Use o link abaixo para definir uma nova senha com o e-mail "
+            f"<strong>{destinatario}</strong>.</p>"
+            f'<p><a href="{link}">Definir nova senha</a></p>'
+            "<p>O link expira em breve. Se você não esperava esta alteração, ignore este e-mail.</p>"
         )
     else:
         assunto = f"Redefinição de senha — {empresa_nome}"

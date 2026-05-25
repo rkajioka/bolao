@@ -10,12 +10,13 @@ from app.auth.password import hash_password
 from app.models.empresa import Empresa
 from app.models.password_reset import PasswordReset
 from app.models.usuario import Usuario
+from app.database import SessionLocal
 from app.services import audit_log_service, auth_service, email_dispatch_service, email_service, usuario_service
 
 
 _TOKEN_BYTES = 48
 _EXPIRACAO_MINUTOS = 60
-MotivoResetEmail = Literal["solicitacao", "conta_criada"]
+MotivoResetEmail = Literal["solicitacao", "conta_criada", "reset_gestor"]
 
 
 def _gerar_token() -> str:
@@ -96,6 +97,14 @@ def gerar_e_enviar_reset_para_usuario(
         motivo=motivo,
     )
     return token, resultado
+
+
+def solicitar_reset_background(email: str, ip: str | None = None) -> None:
+    db = SessionLocal()
+    try:
+        solicitar_reset(db, email, ip)
+    finally:
+        db.close()
 
 
 def solicitar_reset(

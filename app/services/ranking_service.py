@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.orm import Session
 
+from app.core.avatar_url import resolver_url_avatar_publica
 from app.models.palpite_especial import PalpiteEspecial
 from app.models.palpite_jogo import PalpiteJogo
 from app.models.usuario import Usuario
@@ -92,7 +93,7 @@ def listar_ranking(db: Session, empresa_id: int | None = None) -> list[LinhaRank
             usuario_id=int(r.usuario_id),
             nome=str(r.nome),
             funcao=r.funcao,
-            imagem_perfil=r.imagem_perfil,
+            imagem_perfil=resolver_url_avatar_publica(r.imagem_perfil, None),
             campeao_id=r.campeao_id,
             vice_campeao_id=r.vice_campeao_id,
             terceiro_lugar_id=r.terceiro_lugar_id,
