@@ -13,34 +13,8 @@ import { perfilService, PERFIL_AVATAR_MAX_BYTES } from '@/services/perfil.servic
 import { UserAvatar } from '@/components/UserAvatar'
 
 export function PrimeiroAcessoPage() {
+  // Todos os hooks devem vir antes de qualquer early return (Rules of Hooks)
   const { user, refreshUser, isLoading, token } = useAuth()
-
-  if (isLoading) {
-    return (
-      <div className="min-h-dvh flex items-center justify-center" style={{ background: 'var(--bg)' }}>
-        <div
-          className="w-10 h-10 rounded-full border-2 animate-spin"
-          style={{ borderColor: 'rgba(53,208,127,0.3)', borderTopColor: 'var(--accent)' }}
-        />
-      </div>
-    )
-  }
-  if (!token) return <Navigate to="/login" replace />
-  if (user && !user.primeiro_login) return <Navigate to="/jogos" replace />
-
-  useEffect(() => {
-    if (getToken()) void refreshUser()
-  }, [refreshUser])
-
-  useEffect(() => {
-    if (!user) return
-    setForm((prev) => ({
-      ...prev,
-      nome: prev.nome || user.nome || '',
-      funcao: prev.funcao || user.funcao || '',
-    }))
-  }, [user])
-
   const [form, setForm] = useState({
     nome: '',
     funcao: '',
@@ -65,6 +39,33 @@ export function PrimeiroAcessoPage() {
       setAvatarError(err instanceof ApiError ? err.message : 'Erro ao enviar foto')
     },
   })
+
+  useEffect(() => {
+    if (getToken()) void refreshUser()
+  }, [refreshUser])
+
+  useEffect(() => {
+    if (!user) return
+    setForm((prev) => ({
+      ...prev,
+      nome: prev.nome || user.nome || '',
+      funcao: prev.funcao || user.funcao || '',
+    }))
+  }, [user])
+
+  // Early returns após todos os hooks
+  if (isLoading) {
+    return (
+      <div className="min-h-dvh flex items-center justify-center" style={{ background: 'var(--bg)' }}>
+        <div
+          className="w-10 h-10 rounded-full border-2 animate-spin"
+          style={{ borderColor: 'rgba(53,208,127,0.3)', borderTopColor: 'var(--accent)' }}
+        />
+      </div>
+    )
+  }
+  if (!token) return <Navigate to="/login" replace />
+  if (user && !user.primeiro_login) return <Navigate to="/jogos" replace />
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()

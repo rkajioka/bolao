@@ -110,13 +110,29 @@ class Settings(BaseSettings):
 
         O validator roda após a resolução normal de env vars / .env,
         portanto o AWS sempre tem precedência sobre essas fontes.
+
+        Em caso de falha (rede, throttle, permissão), a aplicação continua
+        com as variáveis de ambiente já carregadas — não crasha o boot.
+        Erros permanentes (secret não existe, acesso negado) ainda propagam.
         """
         if not self.aws_secret_name:
             return self
 
         from app.core.aws_secrets import apply_to_settings
 
-        apply_to_settings(self, self.aws_secret_name, self.aws_region)
+        try:
+            apply_to_settings(self, self.aws_secret_name, self.aws_region)
+        except RuntimeError as exc:
+            # Erros transientes (timeout, throttle) já foram retentados em
+            # aws_secrets.fetch_secret. Se ainda falhou, loga e continua
+            # com variáveis de ambiente — melhor degradado do que fora do ar.
+            logger.error(
+                "AWS Secrets Manager indisponível após retentativas. "
+                "Continuando com variáveis de ambiente como fallback. "
+                "ATENÇÃO: verifique as credenciais e a conectividade com a AWS. "
+                "Erro: %s",
+                exc,
+            )
         return self
 
     @model_validator(mode="after")
@@ -134,11 +150,19 @@ class Settings(BaseSettings):
                 "Gere um segredo forte: openssl rand -hex 32"
             )
 
-        if not self.jwt_refresh_cookie_secure:
+        uses_https = self.public_app_url.startswith("https://")
+        if uses_https and not self.jwt_refresh_cookie_secure:
+            raise ValueError(
+                "JWT_REFRESH_COOKIE_SECURE deve ser True quando PUBLIC_APP_URL "
+                "usa HTTPS. O cookie de refresh token seria transmitido sem a "
+                "flag Secure, expondo-o em conexões não-criptografadas. "
+                "Defina JWT_REFRESH_COOKIE_SECURE=true no ambiente de produção."
+            )
+
+        if not uses_https and not self.jwt_refresh_cookie_secure:
             logger.warning(
                 "JWT_REFRESH_COOKIE_SECURE está False em produção. "
-                "O cookie de refresh será transmitido sem a flag Secure. "
-                "Defina JWT_REFRESH_COOKIE_SECURE=true se servir via HTTPS."
+                "Certifique-se de que a aplicação está atrás de HTTPS."
             )
 
         return self

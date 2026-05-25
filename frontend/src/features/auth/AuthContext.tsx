@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, useCallback, type ReactNode } from 'react'
 import {
   api,
+  ApiError,
   bootstrapAccessTokenFromRefresh,
   clearToken,
   getToken,
@@ -8,6 +9,8 @@ import {
   setToken,
 } from '@/lib/api'
 import type { LoginResponse, User } from '@/types'
+
+const logger = { warn: (...args: unknown[]) => console.warn(...args) }
 
 interface AuthState {
   user: User | null
@@ -76,8 +79,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       const u = await api.get<User>('/auth/me')
       setUser(u)
-    } catch {
-      logout()
+    } catch (err) {
+      // Erros de rede (sem conexão, timeout) não devem deslogar o usuário —
+      // a sessão pode estar intacta e o problema é passageiro.
+      if (err instanceof TypeError) {
+        logger.warn('[auth] Falha de rede ao verificar sessão — sessão mantida')
+        return
+      }
+      // 401 real: token inválido ou expirado sem renovação possível → logout
+      // Qualquer outro erro de API (5xx etc.) também não derruba a sessão
+      if (err instanceof ApiError && err.status === 401) {
+        logout()
+      }
     }
   }, [logout])
 

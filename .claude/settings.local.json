@@ -4,7 +4,9 @@
       "PowerShell(psql --version 2>&1)",
       "Bash(python -c ' *)",
       "Bash(Select-String \"venv|\\\\.venv|env\")",
-      "PowerShell(ls \"c:\\\\Users\\\\Gianlucca Agostini\\\\Documents\\\\Projetos\\\\LPCopa\\\\bolao\" | Where-Object { $_.Name -match \"venv|env\" })"
+      "PowerShell(ls \"c:\\\\Users\\\\Gianlucca Agostini\\\\Documents\\\\Projetos\\\\LPCopa\\\\bolao\" | Where-Object { $_.Name -match \"venv|env\" })",
+      "Bash(Get-ChildItem -Recurse -Path \"c:\\\\Users\\\\Gianlucca Agostini\\\\Documents\\\\Projetos\\\\LPCopa\\\\bolao\" -Include \"*.conf\",\"*.service\",\"Dockerfile\",\"docker-compose*\",\"nginx*\" -ErrorAction SilentlyContinue)",
+      "Bash(python -c \"from app.core.config import Settings; print\\('Settings OK'\\)\")"
     ]
   }
 }

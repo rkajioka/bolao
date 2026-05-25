@@ -17,6 +17,7 @@ from __future__ import annotations
 import functools
 import json
 import logging
+import time
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -35,18 +36,23 @@ MANAGED_FIELDS = frozenset(
     }
 )
 
+_MAX_RETRIES = 3
+_RETRY_BACKOFF_SECONDS = (1, 2, 4)
+
 
 @functools.lru_cache(maxsize=1)
 def fetch_secret(secret_name: str, region: str) -> dict[str, Any]:
     """
     Busca o secret_name no AWS Secrets Manager e retorna o JSON parseado.
 
-    O resultado é cacheado em memória pelo tempo de vida do processo
-    (lru_cache). Para forçar recarga, chame fetch_secret.cache_clear().
+    Tenta até _MAX_RETRIES vezes com backoff exponencial antes de desistir.
+    O resultado é cacheado em memória pelo tempo de vida do processo.
+    Para forçar recarga, chame fetch_secret.cache_clear().
 
     Raises:
         ImportError: se boto3 não estiver instalado.
-        RuntimeError: se o secret não for encontrado ou não for JSON válido.
+        RuntimeError: se o secret não for encontrado ou não for JSON válido
+                      após todas as tentativas.
     """
     try:
         import boto3
@@ -64,13 +70,32 @@ def fetch_secret(secret_name: str, region: str) -> dict[str, Any]:
         region_name=region,
     )
 
-    try:
-        response = client.get_secret_value(SecretId=secret_name)
-    except ClientError as exc:
-        error_code = exc.response["Error"]["Code"]
+    last_exc: Exception | None = None
+    for attempt in range(_MAX_RETRIES):
+        try:
+            response = client.get_secret_value(SecretId=secret_name)
+            break
+        except ClientError as exc:
+            error_code = exc.response["Error"]["Code"]
+            last_exc = exc
+            # Erros permanentes não vale retentativas
+            if error_code in ("ResourceNotFoundException", "InvalidParameterException",
+                               "InvalidRequestException", "AccessDeniedException"):
+                raise RuntimeError(
+                    f"Não foi possível obter o secret '{secret_name}' ({error_code}): {exc}"
+                ) from exc
+            if attempt < _MAX_RETRIES - 1:
+                wait = _RETRY_BACKOFF_SECONDS[attempt]
+                logger.warning(
+                    "Tentativa %d/%d falhou (%s). Aguardando %ds...",
+                    attempt + 1, _MAX_RETRIES, error_code, wait,
+                )
+                time.sleep(wait)
+    else:
         raise RuntimeError(
-            f"Não foi possível obter o secret '{secret_name}' ({error_code}): {exc}"
-        ) from exc
+            f"Não foi possível obter o secret '{secret_name}' após "
+            f"{_MAX_RETRIES} tentativas: {last_exc}"
+        )
 
     secret_string = response.get("SecretString")
     if not secret_string:
