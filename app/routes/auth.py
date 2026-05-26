@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_active_user
 from app.auth.request_origin import assert_bolao_client_request
+from app.core.client_ip import client_ip
 from app.core.config import get_settings
 from app.database import get_db
 from app.models.usuario import Usuario
@@ -65,7 +66,7 @@ def post_login(
     response: Response,
     db: Session = Depends(get_db),
 ) -> LoginResponse:
-    ip = request.client.host if request.client else "unknown"
+    ip = client_ip(request)
     login_key = f"auth:login_failed:{ip}:{str(data.email).lower()}"
     try:
         access_token, refresh_token, primeiro = auth_service.login(db, data)
@@ -93,7 +94,7 @@ def post_refresh(
     db: Session = Depends(get_db),
 ) -> AccessTokenResponse:
     assert_bolao_client_request(request)
-    ip = request.client.host if request.client else "unknown"
+    ip = client_ip(request)
     enforce_limit(
         key=f"auth:refresh:{ip}",
         limit=settings.rate_limit_refresh_requests,
@@ -155,7 +156,7 @@ async def post_avatar_pre_ativacao(
     """Upload de foto antes de ativar conta — exige token de convite válido (sem JWT)."""
     import hashlib
 
-    ip = request.client.host if request.client else "unknown"
+    ip = client_ip(request)
     enforce_limit(
         key=f"auth:avatar-pre:{ip}",
         limit=settings.rate_limit_avatar_pre_ip_requests,
@@ -183,7 +184,7 @@ def post_ativar_conta(
     db: Session = Depends(get_db),
 ) -> AtivarContaResponse:
     """Ativa conta via token de convite. Cria usuário e emite tokens de sessão."""
-    ip = request.client.host if request.client else None
+    ip = client_ip(request)
     usuario = ativacao_service.ativar_conta(db, data, ip)
     access_token, refresh_token = auth_service.issue_token_pair(db, usuario)
     _set_refresh_cookie(response, refresh_token)
@@ -194,19 +195,21 @@ def post_ativar_conta(
 def post_forgot_password(
     body: ForgotPasswordRequest,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> ForgotPasswordResponse:
     """
     Gera token de reset. Resposta é sempre a mesma para evitar enumeração de usuários.
-    Em dev: token retornado em campo extra quando gerado (apenas admin pode ver via /equipe).
+    E-mail enviado em background para não bloquear o worker.
     """
-    ip = request.client.host if request.client else None
+    ip = client_ip(request)
     enforce_limit(
         key=f"auth:forgot:{ip}",
         limit=5,
         window_seconds=300,
     )
-    password_reset_service.solicitar_reset(db, str(body.email), ip)
+    email_norm = str(body.email).strip().lower()
+    background_tasks.add_task(password_reset_service.solicitar_reset_background, email_norm, ip)
     return ForgotPasswordResponse(mensagem=_FORGOT_PASSWORD_MSG)
 
 
@@ -217,7 +220,7 @@ def post_redefinir_senha(
     response: Response,
     db: Session = Depends(get_db),
 ) -> AtivarContaResponse:
-    ip = request.client.host if request.client else None
+    ip = client_ip(request)
     usuario = password_reset_service.redefinir_senha(db, data.token, data.nova_senha, ip)
     access_token, refresh_token = auth_service.issue_token_pair(db, usuario)
     _set_refresh_cookie(response, refresh_token)

@@ -1,7 +1,8 @@
+import logging
 from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.auth.jwt import create_access_token, create_refresh_token, decode_refresh_token_safe
@@ -13,7 +14,10 @@ from app.models.usuario import Usuario
 from app.schemas.usuario import ChangePasswordRequest, LoginRequest, PrimeiroAcessoRequest
 from app.services import audit_log_service, usuario_service
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
+
+_LOGIN_FAIL_MSG = "E-mail ou senha incorretos"
 
 
 def _refresh_expires_at() -> datetime:
@@ -46,23 +50,30 @@ def login(db: Session, data: LoginRequest) -> tuple[str, str, bool]:
     if user is None or not verify_password(data.senha, user.senha_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="E-mail ou senha incorretos",
+            detail=_LOGIN_FAIL_MSG,
         )
     if not user.ativo:
+        logger.warning("Login recusado: usuário inativo (email=%s)", data.email)
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Usuário inativo",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=_LOGIN_FAIL_MSG,
         )
     if user.bloqueado:
+        logger.warning("Login recusado: usuário bloqueado (email=%s)", data.email)
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Usuário bloqueado pelo administrador",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=_LOGIN_FAIL_MSG,
         )
     access_token, refresh_token = issue_token_pair(db, user)
     return access_token, refresh_token, user.primeiro_login
 
 
-def refresh_access_token(db: Session, refresh_token: str, ip: str | None = None) -> tuple[str, str]:
+def refresh_access_token(
+    db: Session,
+    refresh_token: str,
+    *,
+    ip: str | None = None,
+) -> tuple[str, str]:
     payload = decode_refresh_token_safe(refresh_token)
     if payload is None:
         raise HTTPException(
@@ -90,7 +101,33 @@ def refresh_access_token(db: Session, refresh_token: str, ip: str | None = None)
             RefreshToken.jti == str(jti),
         )
     )
-    if token_row is None or _is_expired(token_row.expires_at):
+    if token_row is None:
+        reused = db.scalar(
+            select(RefreshToken).where(
+                RefreshToken.usuario_id == user_id,
+                RefreshToken.jti == str(jti),
+                RefreshToken.revogado.is_(True),
+            )
+        )
+        if reused is not None:
+            revogar_refresh_tokens_usuario(db, user_id)
+            audit_log_service.log(
+                db,
+                acao="auth.refresh_replay_detectado",
+                usuario_id=user_id,
+                ip=ip,
+            )
+            logger.warning(
+                "Replay de refresh token detectado — revogando família (usuario_id=%s, ip=%s)",
+                user_id,
+                ip,
+            )
+            db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token inválido ou expirado",
+        )
+    if _is_expired(token_row.expires_at):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Refresh token inválido ou expirado",
@@ -139,14 +176,14 @@ def refresh_access_token(db: Session, refresh_token: str, ip: str | None = None)
 
 
 def revogar_refresh_tokens_usuario(db: Session, user_id: int) -> None:
-    tokens = db.scalars(
-        select(RefreshToken).where(
+    db.execute(
+        update(RefreshToken)
+        .where(
             RefreshToken.usuario_id == user_id,
             RefreshToken.revogado.is_(False),
         )
-    ).all()
-    for token in tokens:
-        token.revogado = True
+        .values(revogado=True)
+    )
 
 
 def logout(db: Session, refresh_token: str | None) -> None:

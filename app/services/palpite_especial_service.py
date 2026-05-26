@@ -83,15 +83,37 @@ def to_read(db: Session, p: PalpiteEspecial) -> PalpiteEspecialRead:
     return r.model_copy(update={"bloqueado": efetivo})
 
 
-def to_admin_read(db: Session, p: PalpiteEspecial) -> PalpiteEspecialAdminRead:
+def to_admin_read(
+    db: Session,
+    p: PalpiteEspecial,
+    *,
+    bloqueado_por_empresa: dict[int, bool] | None = None,
+) -> PalpiteEspecialAdminRead:
     r = PalpiteEspecialAdminRead.model_validate(p)
     empresa_id = _empresa_id_palpite(p)
-    efetivo = p.bloqueado or (
-        configuracao_bolao_service.palpites_especiais_esta_bloqueado(db, empresa_id)
-        if empresa_id is not None
-        else False
-    )
+    if empresa_id is None:
+        efetivo = bool(p.bloqueado)
+    elif bloqueado_por_empresa is not None:
+        efetivo = p.bloqueado or bloqueado_por_empresa.get(empresa_id, False)
+    else:
+        efetivo = p.bloqueado or configuracao_bolao_service.palpites_especiais_esta_bloqueado(
+            db, empresa_id
+        )
     return r.model_copy(update={"bloqueado": efetivo})
+
+
+def listar_todos_admin_read(db: Session) -> list[PalpiteEspecialAdminRead]:
+    palpites = listar_todos_admin(db)
+    empresa_ids = {
+        eid for p in palpites if (eid := _empresa_id_palpite(p)) is not None
+    }
+    bloqueado_por_empresa = {
+        eid: configuracao_bolao_service.palpites_especiais_esta_bloqueado(db, eid)
+        for eid in empresa_ids
+    }
+    return [
+        to_admin_read(db, p, bloqueado_por_empresa=bloqueado_por_empresa) for p in palpites
+    ]
 
 
 def get_por_usuario(db: Session, usuario_id: int) -> PalpiteEspecial | None:

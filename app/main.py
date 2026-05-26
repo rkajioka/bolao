@@ -92,6 +92,15 @@ async def add_security_headers(request: Request, call_next):
 
 
 @app.middleware("http")
+async def cache_hashed_assets(request: Request, call_next):
+    response = await call_next(request)
+    path = request.url.path
+    if path.startswith("/assets/") and response.status_code == 200:
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    return response
+
+
+@app.middleware("http")
 async def serve_spa_on_html_navigation(request: Request, call_next):
     if _frontend_dist.exists() and request.method == "GET":
         accept = request.headers.get("accept", "")

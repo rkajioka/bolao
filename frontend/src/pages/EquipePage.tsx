@@ -77,6 +77,8 @@ interface MemberCardProps {
   onBloquear?: (id: number, bloqueado: boolean) => void
   onRemover?: (id: number) => void
   onResetSenha?: (id: number, nome: string) => void
+  bloqueandoId?: number | null
+  resetandoSenhaId?: number | null
 }
 
 function MemberCard({
@@ -84,7 +86,11 @@ function MemberCard({
   onBloquear,
   onRemover,
   onResetSenha,
+  bloqueandoId = null,
+  resetandoSenhaId = null,
 }: MemberCardProps) {
+  const bloquearBusy = membro.id != null && bloqueandoId === membro.id
+  const resetBusy = membro.id != null && resetandoSenhaId === membro.id
   return (
     <motion.div
       layout
@@ -146,8 +152,10 @@ function MemberCard({
         {membro.tipo === 'usuario' && membro.id && (
           <div className="flex items-center gap-2 mt-2">
             <button
+              type="button"
+              disabled={bloquearBusy || resetBusy}
               onClick={() => onBloquear?.(membro.id!, !membro.bloqueado)}
-              className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors"
+              className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors disabled:opacity-50"
               style={{
                 background: membro.bloqueado ? 'rgba(52,211,153,0.1)' : 'rgba(239,68,68,0.1)',
                 color: membro.bloqueado ? '#34d399' : '#ef4444',
@@ -167,8 +175,9 @@ function MemberCard({
             </button>
             <button
               type="button"
+              disabled={bloquearBusy || resetBusy}
               onClick={() => onResetSenha?.(membro.id!, membro.nome ?? membro.email)}
-              className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg"
+              className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg disabled:opacity-50"
               style={{ background: 'rgba(99,102,241,0.1)', color: '#818cf8' }}
             >
               Nova senha
@@ -635,6 +644,12 @@ export function EquipePage() {
                         onBloquear={(id, bloqueado) => bloquearMutation.mutate({ id, bloqueado })}
                         onRemover={(id) => setUsuarioRemoverId(id)}
                         onResetSenha={handleResetSenha}
+                        bloqueandoId={
+                          bloquearMutation.isPending ? bloquearMutation.variables?.id ?? null : null
+                        }
+                        resetandoSenhaId={
+                          resetSenhaMutation.isPending ? resetSenhaMutation.variables ?? null : null
+                        }
                       />
                     ))}
                   </AnimatePresence>

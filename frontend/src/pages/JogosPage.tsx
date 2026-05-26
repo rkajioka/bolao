@@ -44,18 +44,21 @@ export function JogosPage() {
   const { data: jogosCrono = [], isLoading: loadingJogos, isError: jogosError, refetch: refetchJogos } = useQuery({
     queryKey: ['jogos', 'cronologico'],
     queryFn: () => api.get<Jogo[]>('/jogos/cronologico'),
+    staleTime: 10_000,
   })
 
   const { data: palpites = [] } = useQuery({
     queryKey: ['palpites', 'me'],
     queryFn: () => api.get<PalpiteJogo[]>('/palpites-jogos/me'),
     enabled: canParticipate,
+    staleTime: 10_000,
   })
 
   const { data: configBolao } = useQuery({
     queryKey: ['configuracao-bolao', 'minha'],
     queryFn: () => api.get<ConfiguracaoBolao>('/configuracao-bolao/minha'),
     enabled: canParticipate,
+    staleTime: Infinity,
   })
 
   const marcadoresBrasilHabilitado = Boolean(configBolao?.marcadores_brasil_habilitado)

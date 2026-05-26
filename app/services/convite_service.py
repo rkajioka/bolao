@@ -1,13 +1,16 @@
 import logging
 import secrets
 import time
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException, status
 from sqlalchemy import and_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.database import SessionLocal
 from app.models.convite import Convite
 from app.models.empresa import Empresa
 from app.models.usuario import Usuario
@@ -21,6 +24,12 @@ _TOKEN_BYTES = 48
 _EXPIRACAO_HORAS = 72
 
 
+@dataclass(frozen=True)
+class ConviteEmailPendente:
+    email: str
+    token: str
+
+
 def _gerar_token() -> str:
     return secrets.token_urlsafe(_TOKEN_BYTES)
 
@@ -29,17 +38,49 @@ def _expiracao_padrao() -> datetime:
     return datetime.now(UTC) + timedelta(hours=_EXPIRACAO_HORAS)
 
 
-def _get_convite_ativo(db: Session, token: str) -> Convite | None:
+def _get_convite_ativo(db: Session, token: str, *, for_update: bool = False) -> Convite | None:
     agora = datetime.now(UTC)
-    return db.scalar(
+    stmt = select(Convite).where(
+        and_(
+            Convite.token == token,
+            Convite.usado_em.is_(None),
+            Convite.expiracao > agora,
+        )
+    )
+    if for_update:
+        stmt = stmt.with_for_update()
+    return db.scalar(stmt)
+
+
+def _prefetch_usuarios_por_email(db: Session, empresa_id: int, emails: list[str]) -> dict[str, Usuario]:
+    if not emails:
+        return {}
+    rows = db.scalars(
+        select(Usuario).where(
+            and_(
+                Usuario.empresa_id == empresa_id,
+                Usuario.email.in_(emails),
+            )
+        )
+    ).all()
+    return {u.email: u for u in rows}
+
+
+def _prefetch_convites_pendentes(db: Session, empresa_id: int, emails: list[str]) -> dict[str, Convite]:
+    if not emails:
+        return {}
+    agora = datetime.now(UTC)
+    rows = db.scalars(
         select(Convite).where(
             and_(
-                Convite.token == token,
+                Convite.empresa_id == empresa_id,
+                Convite.email.in_(emails),
                 Convite.usado_em.is_(None),
                 Convite.expiracao > agora,
             )
         )
-    )
+    ).all()
+    return {c.email: c for c in rows}
 
 
 def criar_bulk_convites(
@@ -48,45 +89,29 @@ def criar_bulk_convites(
     data: BulkConviteRequest,
     criado_por: int,
     ip: str | None = None,
-) -> BulkConviteResponse:
+) -> tuple[BulkConviteResponse, list[ConviteEmailPendente]]:
     resultados: list[ConviteResultadoItem] = []
-    falhas_envio: list[email_dispatch_service.FalhaEnvioItem] = []
     emails_bloqueados_limite: list[str] = []
-    enviados = 0
-    falhas = 0
     bloqueados_limite = 0
     reservas_lote = 0
-    intervalo = get_settings().email_bulk_interval_seconds
+    emails_pendentes: list[ConviteEmailPendente] = []
 
     empresa = db.get(Empresa, empresa_id)
     if empresa is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empresa não encontrada")
     empresa_nome = empresa.nome
 
-    for indice, email in enumerate(data.emails):
-        usuario_existente = db.scalar(
-            select(Usuario).where(
-                and_(
-                    Usuario.email == email,
-                    Usuario.empresa_id == empresa_id,
-                )
-            )
-        )
+    emails_norm = [str(e).strip().lower() for e in data.emails]
+    usuarios_map = _prefetch_usuarios_por_email(db, empresa_id, emails_norm)
+    convites_map = _prefetch_convites_pendentes(db, empresa_id, emails_norm)
+
+    for email in emails_norm:
+        usuario_existente = usuarios_map.get(email)
         if usuario_existente:
             resultados.append(ConviteResultadoItem(email=email, status="ja_cadastrado"))
             continue
 
-        agora = datetime.now(UTC)
-        convite_existente = db.scalar(
-            select(Convite).where(
-                and_(
-                    Convite.email == email,
-                    Convite.empresa_id == empresa_id,
-                    Convite.usado_em.is_(None),
-                    Convite.expiracao > agora,
-                )
-            )
-        )
+        convite_existente = convites_map.get(email)
         if convite_existente:
             resultados.append(
                 ConviteResultadoItem(
@@ -124,6 +149,7 @@ def criar_bulk_convites(
         db.add(convite)
         db.flush()
         reservas_lote += 1
+        convites_map[email] = convite
 
         audit_log_service.log(
             db,
@@ -134,46 +160,14 @@ def criar_bulk_convites(
             ip=ip,
         )
 
-        item = ConviteResultadoItem(
-            email=email,
-            status="convite_criado",
-            expiracao=convite.expiracao.isoformat(),
-        )
-        resultado_envio = email_service.tentar_enviar_convite(db, email, token, empresa_nome)
-        item.email_tentativas = resultado_envio.tentativas
-        if resultado_envio.sucesso:
-            item.convite_enviado_por_email = True
-            enviados += 1
-        else:
-            item.convite_enviado_por_email = False
-            item.email_erro = resultado_envio.erro
-            falhas += 1
-            falhas_envio.append(
-                email_dispatch_service.FalhaEnvioItem(
-                    destinatario=email,
-                    operacao="convite",
-                    erro=resultado_envio.erro or "Falha desconhecida",
-                )
+        resultados.append(
+            ConviteResultadoItem(
+                email=email,
+                status="convite_criado",
+                expiracao=convite.expiracao.isoformat(),
             )
-            logger.warning(
-                "Convite criado para %s, mas o e-mail não foi enviado; reenvie o convite por e-mail",
-                email,
-            )
-
-        resultados.append(item)
-
-        if indice < len(data.emails) - 1 and intervalo > 0:
-            time.sleep(intervalo)
-
-    alerta_admins_enviado = False
-    if falhas_envio:
-        alerta_admins_enviado = email_dispatch_service.notificar_admins_falha_envio(
-            db,
-            empresa_id=empresa_id,
-            empresa_nome=empresa_nome,
-            operacao="convites da equipe",
-            falhas=falhas_envio,
         )
+        emails_pendentes.append(ConviteEmailPendente(email=email, token=token))
 
     alerta_owners_limite_enviado = False
     if emails_bloqueados_limite:
@@ -188,18 +182,71 @@ def criar_bulk_convites(
             emails_bloqueados=emails_bloqueados_limite,
         )
 
-    db.commit()
-    return BulkConviteResponse(
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Já existe um convite ativo para um dos e-mails informados.",
+        ) from None
+
+    response = BulkConviteResponse(
         itens=resultados,
         resumo_envio=ConviteResumoEnvio(
             total=len(resultados),
-            enviados=enviados,
-            falhas=falhas,
+            enviados=0,
+            falhas=0,
             bloqueados_limite=bloqueados_limite,
-            alerta_admins_enviado=alerta_admins_enviado,
+            alerta_admins_enviado=False,
             alerta_owners_limite_enviado=alerta_owners_limite_enviado,
         ),
     )
+    return response, emails_pendentes
+
+
+def enviar_emails_bulk_convites(
+    empresa_id: int,
+    empresa_nome: str,
+    pendentes: list[ConviteEmailPendente],
+) -> None:
+    """Envia convites em background (intervalo entre e-mails para não saturar o Graph)."""
+    if not pendentes:
+        return
+
+    intervalo = get_settings().email_bulk_interval_seconds
+    db = SessionLocal()
+    try:
+        falhas_envio: list[email_dispatch_service.FalhaEnvioItem] = []
+        for indice, job in enumerate(pendentes):
+            resultado_envio = email_service.tentar_enviar_convite(
+                db, job.email, job.token, empresa_nome
+            )
+            if not resultado_envio.sucesso:
+                falhas_envio.append(
+                    email_dispatch_service.FalhaEnvioItem(
+                        destinatario=job.email,
+                        operacao="convite",
+                        erro=resultado_envio.erro or "Falha desconhecida",
+                    )
+                )
+                logger.warning(
+                    "Convite criado para %s, mas o e-mail não foi enviado; reenvie o convite por e-mail",
+                    job.email,
+                )
+            if indice < len(pendentes) - 1 and intervalo > 0:
+                time.sleep(intervalo)
+
+        if falhas_envio:
+            email_dispatch_service.notificar_admins_falha_envio(
+                db,
+                empresa_id=empresa_id,
+                empresa_nome=empresa_nome,
+                operacao="convites da equipe",
+                falhas=falhas_envio,
+            )
+    finally:
+        db.close()
 
 
 def listar_convites(db: Session, empresa_id: int) -> list[Convite]:
@@ -214,6 +261,16 @@ def listar_convites(db: Session, empresa_id: int) -> list[Convite]:
 
 def validar_token(db: Session, token: str) -> Convite:
     convite = _get_convite_ativo(db, token)
+    if convite is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Token inválido, expirado ou já utilizado",
+        )
+    return convite
+
+
+def validar_token_for_update(db: Session, token: str) -> Convite:
+    convite = _get_convite_ativo(db, token, for_update=True)
     if convite is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

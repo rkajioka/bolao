@@ -145,15 +145,20 @@ export function RankingPage() {
     queryKey: ['ranking', effectiveEmpresaId],
     queryFn: () => rankingService.get(needsOwnerEmpresaPick ? effectiveEmpresaId : undefined),
     enabled: rankingEnabled,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
   })
   const { data: paises = [] } = useQuery({
     queryKey: ['paises'],
     queryFn: () => api.get<Pais[]>('/paises'),
+    staleTime: Infinity,
   })
   const { data: insights, isLoading: isLoadingInsights } = useQuery({
     queryKey: ['ranking', 'insights', effectiveEmpresaId],
     queryFn: () => rankingService.getInsights(needsOwnerEmpresaPick ? effectiveEmpresaId : undefined),
     enabled: rankingEnabled,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
   })
   const { data: configBolao } = useQuery({
     queryKey: ['configuracao-bolao', 'minha'],

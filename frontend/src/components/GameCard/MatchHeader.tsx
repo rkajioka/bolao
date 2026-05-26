@@ -1,11 +1,7 @@
-import { Clock, Lock, LockOpen } from 'lucide-react'
+import { Lock, LockOpen } from 'lucide-react'
+import { DeadlineCountdown } from '@/components/DeadlineCountdown'
 import { MatchStatusBadge } from '@/components/MatchStatusBadge'
-import {
-  deadlineText,
-  faseLabel,
-  formatDate,
-  jogoFaseJaMencionaRodada,
-} from '@/lib/utils'
+import { faseLabel, formatDate, jogoFaseJaMencionaRodada } from '@/lib/utils'
 import type { Jogo } from '@/types'
 
 type MatchStatus = 'done' | 'locked' | 'open'
@@ -34,12 +30,6 @@ function metaLinha(jogo: Jogo): string {
   return partes.join(' · ')
 }
 
-function deadlineColor(urgency: 'normal' | 'soon' | 'urgent'): string {
-  if (urgency === 'urgent') return 'var(--danger)'
-  if (urgency === 'soon') return 'var(--highlight)'
-  return 'var(--text-muted)'
-}
-
 export function MatchHeader({
   jogo,
   todosJogos,
@@ -50,7 +40,6 @@ export function MatchHeader({
   palpiteEncerrado = false,
 }: MatchHeaderProps) {
   const meta = metaLinha(jogo)
-  const deadline = status === 'open' ? deadlineText(jogo, todosJogos) : null
 
   return (
     <div
@@ -67,15 +56,7 @@ export function MatchHeader({
           <p className="text-sm font-semibold mt-0.5" style={{ color: 'var(--text)' }}>
             {formatDate(jogo.data_jogo)}
           </p>
-          {deadline && (
-            <p
-              className="text-xs mt-0.5 flex items-center gap-1"
-              style={{ color: deadlineColor(deadline.urgency) }}
-            >
-              <Clock size={11} />
-              {deadline.text}
-            </p>
-          )}
+          {status === 'open' && <DeadlineCountdown jogo={jogo} todosJogos={todosJogos} />}
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {palpiteRegistrado && (

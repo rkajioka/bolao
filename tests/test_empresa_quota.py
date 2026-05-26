@@ -14,6 +14,9 @@ def _login(client, email: str, senha: str) -> str:
 
 @patch("app.services.email_service.enviar_email_outlook")
 def test_convite_bloqueado_no_limite_alerta_owner(mock_send, client) -> None:
+    from app.services.rate_limit_service import reset_key
+
+    empresa_id: int
     db = SessionLocal()
     try:
         emp = Empresa(nome="Empresa Limite", codigo_empresa="emp-limite-1", ativo=True, max_usuarios=2)
@@ -40,6 +43,7 @@ def test_convite_bloqueado_no_limite_alerta_owner(mock_send, client) -> None:
         )
         db.add_all([owner, admin])
         db.commit()
+        empresa_id = emp.id
     finally:
         db.close()
 
@@ -54,6 +58,7 @@ def test_convite_bloqueado_no_limite_alerta_owner(mock_send, client) -> None:
     assert r.status_code == 201, r.text
     assert r.json()["itens"][0]["status"] == "convite_criado"
 
+    reset_key(f"convites_bulk:{empresa_id}")
     r2 = client.post(
         "/equipe/convites",
         headers=headers,

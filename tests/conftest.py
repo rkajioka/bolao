@@ -28,9 +28,13 @@ from app.database import Base, engine
 @pytest.fixture(autouse=True)
 def reset_db() -> None:
     """Isola cada teste com schema limpo."""
+    from app.services.rate_limit_service import reset_all as reset_rate_limits
+
+    reset_rate_limits()
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     yield
+    reset_rate_limits()
 
 
 @pytest.fixture

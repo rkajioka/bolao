@@ -11,7 +11,7 @@ from app.services import audit_log_service, convite_service
 
 
 def ativar_conta(db: Session, data: AtivarContaRequest, ip: str | None = None) -> Usuario:
-    convite = convite_service.validar_token(db, data.token)
+    convite = convite_service.validar_token_for_update(db, data.token)
 
     # Verificar se já existe usuário com este e-mail na empresa
     usuario_existente = db.scalar(

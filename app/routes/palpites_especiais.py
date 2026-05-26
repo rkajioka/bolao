@@ -72,7 +72,7 @@ def get_palpites_especiais_admin(
     db: Session = Depends(get_db),
     _admin: Usuario = Depends(require_owner),
 ) -> list[PalpiteEspecialAdminRead]:
-    return [palpite_especial_service.to_admin_read(db, p) for p in palpite_especial_service.listar_todos_admin(db)]
+    return palpite_especial_service.listar_todos_admin_read(db)
 
 
 @router.patch("/recalcular", status_code=status.HTTP_204_NO_CONTENT)

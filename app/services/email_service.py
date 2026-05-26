@@ -146,6 +146,16 @@ def tentar_enviar_reset_senha(
             f'<p><a href="{link}">Definir senha</a></p>'
             "<p>O link expira em breve. Se você não esperava este acesso, ignore este e-mail.</p>"
         )
+    elif motivo == "reset_gestor":
+        assunto = f"Sua senha foi redefinida — {empresa_nome}"
+        corpo_html = (
+            f"<p>A senha da sua conta no bolão <strong>{empresa_nome}</strong> foi redefinida "
+            "por um administrador.</p>"
+            f"<p>Use o link abaixo para definir uma nova senha com o e-mail "
+            f"<strong>{destinatario}</strong>.</p>"
+            f'<p><a href="{link}">Definir nova senha</a></p>'
+            "<p>O link expira em breve. Se você não esperava esta alteração, ignore este e-mail.</p>"
+        )
     else:
         assunto = f"Redefinição de senha — {empresa_nome}"
         corpo_html = (

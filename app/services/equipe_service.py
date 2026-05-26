@@ -8,6 +8,7 @@ from app.models.convite import Convite
 from app.models.usuario import Usuario
 from app.schemas.perfil import AlterarSenhaRequest, PerfilUpdate
 from app.auth.password import hash_password, verify_password
+from app.core.avatar_url import resolver_url_avatar_publica
 from app.services import audit_log_service, auth_service, convite_service
 
 
@@ -42,7 +43,7 @@ def listar_equipe(db: Session, empresa_id: int) -> list[dict]:
             "nome": u.nome,
             "email": u.email,
             "funcao": u.funcao,
-            "avatar_url": u.avatar_url or u.imagem_perfil,
+            "avatar_url": resolver_url_avatar_publica(u.avatar_url, u.imagem_perfil),
             "tipo_usuario": u.tipo_usuario,
             "ativo": u.ativo,
             "bloqueado": u.bloqueado,

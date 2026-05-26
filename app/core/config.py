@@ -85,6 +85,8 @@ class Settings(BaseSettings):
     rate_limit_refresh_requests: int = 20
     rate_limit_avatar_pre_ip_requests: int = 10
     rate_limit_avatar_pre_token_requests: int = 5
+    rate_limit_convites_bulk_requests: int = 1
+    rate_limit_convites_bulk_window_seconds: int = 300
     rate_limit_window_seconds: int = 60
 
     # ------------------------------------------------------------------ #
@@ -93,6 +95,7 @@ class Settings(BaseSettings):
     debug: bool = False
     public_app_url: str = "http://localhost:5173"
     cors_allowed_origins: str | None = None
+    trusted_proxy: bool = False
 
     # ------------------------------------------------------------------ #
     # Microsoft Graph / e-mail                                             #
@@ -169,6 +172,9 @@ class Settings(BaseSettings):
                 "JWT_REFRESH_COOKIE_SECURE está False em produção. "
                 "Certifique-se de que a aplicação está atrás de HTTPS."
             )
+
+        if uses_https and self.jwt_refresh_cookie_samesite.lower() != "strict":
+            self.jwt_refresh_cookie_samesite = "strict"
 
         return self
 

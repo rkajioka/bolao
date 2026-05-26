@@ -258,7 +258,6 @@ export function AppLayout() {
               key={item.to}
               to={item.to}
               end={item.end}
-              aria-current="page"
               className={({ isActive }) =>
                 cn(
                   'flex-1 flex flex-col items-center justify-center gap-1 transition-all duration-150 relative',
@@ -269,6 +268,7 @@ export function AppLayout() {
               {({ isActive }) => (
                 <>
                   <span
+                    aria-current={isActive ? 'page' : undefined}
                     style={{ color: isActive ? 'var(--accent)' : 'var(--text)' }}
                     className="transition-colors duration-150"
                   >

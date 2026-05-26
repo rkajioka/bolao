@@ -7,6 +7,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth.password import hash_password
+from app.core.avatar_url import resolver_url_avatar_publica, validar_avatar_url
+from app.core.password_policy import validar_complexidade_senha
+from app.database import SessionLocal
 from app.models.usuario import Usuario
 from app.schemas.usuario import UsuarioCreate, UsuarioRead, UsuarioUpdate
 from app.services import email_dispatch_service, empresa_quota_service, empresa_service, password_reset_service
@@ -129,7 +132,7 @@ def create_usuario(db: Session, data: UsuarioCreate) -> tuple[Usuario, EmailEntr
         email=str(data.email).strip().lower(),
         senha_hash=hash_password(senha_inicial),
         funcao=data.funcao,
-        imagem_perfil=data.imagem_perfil,
+        imagem_perfil=validar_avatar_url(data.imagem_perfil) if data.imagem_perfil else None,
         tipo_usuario=data.tipo_usuario,
         ativo=data.ativo,
         primeiro_login=data.primeiro_login,
@@ -160,7 +163,7 @@ def update_usuario(db: Session, usuario: Usuario, data: UsuarioUpdate) -> Usuari
     if data.funcao is not None:
         usuario.funcao = data.funcao
     if data.imagem_perfil is not None:
-        usuario.imagem_perfil = data.imagem_perfil
+        usuario.imagem_perfil = validar_avatar_url(data.imagem_perfil)
     if data.tipo_usuario is not None:
         usuario.tipo_usuario = data.tipo_usuario
     if "empresa_id" in data.model_fields_set:
@@ -191,18 +194,24 @@ def set_ativo(db: Session, usuario: Usuario, ativo: bool) -> Usuario:
     return usuario
 
 
-
 def reset_password(db: Session, usuario: Usuario) -> EmailEntregaResultado:
+    """Redefine acesso: senha aleatória no banco (desconhecida) + revoga sessões + link por e-mail."""
+    from app.models.refresh_token import RefreshToken
+    from sqlalchemy import update as _update
+    usuario.senha_hash = hash_password(secrets.token_urlsafe(48))
     usuario.primeiro_login = True
-    from app.services import auth_service as _auth_svc
-    _auth_svc.revogar_refresh_tokens_usuario(db, usuario.id)
-    db.commit()
+    db.execute(
+        _update(RefreshToken)
+        .where(RefreshToken.usuario_id == usuario.id, RefreshToken.revogado.is_(False))
+        .values(revogado=True)
+    )
+    db.flush()
 
     _, resultado = password_reset_service.gerar_e_enviar_reset_para_usuario(
         db,
         usuario,
-        acao_auditoria="password_reset.resetado_pelo_gestor",
-        motivo="solicitacao",
+        acao_auditoria="password_reset.solicitado_pelo_gestor",
+        motivo="reset_gestor",
         commit=True,
     )
     if resultado.sucesso:
@@ -216,6 +225,17 @@ def reset_password(db: Session, usuario: Usuario) -> EmailEntregaResultado:
         operacao="reset de senha",
         resultado=resultado,
     )
+
+
+def reset_password_background(usuario_id: int) -> None:
+    db = SessionLocal()
+    try:
+        usuario = db.get(Usuario, usuario_id)
+        if usuario is None:
+            return
+        reset_password(db, usuario)
+    finally:
+        db.close()
 
 
 def usuario_para_read(db: Session, usuario: Usuario) -> UsuarioRead:

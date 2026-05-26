@@ -397,7 +397,7 @@ def test_put_configuracao_bolao_congelada_apos_jogo_finalizado(client) -> None:
     assert r.status_code == 409
 
 
-def test_login_usuario_bloqueado_retorna_403(client) -> None:
+def test_login_usuario_bloqueado_retorna_401_generico(client) -> None:
     db = SessionLocal()
     try:
         _, _, user_id = seed_owner_admin_e_usuario(db)
@@ -411,7 +411,8 @@ def test_login_usuario_bloqueado_retorna_403(client) -> None:
         db.close()
 
     r = client.post("/auth/login", json={"email": "user-etapa13@example.com", "senha": "senhausuario1"})
-    assert r.status_code == 403
+    assert r.status_code == 401
+    assert r.json()["detail"] == "E-mail ou senha incorretos"
 
 
 def test_refresh_usuario_bloqueado_sem_revogar_retorna_403(client) -> None:
