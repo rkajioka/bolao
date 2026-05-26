@@ -8,7 +8,7 @@ from app.database import Base
 
 class Convite(Base):
     __tablename__ = "convites"
-    __table_args__ = (UniqueConstraint("empresa_id", "email", name="uq_convites_empresa_email"),)
+    __table_args__ = (UniqueConstraint("empresa_id", "email", name="uq_convite_empresa_email"),)
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     empresa_id: Mapped[int] = mapped_column(

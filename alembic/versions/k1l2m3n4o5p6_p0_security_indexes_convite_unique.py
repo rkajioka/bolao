@@ -19,6 +19,17 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # Remove duplicate pending invites before adding unique constraint
+    op.execute(
+        """
+        DELETE FROM convites
+        WHERE id NOT IN (
+            SELECT DISTINCT ON (empresa_id, email) id
+            FROM convites
+            ORDER BY empresa_id, email, created_at DESC
+        )
+        """
+    )
     op.create_unique_constraint(
         "uq_convite_empresa_email",
         "convites",
