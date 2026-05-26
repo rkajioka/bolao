@@ -127,58 +127,6 @@ def tentar_enviar_convite(
     )
 
 
-def tentar_enviar_conta_criada_pelo_gestor(
-    db: Session,
-    destinatario: str,
-    empresa_nome: str,
-    senha_inicial: str,
-) -> email_dispatch_service.ResultadoEnvio:
-    del db
-    login_url = f"{_public_base_url()}/login"
-    assunto = f"Sua conta no bolão foi criada — {empresa_nome}"
-    corpo_html = (
-        f"<p>Foi criada uma conta para você no bolão <strong>{empresa_nome}</strong>.</p>"
-        f"<p>Use seu e-mail <strong>{destinatario}</strong> e a senha inicial "
-        f"<strong>{senha_inicial}</strong> para entrar.</p>"
-        f'<p><a href="{login_url}">Acessar o bolão</a></p>'
-        "<p>No primeiro acesso, você precisará definir uma nova senha antes de continuar.</p>"
-    )
-    return _enviar_com_log(
-        destinatario=destinatario,
-        assunto=assunto,
-        corpo_html=corpo_html,
-        nome_remetente=empresa_nome,
-        rotulo="conta-criada",
-    )
-
-
-def tentar_enviar_senha_resetada_pelo_gestor(
-    db: Session,
-    destinatario: str,
-    empresa_nome: str,
-    senha_temporaria: str,
-) -> email_dispatch_service.ResultadoEnvio:
-    del db
-    login_url = f"{_public_base_url()}/login"
-    assunto = f"Sua senha foi redefinida — {empresa_nome}"
-    corpo_html = (
-        f"<p>A senha da sua conta no bolão <strong>{empresa_nome}</strong> foi redefinida "
-        "por um administrador.</p>"
-        f"<p>Use seu e-mail <strong>{destinatario}</strong> e a senha temporária "
-        f"<strong>{senha_temporaria}</strong> para entrar.</p>"
-        f'<p><a href="{login_url}">Acessar o bolão</a></p>'
-        "<p>No primeiro acesso com essa senha, você precisará definir uma nova senha antes "
-        "de continuar.</p>"
-    )
-    return _enviar_com_log(
-        destinatario=destinatario,
-        assunto=assunto,
-        corpo_html=corpo_html,
-        nome_remetente=empresa_nome,
-        rotulo="senha-temporaria",
-    )
-
-
 def tentar_enviar_reset_senha(
     db: Session,
     destinatario: str,

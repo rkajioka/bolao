@@ -6,6 +6,7 @@ from app.database import get_db
 from app.models.usuario import Usuario
 from app.schemas.convite import BulkConviteRequest, BulkConviteResponse
 from app.services import convite_service, equipe_service, usuario_service
+from app.services.rate_limit_service import enforce_limit
 
 router = APIRouter(prefix="/equipe", tags=["equipe"])
 
@@ -32,6 +33,11 @@ def criar_convites(
     admin: Usuario = Depends(require_admin),
     empresa_id: int = Depends(get_resolved_empresa_id),
 ) -> BulkConviteResponse:
+    enforce_limit(
+        key=f"equipe:convites:{empresa_id}",
+        limit=1,
+        window_seconds=300,
+    )
     ip = request.client.host if request.client else None
     return convite_service.criar_bulk_convites(db, empresa_id, data, admin.id, ip)
 

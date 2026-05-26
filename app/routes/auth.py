@@ -70,11 +70,15 @@ def post_login(
     try:
         access_token, refresh_token, primeiro = auth_service.login(db, data)
     except HTTPException as exc:
-        if exc.status_code == status.HTTP_401_UNAUTHORIZED:
+        if exc.status_code in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN):
             enforce_limit(
                 key=login_key,
                 limit=settings.rate_limit_login_requests,
                 window_seconds=settings.rate_limit_window_seconds,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="E-mail ou senha incorretos",
             )
         raise
     reset_key(login_key)
@@ -98,7 +102,7 @@ def post_refresh(
     cookie = request.cookies.get(settings.jwt_refresh_cookie_name)
     if not cookie:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token não informado")
-    access_token, refresh_token = auth_service.refresh_access_token(db, cookie)
+    access_token, refresh_token = auth_service.refresh_access_token(db, cookie, ip=ip)
     _set_refresh_cookie(response, refresh_token)
     return AccessTokenResponse(access_token=access_token)
 

@@ -70,8 +70,13 @@ class Settings(BaseSettings):
     jwt_refresh_token_expire_minutes: int = 60 * 24 * 7
     jwt_refresh_cookie_name: str = "bolao_refresh_token"
     jwt_refresh_cookie_secure: bool = False
-    jwt_refresh_cookie_samesite: str = "lax"
+    jwt_refresh_cookie_samesite: str = "strict"
     jwt_refresh_cookie_path: str = "/auth"
+
+    # ------------------------------------------------------------------ #
+    # Segurança                                                            #
+    # ------------------------------------------------------------------ #
+    bcrypt_rounds: int = 12
 
     # ------------------------------------------------------------------ #
     # Rate limit                                                           #

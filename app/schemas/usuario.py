@@ -1,4 +1,5 @@
 from datetime import datetime
+from urllib.parse import urlparse
 
 from pydantic import BaseModel, EmailStr, Field, ValidationInfo, field_validator, model_validator
 
@@ -10,12 +11,29 @@ def _normalize_email(v: str) -> str:
     return v.strip().lower()
 
 
+def _validar_url_http(url: str | None) -> str | None:
+    if url is None:
+        return None
+    normalized = url.strip()
+    if not normalized:
+        return None
+    scheme = urlparse(normalized).scheme.lower()
+    if scheme not in ("http", "https"):
+        raise ValueError("URL deve usar scheme http ou https")
+    return normalized
+
+
 class UsuarioBase(BaseModel):
     nome: str = Field(min_length=1, max_length=255)
     email: EmailStr
     funcao: str | None = Field(default=None, max_length=255)
     imagem_perfil: str | None = Field(default=None, max_length=2048)
     avatar_url: str | None = Field(default=None, max_length=2048)
+
+    @field_validator("imagem_perfil")
+    @classmethod
+    def validar_imagem_perfil(cls, v: str | None) -> str | None:
+        return _validar_url_http(v)
     tipo_usuario: str = Field(pattern="^(admin|usuario|owner)$")
     ativo: bool = True
     bloqueado: bool = False
@@ -74,6 +92,11 @@ class UsuarioUpdate(BaseModel):
     imagem_perfil: str | None = Field(default=None, max_length=2048)
     tipo_usuario: str | None = Field(default=None, pattern="^(admin|usuario|owner)$")
     empresa_id: int | None = None
+
+    @field_validator("imagem_perfil")
+    @classmethod
+    def validar_imagem_perfil_update(cls, v: str | None) -> str | None:
+        return _validar_url_http(v)
 
     @model_validator(mode="after")
     def require_at_least_one_field(self) -> "UsuarioUpdate":

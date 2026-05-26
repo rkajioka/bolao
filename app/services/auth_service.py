@@ -11,7 +11,7 @@ from app.core.config import get_settings
 from app.models.refresh_token import RefreshToken
 from app.models.usuario import Usuario
 from app.schemas.usuario import ChangePasswordRequest, LoginRequest, PrimeiroAcessoRequest
-from app.services import usuario_service
+from app.services import audit_log_service, usuario_service
 
 settings = get_settings()
 
@@ -62,7 +62,7 @@ def login(db: Session, data: LoginRequest) -> tuple[str, str, bool]:
     return access_token, refresh_token, user.primeiro_login
 
 
-def refresh_access_token(db: Session, refresh_token: str) -> tuple[str, str]:
+def refresh_access_token(db: Session, refresh_token: str, ip: str | None = None) -> tuple[str, str]:
     payload = decode_refresh_token_safe(refresh_token)
     if payload is None:
         raise HTTPException(
@@ -88,10 +88,24 @@ def refresh_access_token(db: Session, refresh_token: str) -> tuple[str, str]:
         select(RefreshToken).where(
             RefreshToken.usuario_id == user_id,
             RefreshToken.jti == str(jti),
-            RefreshToken.revogado.is_(False),
         )
     )
     if token_row is None or _is_expired(token_row.expires_at):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token inválido ou expirado",
+        )
+    if token_row.revogado:
+        # Token already used — possible replay attack; revoke all sessions and log
+        revogar_refresh_tokens_usuario(db, user_id)
+        audit_log_service.log(
+            db,
+            acao="security.refresh_token_replay",
+            usuario_id=user_id,
+            ip=ip,
+            metadata={"jti": str(jti)},
+        )
+        db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Refresh token inválido ou expirado",

@@ -7,11 +7,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth.password import hash_password
-from app.core.password_defaults import SENHA_PADRAO_TEMPORARIA
-from app.core.password_policy import validar_complexidade_senha
 from app.models.usuario import Usuario
 from app.schemas.usuario import UsuarioCreate, UsuarioRead, UsuarioUpdate
-from app.services import email_dispatch_service, email_service, empresa_quota_service, empresa_service, password_reset_service
+from app.services import email_dispatch_service, empresa_quota_service, empresa_service, password_reset_service
 
 
 def _validar_vinculo_empresa(tipo_usuario: str, empresa_id: int | None) -> None:
@@ -193,29 +191,19 @@ def set_ativo(db: Session, usuario: Usuario, ativo: bool) -> Usuario:
     return usuario
 
 
-def _gerar_senha_temporaria_valida() -> str:
-    alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*"
-    for _ in range(20):
-        senha = "".join(secrets.choice(alphabet) for _ in range(16))
-        try:
-            validar_complexidade_senha(senha)
-            return senha
-        except ValueError:
-            continue
-    raise RuntimeError("Não foi possível gerar senha temporária válida")
-
 
 def reset_password(db: Session, usuario: Usuario) -> EmailEntregaResultado:
-    senha_temporaria = _gerar_senha_temporaria_valida()
-    usuario.senha_hash = hash_password(senha_temporaria)
     usuario.primeiro_login = True
+    from app.services import auth_service as _auth_svc
+    _auth_svc.revogar_refresh_tokens_usuario(db, usuario.id)
     db.commit()
 
-    resultado = email_service.tentar_enviar_senha_resetada_pelo_gestor(
+    _, resultado = password_reset_service.gerar_e_enviar_reset_para_usuario(
         db,
-        destinatario=usuario.email,
-        empresa_nome=_empresa_nome(db, usuario.empresa_id),
-        senha_temporaria=senha_temporaria,
+        usuario,
+        acao_auditoria="password_reset.resetado_pelo_gestor",
+        motivo="solicitacao",
+        commit=True,
     )
     if resultado.sucesso:
         return EmailEntregaResultado(
