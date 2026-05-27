@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.auth.password import hash_password
 from app.core.avatar_url import resolver_url_avatar_publica, validar_avatar_url
@@ -42,7 +42,13 @@ def get_by_email(db: Session, email: str) -> Usuario | None:
 
 
 def list_usuarios(db: Session) -> list[Usuario]:
-    return list(db.scalars(select(Usuario).order_by(Usuario.id.asc())).all())
+    return list(
+        db.scalars(
+            select(Usuario)
+            .options(joinedload(Usuario.empresa))
+            .order_by(Usuario.id.asc())
+        ).unique().all()
+    )
 
 
 def _empresa_nome(db: Session, empresa_id: int | None) -> str:

@@ -38,11 +38,15 @@ def get_by_id(db: Session, jogo_id: int) -> Jogo | None:
     )
 
 
+_MAX_JOGOS = 200
+
+
 def list_jogos(db: Session) -> list[Jogo]:
     q = (
         select(Jogo)
         .options(*_jogo_list_loaders())
         .order_by(Jogo.data_jogo.asc(), Jogo.id.asc())
+        .limit(_MAX_JOGOS)
     )
     return list(db.scalars(q).unique().all())
 
@@ -57,6 +61,7 @@ def list_jogos_mata_mata(db: Session) -> list[Jogo]:
         .options(*_jogo_list_loaders())
         .where(Jogo.tipo_fase == "mata_mata")
         .order_by(Jogo.data_jogo.asc(), Jogo.id.asc())
+        .limit(_MAX_JOGOS)
     )
     return list(db.scalars(q).unique().all())
 
@@ -70,6 +75,7 @@ def list_jogos_brasil(db: Session) -> list[Jogo]:
         .options(*_jogo_list_loaders())
         .where(or_(Jogo.pais_casa_id == br.id, Jogo.pais_fora_id == br.id))
         .order_by(Jogo.data_jogo.asc(), Jogo.id.asc())
+        .limit(_MAX_JOGOS)
     )
     return list(db.scalars(q).unique().all())
 
@@ -154,6 +160,7 @@ def list_jogos_por_grupo(db: Session) -> list[tuple[str, list[Jogo]]]:
         .where(Jogo.tipo_fase == "grupos")
         .where(Jogo.grupo.isnot(None))
         .order_by(Jogo.grupo.asc(), Jogo.data_jogo.asc(), Jogo.id.asc())
+        .limit(_MAX_JOGOS)
     )
     rows = list(db.scalars(q).unique().all())
     por_grupo: dict[str, list[Jogo]] = defaultdict(list)

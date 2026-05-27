@@ -63,6 +63,8 @@ def listar_ranking(db: Session, empresa_id: int | None = None) -> list[LinhaRank
 
     foto = func.coalesce(Usuario.avatar_url, Usuario.imagem_perfil).label("imagem_perfil")
 
+    _MAX_RANKING = 500
+
     stmt = (
         select(
             Usuario.id.label("usuario_id"),
@@ -85,7 +87,7 @@ def listar_ranking(db: Session, empresa_id: int | None = None) -> list[LinhaRank
     )
     if empresa_id is not None:
         stmt = stmt.where(Usuario.empresa_id == empresa_id)
-    stmt = stmt.order_by(total_expr.desc(), Usuario.nome.asc())
+    stmt = stmt.order_by(total_expr.desc(), Usuario.nome.asc()).limit(_MAX_RANKING)
 
     rows = db.execute(stmt).all()
     return [
