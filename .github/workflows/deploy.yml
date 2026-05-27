@@ -21,13 +21,14 @@ jobs:
             cd /var/www/bolao
 
             echo "→ Atualizando código..."
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
 
             echo "→ Instalando dependências Python..."
             .venv/bin/pip install -r requirements.txt --quiet
 
             echo "→ Buildando frontend..."
-            cd frontend && npm install --silent && npm run build && cd ..
+            cd frontend && npm ci --silent && npm run build && cd ..
 
             echo "→ Rodando migrations..."
             .venv/bin/alembic upgrade head
