@@ -85,6 +85,7 @@ class Settings(BaseSettings):
     rate_limit_refresh_requests: int = 20
     rate_limit_avatar_pre_ip_requests: int = 10
     rate_limit_avatar_pre_token_requests: int = 5
+    rate_limit_avatar_perfil_requests: int = 10   # POST /perfil/avatar (por usuário autenticado)
     rate_limit_convites_bulk_requests: int = 1
     rate_limit_convites_bulk_window_seconds: int = 300
     rate_limit_window_seconds: int = 60

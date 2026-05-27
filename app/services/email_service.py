@@ -1,4 +1,11 @@
-"""Envio de e-mail via Microsoft Graph (Outlook)."""
+"""Envio de e-mail via Microsoft Graph (Outlook).
+
+Cada função existe em duas variantes:
+- Síncrona  (sem sufixo) → para callers em contexto sync (ex.: rotas admin).
+- Assíncrona (_async)    → para BackgroundTasks (evita bloquear workers uvicorn).
+
+As variantes async usam httpx.AsyncClient para não bloquear o event-loop.
+"""
 
 from __future__ import annotations
 
@@ -74,6 +81,162 @@ def enviar_email_outlook(
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
     response = httpx.post(url, headers=headers, json=payload, timeout=30.0)
     response.raise_for_status()
+
+
+# ---------------------------------------------------------------------------
+# Variantes assíncronas — usam httpx.AsyncClient para não bloquear workers
+# ---------------------------------------------------------------------------
+
+
+async def _obter_token_graph_async() -> str:
+    """Versão async de _obter_token_graph usando httpx.AsyncClient."""
+    settings = _credenciais_outlook()
+    url = f"https://login.microsoftonline.com/{settings.azure_tenant_id}/oauth2/v2.0/token"
+    data = {
+        "client_id": settings.azure_client_id,
+        "client_secret": settings.azure_client_secret,
+        "scope": settings.graph_api_scope,
+        "grant_type": "client_credentials",
+    }
+    async with httpx.AsyncClient() as client:
+        response = await client.post(url, data=data, timeout=30.0)
+    response.raise_for_status()
+    return response.json()["access_token"]
+
+
+async def enviar_email_outlook_async(
+    *,
+    destinatario: str,
+    assunto: str,
+    corpo_html: str,
+    nome_remetente: str,
+) -> None:
+    """Versão async de enviar_email_outlook — não bloqueia o event-loop."""
+    settings = _credenciais_outlook()
+    token = await _obter_token_graph_async()
+    url = f"{settings.graph_api_url.rstrip('/')}/users/{settings.outlook_sender}/sendMail"
+    payload = {
+        "message": {
+            "subject": assunto,
+            "body": {"contentType": "HTML", "content": corpo_html},
+            "from": {
+                "emailAddress": {
+                    "name": nome_remetente,
+                    "address": settings.outlook_sender,
+                }
+            },
+            "toRecipients": [{"emailAddress": {"address": destinatario}}],
+        },
+        "saveToSentItems": True,
+    }
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    async with httpx.AsyncClient() as client:
+        response = await client.post(url, headers=headers, json=payload, timeout=30.0)
+    response.raise_for_status()
+
+
+async def _enviar_com_log_async(
+    *,
+    destinatario: str,
+    assunto: str,
+    corpo_html: str,
+    nome_remetente: str,
+    rotulo: str,
+) -> email_dispatch_service.ResultadoEnvio:
+    resultado = await email_dispatch_service.enviar_com_retentativas_async(
+        lambda: enviar_email_outlook_async(
+            destinatario=destinatario,
+            assunto=assunto,
+            corpo_html=corpo_html,
+            nome_remetente=nome_remetente,
+        )
+    )
+    if resultado.sucesso:
+        logger.info("E-mail %s enviado para %s", rotulo, destinatario)
+        print(f"[bolao:email] {rotulo} -> {destinatario}: enviado OK", flush=True)
+    else:
+        logger.error("Falha ao enviar e-mail %s para %s: %s", rotulo, destinatario, resultado.erro)
+        print(
+            f"[bolao:email] {rotulo} -> {destinatario}: FALHA — {resultado.erro}",
+            flush=True,
+        )
+    return resultado
+
+
+async def tentar_enviar_convite_async(
+    db: Session,
+    destinatario: str,
+    token: str,
+    empresa_nome: str,
+) -> email_dispatch_service.ResultadoEnvio:
+    """Versão async de tentar_enviar_convite — para uso em BackgroundTasks."""
+    del db
+    link = f"{_public_base_url()}/ativar-conta?token={token}"
+    assunto = f"Convite para o Bolão — {empresa_nome}"
+    corpo_html = (
+        f"<p>Você foi convidado para o bolão <strong>{empresa_nome}</strong>.</p>"
+        f'<p><a href="{link}">Ativar minha conta</a></p>'
+        "<p>Se você não esperava este convite, ignore este e-mail.</p>"
+    )
+    return await _enviar_com_log_async(
+        destinatario=destinatario,
+        assunto=assunto,
+        corpo_html=corpo_html,
+        nome_remetente=empresa_nome,
+        rotulo="convite",
+    )
+
+
+async def tentar_enviar_reset_senha_async(
+    db: Session,
+    destinatario: str,
+    token: str,
+    empresa_nome: str,
+    *,
+    motivo: str = "solicitacao",
+) -> email_dispatch_service.ResultadoEnvio:
+    """Versão async de tentar_enviar_reset_senha — para uso em BackgroundTasks."""
+    del db
+    link = f"{_public_base_url()}/redefinir-senha?token={token}"
+    if motivo == "conta_criada":
+        assunto = f"Defina sua senha — {empresa_nome}"
+        corpo_html = (
+            f"<p>Sua conta no bolão <strong>{empresa_nome}</strong> foi criada.</p>"
+            f"<p>Use o link abaixo para definir sua senha de acesso com o e-mail "
+            f"<strong>{destinatario}</strong>.</p>"
+            f'<p><a href="{link}">Definir senha</a></p>'
+            "<p>O link expira em breve. Se você não esperava este acesso, ignore este e-mail.</p>"
+        )
+    elif motivo == "reset_gestor":
+        assunto = f"Sua senha foi redefinida — {empresa_nome}"
+        corpo_html = (
+            f"<p>A senha da sua conta no bolão <strong>{empresa_nome}</strong> foi redefinida "
+            "por um administrador.</p>"
+            f"<p>Use o link abaixo para definir uma nova senha com o e-mail "
+            f"<strong>{destinatario}</strong>.</p>"
+            f'<p><a href="{link}">Definir nova senha</a></p>'
+            "<p>O link expira em breve. Se você não esperava esta alteração, ignore este e-mail.</p>"
+        )
+    else:
+        assunto = f"Redefinição de senha — {empresa_nome}"
+        corpo_html = (
+            f"<p>Recebemos um pedido para redefinir a senha da sua conta no bolão "
+            f"<strong>{empresa_nome}</strong>.</p>"
+            f'<p><a href="{link}">Redefinir senha</a></p>'
+            "<p>O link expira em breve. Se não foi você, ignore este e-mail.</p>"
+        )
+    return await _enviar_com_log_async(
+        destinatario=destinatario,
+        assunto=assunto,
+        corpo_html=corpo_html,
+        nome_remetente=empresa_nome,
+        rotulo="reset-senha",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Variantes síncronas — mantidas para callers em contexto sync (rotas admin)
+# ---------------------------------------------------------------------------
 
 
 def _enviar_com_log(

@@ -1,14 +1,17 @@
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, Request, UploadFile
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_active_user
+from app.core.client_ip import client_ip
+from app.core.config import get_settings
 from app.database import get_db
 from app.models.usuario import Usuario
 from app.schemas.perfil import AlterarSenhaRequest, PerfilUpdate
 from app.schemas.usuario import UsuarioRead
-from app.services import avatar_upload_service, equipe_service, usuario_service
+from app.services import avatar_upload_service, equipe_service, rate_limit_service, usuario_service
 
 router = APIRouter(prefix="/perfil", tags=["perfil"])
+settings = get_settings()
 
 
 @router.get("/", response_model=UsuarioRead)
@@ -30,10 +33,17 @@ def update_perfil(
 
 @router.post("/avatar", response_model=UsuarioRead)
 async def upload_avatar(
+    request: Request,
     db: Session = Depends(get_db),
     user: Usuario = Depends(get_current_active_user),
     file: UploadFile = File(...),
 ) -> UsuarioRead:
+    # Rate limit por usuário autenticado (ID) para evitar abuse de upload.
+    rate_limit_service.enforce_limit(
+        key=f"perfil:avatar:{user.id}",
+        limit=settings.rate_limit_avatar_perfil_requests,
+        window_seconds=settings.rate_limit_window_seconds,
+    )
     raw = await avatar_upload_service.read_upload_limited(
         file, avatar_upload_service.AVATAR_MAX_BYTES
     )

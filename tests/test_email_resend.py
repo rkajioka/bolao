@@ -32,7 +32,7 @@ def _seed_admin_com_empresa(db) -> tuple[Usuario, Empresa]:
     return admin, emp
 
 
-@patch("app.services.email_service.enviar_email_outlook")
+@patch("app.services.email_service.enviar_email_outlook_async")
 def test_convite_inclui_token_quando_outlook_falha(mock_send, client) -> None:
     mock_send.side_effect = RuntimeError("API error")
     db = SessionLocal()
@@ -65,7 +65,7 @@ def test_convite_inclui_token_quando_outlook_falha(mock_send, client) -> None:
     assert len(convite_calls) >= 1
 
 
-@patch("app.services.email_service.enviar_email_outlook")
+@patch("app.services.email_service.enviar_email_outlook_async")
 def test_convite_omite_token_quando_outlook_envia(mock_send, client) -> None:
     db = SessionLocal()
     try:
@@ -100,7 +100,7 @@ def test_convite_omite_token_quando_outlook_envia(mock_send, client) -> None:
     assert "Empresa Teste" in kwargs["assunto"]
 
 
-@patch("app.services.email_service.enviar_email_outlook")
+@patch("app.services.email_service.enviar_email_outlook_async")
 def test_convite_falha_parcial_nao_interrompe_outros(mock_send, client) -> None:
     db = SessionLocal()
     try:
@@ -141,7 +141,7 @@ def test_convite_falha_parcial_nao_interrompe_outros(mock_send, client) -> None:
     assert "ok@example.com" in destinatarios
 
 
-@patch("app.services.email_service.enviar_email_outlook")
+@patch("app.services.email_service.enviar_email_outlook_async")
 def test_convite_falha_alerta_todos_admins_da_empresa(mock_send, client) -> None:
     db = SessionLocal()
     try:
@@ -252,7 +252,7 @@ def test_criar_usuario_envia_link_de_redefinicao(mock_send, client) -> None:
     assert "senhaadmin1" not in kwargs["corpo_html"]
 
 
-@patch("app.services.email_service.enviar_email_outlook")
+@patch("app.services.email_service.enviar_email_outlook_async")
 def test_forgot_password_chama_outlook_com_nome_empresa(mock_send, client) -> None:
     db = SessionLocal()
     try:

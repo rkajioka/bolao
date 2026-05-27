@@ -1,6 +1,6 @@
+import asyncio
 import logging
 import secrets
-import time
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
@@ -205,12 +205,16 @@ def criar_bulk_convites(
     return response, emails_pendentes
 
 
-def enviar_emails_bulk_convites(
+async def enviar_emails_bulk_convites(
     empresa_id: int,
     empresa_nome: str,
     pendentes: list[ConviteEmailPendente],
 ) -> None:
-    """Envia convites em background (intervalo entre e-mails para não saturar o Graph)."""
+    """Envia convites em background (async).
+
+    Usa httpx.AsyncClient (via tentar_enviar_convite_async) e asyncio.sleep para
+    o intervalo entre e-mails, evitando bloquear threads do pool de workers uvicorn.
+    """
     if not pendentes:
         return
 
@@ -219,7 +223,7 @@ def enviar_emails_bulk_convites(
     try:
         falhas_envio: list[email_dispatch_service.FalhaEnvioItem] = []
         for indice, job in enumerate(pendentes):
-            resultado_envio = email_service.tentar_enviar_convite(
+            resultado_envio = await email_service.tentar_enviar_convite_async(
                 db, job.email, job.token, empresa_nome
             )
             if not resultado_envio.sucesso:
@@ -234,11 +238,13 @@ def enviar_emails_bulk_convites(
                     "Convite criado para %s, mas o e-mail não foi enviado; reenvie o convite por e-mail",
                     job.email,
                 )
+            # asyncio.sleep libera o event-loop durante o intervalo entre e-mails,
+            # enquanto time.sleep bloquearia o worker thread inteiro.
             if indice < len(pendentes) - 1 and intervalo > 0:
-                time.sleep(intervalo)
+                await asyncio.sleep(intervalo)
 
         if falhas_envio:
-            email_dispatch_service.notificar_admins_falha_envio(
+            await email_dispatch_service.notificar_admins_falha_envio_async(
                 db,
                 empresa_id=empresa_id,
                 empresa_nome=empresa_nome,

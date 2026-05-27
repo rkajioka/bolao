@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
 from sqlalchemy import select
@@ -27,6 +28,70 @@ class FalhaEnvioItem:
     destinatario: str
     operacao: str
     erro: str
+
+
+async def enviar_com_retentativas_async(enviar: Callable[[], Awaitable[None]]) -> ResultadoEnvio:
+    """Versão async de enviar_com_retentativas — usa asyncio.sleep para não bloquear workers."""
+    settings = get_settings()
+    max_attempts = max(1, settings.email_max_attempts)
+    ultimo_erro: str | None = None
+
+    for tentativa in range(1, max_attempts + 1):
+        try:
+            await enviar()
+            return ResultadoEnvio(sucesso=True, tentativas=tentativa)
+        except Exception as exc:  # noqa: BLE001
+            ultimo_erro = str(exc)
+            logger.warning("Falha no envio de e-mail (tentativa %s/%s): %s", tentativa, max_attempts, exc)
+            if tentativa < max_attempts:
+                await asyncio.sleep(settings.email_retry_backoff_seconds)
+
+    return ResultadoEnvio(sucesso=False, tentativas=max_attempts, erro=ultimo_erro)
+
+
+async def notificar_admins_falha_envio_async(
+    db: Session,
+    *,
+    empresa_id: int | None,
+    empresa_nome: str,
+    operacao: str,
+    falhas: list[FalhaEnvioItem],
+) -> bool:
+    """Versão async de notificar_admins_falha_envio — para uso em BackgroundTasks."""
+    if empresa_id is None or not falhas:
+        return False
+
+    destinatarios = listar_emails_admins_empresa(db, empresa_id)
+    if not destinatarios:
+        return False
+
+    linhas = "".join(
+        f"<li><strong>{item.destinatario}</strong> ({item.operacao}): {item.erro}</li>"
+        for item in falhas
+    )
+    assunto = f"Falha no envio de e-mails — {empresa_nome}"
+    corpo_html = (
+        f"<p>Alguns e-mails do bolão <strong>{empresa_nome}</strong> não puderam ser enviados "
+        f"após as retentativas automáticas.</p>"
+        f"<p>Operação: <strong>{operacao}</strong></p>"
+        f"<ul>{linhas}</ul>"
+        "<p>Revise os convites ou reenvie as credenciais manualmente na plataforma.</p>"
+    )
+
+    enviados = 0
+    for destinatario in destinatarios:
+        try:
+            await email_service.enviar_email_outlook_async(
+                destinatario=destinatario,
+                assunto=assunto,
+                corpo_html=corpo_html,
+                nome_remetente=empresa_nome,
+            )
+            enviados += 1
+        except Exception:
+            logger.exception("Falha ao alertar admin %s sobre envio de e-mail", destinatario)
+
+    return enviados > 0
 
 
 def enviar_com_retentativas(enviar: Callable[[], None]) -> ResultadoEnvio:

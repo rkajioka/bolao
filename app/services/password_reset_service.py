@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Literal
 
 from fastapi import HTTPException, status
-from sqlalchemy import and_, select
+from sqlalchemy import and_, select, update as sa_update
 from sqlalchemy.orm import Session
 
 from app.auth.password import hash_password
@@ -35,18 +35,16 @@ def _empresa_nome(db: Session, empresa_id: int | None) -> str:
 
 
 def _invalidar_tokens_pendentes(db: Session, usuario_id: int) -> None:
-    tokens_antigos = list(
-        db.scalars(
-            select(PasswordReset).where(
-                and_(
-                    PasswordReset.usuario_id == usuario_id,
-                    PasswordReset.usado.is_(False),
-                )
-            )
-        ).all()
+    # UPDATE atômico evita race condition onde dois requests simultâneos de reset
+    # selecionariam os mesmos tokens pendentes antes de qualquer um marcar como usado.
+    db.execute(
+        sa_update(PasswordReset)
+        .where(
+            PasswordReset.usuario_id == usuario_id,
+            PasswordReset.usado.is_(False),
+        )
+        .values(usado=True)
     )
-    for token in tokens_antigos:
-        token.usado = True
     db.flush()
 
 
@@ -99,10 +97,43 @@ def gerar_e_enviar_reset_para_usuario(
     return token, resultado
 
 
-def solicitar_reset_background(email: str, ip: str | None = None) -> None:
+async def solicitar_reset_background(email: str, ip: str | None = None) -> None:
+    """BackgroundTask async — evita bloquear worker com chamadas HTTP síncronas ao Graph.
+
+    A lógica de DB é sync (não há await aqui), mas o envio do e-mail usa
+    email_service.tentar_enviar_reset_senha_async (httpx.AsyncClient).
+    """
     db = SessionLocal()
     try:
-        solicitar_reset(db, email, ip)
+        usuario = usuario_service.get_by_email(db, email)
+        if usuario is None or not usuario.ativo:
+            return
+
+        _invalidar_tokens_pendentes(db, usuario.id)
+        token = _gerar_token()
+        db.add(
+            PasswordReset(
+                usuario_id=usuario.id,
+                token=token,
+                expiracao=_expiracao(),
+            )
+        )
+        audit_log_service.log(
+            db,
+            acao="password_reset.solicitado",
+            usuario_id=usuario.id,
+            empresa_id=usuario.empresa_id,
+            ip=ip,
+        )
+        db.commit()
+
+        await email_service.tentar_enviar_reset_senha_async(
+            db,
+            usuario.email,
+            token,
+            _empresa_nome(db, usuario.empresa_id),
+            motivo="solicitacao",
+        )
     finally:
         db.close()
 
