@@ -5,6 +5,81 @@
 
 ---
 
+## Capacidade e tuning de workers
+
+### Modelo de concorrência
+
+O backend usa **gunicorn + uvicorn workers** (ver `bolao.service`). Cada worker é um
+processo Python independente, com seu próprio pool de conexões ao banco. As rotas são
+síncronas (`def`), portanto FastAPI as executa num thread pool por worker (padrão: 40
+threads/worker via anyio).
+
+```
+Requisições simultâneas max ≈ WEB_CONCURRENCY × 40 (threads/worker)
+Conexões DB max             = WEB_CONCURRENCY × (DB_POOL_SIZE + DB_POOL_MAX_OVERFLOW)
+```
+
+### Tabela de calibragem por instância
+
+| EC2         | vCPUs | RAM   | WEB_CONCURRENCY | DB_POOL_SIZE | Conexões DB max | Usuários simultâneos¹ |
+|-------------|-------|-------|-----------------|--------------|-----------------|----------------------|
+| t3.small    | 2     | 2 GB  | **3**           | 5            | 30              | ~80                  |
+| t3.medium   | 2     | 4 GB  | **5**           | 5            | 50              | ~150                 |
+| t3.large    | 2     | 8 GB  | **5**           | 8            | 80              | ~200                 |
+| t3.xlarge   | 4     | 16 GB | **9**           | 8            | 144             | ~400                 |
+
+¹ Usuários *simultâneos* estimados com tempo médio de requisição de 80 ms.
+
+> **PostgreSQL `max_connections`**: padrão é 100. Se o total de conexões DB calculado
+> acima se aproximar desse limite, aumente via:
+> ```sql
+> ALTER SYSTEM SET max_connections = 200;
+> -- requer restart do PostgreSQL
+> ```
+
+### Ajustar workers sem redeploy de código
+
+Edite o `.env` da instância:
+```bash
+WEB_CONCURRENCY=5
+DB_POOL_SIZE=5
+DB_POOL_MAX_OVERFLOW=5
+```
+Depois: `sudo systemctl restart bolao`
+
+### Diagnóstico de saturação
+
+```bash
+# Ver workers ativos e consumo
+sudo systemctl status bolao
+
+# Quantas conexões ao banco estão abertas agora
+sudo -u postgres psql -c "
+  SELECT count(*), state
+  FROM pg_stat_activity
+  WHERE datname = 'bolao_copa'
+  GROUP BY state;"
+
+# Pool_timeout estourando? Busca por QueuePool timeout nos logs
+journalctl -u bolao --since "1 hour ago" | grep -i "QueuePool\|timeout\|pool"
+```
+
+### Quando escalar verticalmente
+
+Sinais de que precisa de mais workers ou instância maior:
+- `pool_timeout` aparecendo nos logs (fila de DB cheia)
+- Latência p95 > 500 ms no ranking durante jogos
+- `systemctl status bolao` mostrando workers em restart loop
+
+### Plano de crescimento futuro
+
+Se o bolão crescer para milhares de usuários simultâneos, o próximo passo é
+**SQLAlchemy assíncrono** (troca `psycopg2` por `asyncpg`, rotas `def` → `async def`).
+Isso elimina o thread pool por worker e permite centenas de requests concorrentes por
+processo. É uma refatoração relevante mas compatível com a estrutura atual de services.
+
+---
+
 ## Rotação de `JWT_SECRET` (Sprint 2.10)
 
 **Impacto**: A variável `JWT_SECRET` assina **todos** os access tokens e refresh tokens em
@@ -39,14 +114,22 @@ duração) é verificado apenas pela assinatura JWT.
 
 ---
 
-## Configuração de pool SQLAlchemy (Sprint 2.6)
+## Configuração de pool SQLAlchemy
 
-O pool está configurado em `app/database.py` com:
-- `pool_size=5` — conexões mantidas abertas permanentemente
-- `max_overflow=5` — conexões extras sob pico (total max 10)
-- `pool_timeout=10` — espera máxima por conexão disponível (segundos)
-- `pool_recycle=1800` — reciclagem de conexões idle a cada 30 min (evita timeout do PG)
-- `pool_pre_ping=True` — testa conexões antes de usar (evita "connection closed" silencioso)
+O pool é configurado via variáveis de ambiente em `app/core/config.py` e aplicado em
+`app/database.py`. Padrões:
+
+| Variável               | Padrão | Descrição                                         |
+|------------------------|--------|---------------------------------------------------|
+| `DB_POOL_SIZE`         | 5      | Conexões permanentes por worker                   |
+| `DB_POOL_MAX_OVERFLOW` | 5      | Conexões extras sob pico (total = size + overflow) |
+| `DB_POOL_TIMEOUT`      | 10     | Segundos de espera por conexão disponível         |
+| `DB_POOL_RECYCLE`      | 1800   | Recicla conexões ociosas a cada 30 min            |
+| `pool_pre_ping`        | True   | Testa conexão antes de usar (sempre ativo)        |
+
+**Total de conexões ao PostgreSQL** = `WEB_CONCURRENCY × (DB_POOL_SIZE + DB_POOL_MAX_OVERFLOW)`
+
+Com 3 workers e defaults: **3 × 10 = 30 conexões** (seguro para PG padrão de 100).
 
 Para monitorar lock waits em PostgreSQL, habilite:
 ```sql

@@ -99,6 +99,19 @@ class Settings(BaseSettings):
     trusted_proxy: bool = False
 
     # ------------------------------------------------------------------ #
+    # Banco de dados — pool                                                #
+    # ------------------------------------------------------------------ #
+    # Calibre em função do número de workers gunicorn:
+    #   total_connections = db_pool_size × WEB_CONCURRENCY
+    #                     + db_pool_max_overflow × WEB_CONCURRENCY
+    # Exemplo: pool_size=5, overflow=5, workers=3 → 30 conexões max.
+    # PostgreSQL default max_connections=100; ajuste se necessário.
+    db_pool_size: int = 5
+    db_pool_max_overflow: int = 5
+    db_pool_timeout: int = 10      # segundos de espera por conexão disponível
+    db_pool_recycle: int = 1800    # recicla conexões ociosas a cada 30 min
+
+    # ------------------------------------------------------------------ #
     # Microsoft Graph / e-mail                                             #
     # ------------------------------------------------------------------ #
     graph_api_url: str = "https://graph.microsoft.com/v1.0"

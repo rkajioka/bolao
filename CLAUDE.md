@@ -11,7 +11,7 @@ Guia de referência rápida para Claude Code e desenvolvedores novos no projeto.
 | Backend | FastAPI + SQLAlchemy + PostgreSQL |
 | Auth | PyJWT (HS256) + refresh token em cookie HttpOnly |
 | Frontend | React + Vite (em `frontend/`) |
-| Deploy | EC2 + Nginx + uvicorn (systemd) |
+| Deploy | EC2 + Nginx + gunicorn + uvicorn workers (systemd) |
 | E-mail | Microsoft Graph (Outlook) via httpx |
 | Cache/Rate-limit | Redis |
 | Secrets | AWS Secrets Manager (`AWS_SECRET_NAME`) |
@@ -55,10 +55,14 @@ Antes de cada deploy em `main`, confirme:
 - [ ] `PUBLIC_APP_URL` com HTTPS (ex.: `https://bolao.empresa.com`)
 - [ ] `CORS_ALLOWED_ORIGINS` com domínios exatos (sem trailing slash)
 - [ ] `TRUSTED_PROXY=true` se houver proxy reverso (Nginx) na frente
+- [ ] `WEB_CONCURRENCY` definido no `.env` (padrão: 3 para t3.small, 5 para t3.medium)
+- [ ] `DB_POOL_SIZE` e `DB_POOL_MAX_OVERFLOW` revisados — total = `WEB_CONCURRENCY × (POOL_SIZE + MAX_OVERFLOW)` deve ser < `max_connections` do PostgreSQL
+- [ ] `bolao.service` instalado em `/etc/systemd/system/` e habilitado (`systemctl enable bolao`)
 - [ ] Nginx configurado com gzip e headers de segurança (`nginx.conf` na raiz)
 - [ ] `alembic upgrade head` executado após deploy
 - [ ] Serviço reiniciado: `sudo systemctl restart bolao`
 - [ ] Health check OK: `curl https://<dominio>/health`
+- [ ] Verificar workers ativos: `sudo systemctl status bolao` (deve mostrar N processos gunicorn)
 
 ---
 

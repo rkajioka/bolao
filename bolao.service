@@ -1,0 +1,73 @@
+# bolao.service — Systemd unit para o backend Bolão da Copa
+#
+# Instalação:
+#   sudo cp bolao.service /etc/systemd/system/bolao.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable bolao
+#   sudo systemctl start bolao
+#
+# Logs:
+#   journalctl -u bolao -f
+#
+# ──────────────────────────────────────────────────────────────────────────────
+# CALIBRAGEM DE WORKERS (WEB_CONCURRENCY)
+#
+# Regra geral:  workers = 2 × vCPUs + 1
+#
+#   2 vCPUs  → WEB_CONCURRENCY=3  (conservador; t3.small 2 GB RAM)
+#   2 vCPUs  → WEB_CONCURRENCY=5  (agressivo;   t3.medium 4 GB RAM)
+#   4 vCPUs  → WEB_CONCURRENCY=9
+#
+# Cada worker mantém `DB_POOL_SIZE` conexões permanentes ao PostgreSQL.
+# Total de conexões = WEB_CONCURRENCY × (DB_POOL_SIZE + DB_POOL_MAX_OVERFLOW)
+#
+#   Exemplo padrão: 3 workers × (5 + 5) = 30 conexões  → OK para PG max_connections=100
+#   Exemplo 5 wrks: 5 workers × (5 + 5) = 50 conexões  → ainda OK
+#   Se PG max_connections < total, aumente-o em postgresql.conf.
+#
+# ──────────────────────────────────────────────────────────────────────────────
+
+[Unit]
+Description=Bolão da Copa — FastAPI (gunicorn + uvicorn workers)
+Documentation=https://github.com/rkajioka/bolao
+After=network.target
+
+[Service]
+Type=exec
+User=ubuntu                          # ajuste para o usuário que faz deploy
+Group=ubuntu
+WorkingDirectory=/opt/bolao          # ajuste para o diretório do projeto
+
+# Carrega variáveis de ambiente do arquivo .env em produção
+EnvironmentFile=/opt/bolao/.env
+
+# Número de workers: sobrescreva via WEB_CONCURRENCY no .env
+# Padrão conservador para t3.small (2 vCPUs, 2 GB RAM).
+Environment="WEB_CONCURRENCY=3"
+
+ExecStart=/opt/bolao/venv/bin/gunicorn \
+    --workers ${WEB_CONCURRENCY} \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --bind 127.0.0.1:8000 \
+    --timeout 30 \
+    --graceful-timeout 30 \
+    --keepalive 5 \
+    --max-requests 1000 \
+    --max-requests-jitter 100 \
+    --log-level info \
+    --access-logfile - \
+    --error-logfile - \
+    app.main:app
+
+# Restart automático em caso de crash
+Restart=on-failure
+RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+# Segurança mínima do processo
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

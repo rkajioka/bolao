@@ -1,5 +1,6 @@
 fastapi==0.120.2
 uvicorn[standard]==0.38.0
+gunicorn==23.0.0          # process manager: múltiplos workers uvicorn em produção
 sqlalchemy==2.0.44
 alembic==1.18.1
 psycopg2-binary==2.9.11
