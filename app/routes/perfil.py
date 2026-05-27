@@ -53,6 +53,15 @@ async def upload_avatar(
     return usuario_service.usuario_para_read(db, row)
 
 
+@router.delete("/avatar", response_model=UsuarioRead)
+def remover_avatar(
+    db: Session = Depends(get_db),
+    user: Usuario = Depends(get_current_active_user),
+) -> UsuarioRead:
+    row = equipe_service.remover_avatar(db, user)
+    return usuario_service.usuario_para_read(db, row)
+
+
 @router.post("/alterar-senha", status_code=204)
 def alterar_senha(
     data: AlterarSenhaRequest,

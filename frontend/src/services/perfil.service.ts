@@ -19,6 +19,10 @@ export const perfilService = {
     return apiPostMultipart<User>('/perfil/avatar', fd)
   },
 
+  async removeAvatar(): Promise<User> {
+    return api.delete<User>('/perfil/avatar')
+  },
+
   async alterarSenha(senha_atual: string, nova_senha: string, confirmar_senha: string): Promise<void> {
     await api.post('/perfil/alterar-senha', { senha_atual, nova_senha, confirmar_senha })
   },

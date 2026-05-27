@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { User, Lock, Building2, Eye, EyeOff, CheckCircle2, Save } from 'lucide-react'
+import { User, Lock, Building2, Eye, EyeOff, CheckCircle2, Save, Trash2 } from 'lucide-react'
 import { useMutation } from '@tanstack/react-query'
 import { useAuth } from '@/features/auth/AuthContext'
 import { perfilService, PERFIL_AVATAR_MAX_BYTES } from '@/services/perfil.service'
@@ -46,6 +46,19 @@ export function PerfilPage() {
     },
     onError: (err) => {
       setPerfilError(err instanceof ApiError ? err.message : 'Erro ao enviar foto')
+    },
+  })
+
+  const removeAvatarMutation = useMutation({
+    mutationFn: () => perfilService.removeAvatar(),
+    onSuccess: async () => {
+      await refreshUser()
+      setPerfilError(null)
+      setAvatarSaved(true)
+      setTimeout(() => setAvatarSaved(false), 2000)
+    },
+    onError: (err) => {
+      setPerfilError(err instanceof ApiError ? err.message : 'Erro ao remover foto')
     },
   })
 
@@ -184,11 +197,23 @@ export function PerfilPage() {
               type="file"
               accept="image/jpeg,image/png,image/webp"
               onChange={onPickAvatar}
-              disabled={uploadAvatarMutation.isPending}
+              disabled={uploadAvatarMutation.isPending || removeAvatarMutation.isPending}
               className="text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium"
               style={{ color: 'var(--text)' }}
             />
-            {uploadAvatarMutation.isPending && (
+            {avatarSrc && (
+              <button
+                type="button"
+                onClick={() => removeAvatarMutation.mutate()}
+                disabled={removeAvatarMutation.isPending || uploadAvatarMutation.isPending}
+                className="flex items-center gap-1.5 text-xs font-medium disabled:opacity-50 w-fit"
+                style={{ color: '#ef4444' }}
+              >
+                <Trash2 size={13} />
+                {removeAvatarMutation.isPending ? 'Removendo…' : 'Remover foto'}
+              </button>
+            )}
+            {(uploadAvatarMutation.isPending) && (
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                 Enviando…
               </p>

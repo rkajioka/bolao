@@ -156,6 +156,28 @@ def definir_avatar_url(db: Session, usuario: Usuario, avatar_url: str) -> Usuari
     return usuario
 
 
+def remover_avatar(db: Session, usuario: Usuario) -> Usuario:
+    """Zera o avatar do usuário e apaga o arquivo do disco (se existir)."""
+    old_url = usuario.avatar_url
+    usuario.avatar_url = None
+    db.commit()
+    db.refresh(usuario)
+
+    # Tenta apagar o arquivo físico para liberar espaço
+    if old_url:
+        from app.services.avatar_upload_service import project_static_root
+        # old_url tem formato "/static/uploads/avatars/<filename>"
+        relative = old_url.lstrip("/")
+        file_path = project_static_root().parent / relative
+        try:
+            if file_path.exists():
+                file_path.unlink()
+        except OSError:
+            pass  # falha silenciosa — banco já está limpo
+
+    return usuario
+
+
 def alterar_senha(db: Session, usuario: Usuario, data: AlterarSenhaRequest) -> None:
     if usuario.primeiro_login:
         raise HTTPException(

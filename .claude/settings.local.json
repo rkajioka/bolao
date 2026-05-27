@@ -7,7 +7,9 @@
       "PowerShell(ls \"c:\\\\Users\\\\Gianlucca Agostini\\\\Documents\\\\Projetos\\\\LPCopa\\\\bolao\" | Where-Object { $_.Name -match \"venv|env\" })",
       "Bash(Get-ChildItem -Recurse -Path \"c:\\\\Users\\\\Gianlucca Agostini\\\\Documents\\\\Projetos\\\\LPCopa\\\\bolao\" -Include \"*.conf\",\"*.service\",\"Dockerfile\",\"docker-compose*\",\"nginx*\" -ErrorAction SilentlyContinue)",
       "Bash(python -c \"from app.core.config import Settings; print\\('Settings OK'\\)\")",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(python -c \"from app.routes.perfil import router; from app.services.equipe_service import remover_avatar; print\\('OK'\\)\")",
+      "Bash(python -m py_compile app/routes/perfil.py app/services/equipe_service.py)"
     ]
   }
 }
