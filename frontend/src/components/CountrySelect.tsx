@@ -12,6 +12,7 @@ interface CountrySelectProps {
   disabled?: boolean
   secured?: boolean
   excludedCountryIds?: number[]
+  ariaLabel?: string
 }
 
 export function CountrySelect({
@@ -22,6 +23,7 @@ export function CountrySelect({
   disabled = false,
   secured = false,
   excludedCountryIds = [],
+  ariaLabel,
 }: CountrySelectProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -78,6 +80,9 @@ export function CountrySelect({
         type="button"
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
+        aria-label={ariaLabel}
+        aria-haspopup="listbox"
+        aria-expanded={open}
         className="w-full px-3 py-3 rounded-xl text-sm transition-all duration-150 disabled:opacity-40 flex items-center gap-2"
         style={{
           ...fieldControlStyle,

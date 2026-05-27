@@ -155,6 +155,7 @@ function MemberCard({
               type="button"
               disabled={bloquearBusy || resetBusy}
               onClick={() => onBloquear?.(membro.id!, !membro.bloqueado)}
+              aria-label={membro.bloqueado ? `Desbloquear ${membro.nome ?? membro.email}` : `Bloquear ${membro.nome ?? membro.email}`}
               className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors disabled:opacity-50"
               style={{
                 background: membro.bloqueado ? 'rgba(52,211,153,0.1)' : 'rgba(239,68,68,0.1)',
@@ -167,6 +168,7 @@ function MemberCard({
             <button
               type="button"
               onClick={() => onRemover?.(membro.id!)}
+              aria-label={`Remover ${membro.nome ?? membro.email}`}
               className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg"
               style={{ background: 'rgba(239,68,68,0.08)', color: '#ef4444' }}
             >
@@ -177,6 +179,7 @@ function MemberCard({
               type="button"
               disabled={bloquearBusy || resetBusy}
               onClick={() => onResetSenha?.(membro.id!, membro.nome ?? membro.email)}
+              aria-label={`Redefinir senha de ${membro.nome ?? membro.email}`}
               className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg disabled:opacity-50"
               style={{ background: 'rgba(99,102,241,0.1)', color: '#818cf8' }}
             >

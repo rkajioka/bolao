@@ -2,7 +2,7 @@ import { useState, useEffect, type FormEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useMutation } from '@tanstack/react-query'
-import { User, Briefcase, Lock, CheckCircle2 } from 'lucide-react'
+import { User, Briefcase, Lock, CheckCircle2, Trophy } from 'lucide-react'
 import { api, getToken } from '@/lib/api'
 import { ApiError } from '@/lib/api'
 import { SENHA_PADRAO_TEMPORARIA } from '@/lib/passwordDefaults'
@@ -22,6 +22,7 @@ export function PrimeiroAcessoPage() {
     confirmar_senha: '',
   })
   const [loading, setLoading] = useState(false)
+  const [concluido, setConcluido] = useState(false)
   const [avatarError, setAvatarError] = useState<string | null>(null)
   const [avatarOk, setAvatarOk] = useState(false)
   const { success, error } = useToast()
@@ -91,8 +92,9 @@ export function PrimeiroAcessoPage() {
         confirmar_senha: form.confirmar_senha,
       })
       await refreshUser()
-      success('Cadastro concluído!')
-      navigate('/jogos')
+      setConcluido(true)
+      success('Cadastro concluído! Bem-vindo(a) ao bolão.')
+      setTimeout(() => navigate('/jogos'), 2000)
     } catch (err) {
       error(err instanceof Error ? err.message : 'Erro ao salvar perfil')
     } finally {
@@ -142,6 +144,33 @@ export function PrimeiroAcessoPage() {
         transition={{ duration: 0.3 }}
         className="w-full max-w-sm"
       >
+        {concluido ? (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="glass rounded-2xl p-8 flex flex-col items-center gap-4 text-center"
+          >
+            <div
+              className="w-16 h-16 rounded-2xl flex items-center justify-center"
+              style={{ background: 'var(--accent-dim)' }}
+            >
+              <Trophy size={32} style={{ color: 'var(--accent)' }} />
+            </div>
+            <div>
+              <p className="text-xl font-bold mb-1" style={{ color: 'var(--text)' }}>
+                Tudo pronto!
+              </p>
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                Seu cadastro foi concluído. Agora você pode fazer seus palpites e acompanhar o ranking do bolão.
+              </p>
+            </div>
+            <div
+              className="w-6 h-6 rounded-full border-2 animate-spin mt-2"
+              style={{ borderColor: 'rgba(53,208,127,0.2)', borderTopColor: 'var(--accent)' }}
+            />
+          </motion.div>
+        ) : (
+        <>
         <div className="text-center mb-6">
           <div
             className="inline-flex w-14 h-14 rounded-2xl items-center justify-center text-xl font-black mb-3"
@@ -193,12 +222,13 @@ export function PrimeiroAcessoPage() {
             { label: 'Função / cargo', key: 'funcao' as const, type: 'text', icon: Briefcase, placeholder: 'Ex: Analista', required: true },
           ].map(({ label, key, type, icon: Icon, placeholder, required }) => (
             <div key={key}>
-              <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+              <label htmlFor={`primeiro-acesso-${key}`} className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                 {label}
               </label>
               <div className="relative">
                 <Icon size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
                 <input
+                  id={`primeiro-acesso-${key}`}
                   type={type}
                   {...field(key)}
                   required={required}
@@ -225,12 +255,13 @@ export function PrimeiroAcessoPage() {
               { label: 'Confirmar senha', key: 'confirmar_senha' as const, placeholder: 'Repita a senha' },
             ].map(({ label, key, placeholder }) => (
               <div key={key} className="mb-4">
-                <label className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                <label htmlFor={`primeiro-acesso-${key}`} className="block text-xs font-semibold mb-1.5 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                   {label}
                 </label>
                 <div className="relative">
                   <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
                   <input
+                    id={`primeiro-acesso-${key}`}
                     type="password"
                     {...field(key)}
                     required
@@ -260,6 +291,8 @@ export function PrimeiroAcessoPage() {
             )}
           </button>
         </form>
+        </>
+        )}
       </motion.div>
     </div>
   )

@@ -40,7 +40,7 @@ const TOAST_STYLES: Record<
   },
 }
 
-const AUTO_DISMISS_MS = 4000
+const AUTO_DISMISS_MS = 8_000
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
@@ -52,9 +52,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const toast = useCallback((message: string, type: Toast['type'] = 'info') => {
     const id = Math.random().toString(36).slice(2)
     setToasts((prev) => [...prev.slice(-2), { id, message, type }])
-    if (type !== 'error') {
-      window.setTimeout(() => remove(id), AUTO_DISMISS_MS)
-    }
+    window.setTimeout(() => remove(id), AUTO_DISMISS_MS)
   }, [remove])
 
   const success = useCallback((message: string) => toast(message, 'success'), [toast])

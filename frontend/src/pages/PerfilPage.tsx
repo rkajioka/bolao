@@ -145,10 +145,11 @@ export function PerfilPage() {
 
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+            <label htmlFor="perfil-nome" className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
               Nome
             </label>
             <input
+              id="perfil-nome"
               type="text"
               value={nome}
               onChange={(e) => setNome(e.target.value)}
@@ -158,10 +159,11 @@ export function PerfilPage() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+            <label htmlFor="perfil-funcao" className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
               Função / Cargo
             </label>
             <input
+              id="perfil-funcao"
               type="text"
               value={funcao}
               onChange={(e) => setFuncao(e.target.value)}
@@ -171,13 +173,14 @@ export function PerfilPage() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+            <label htmlFor="perfil-avatar" className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
               Foto de perfil
             </label>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
               JPEG, PNG ou WebP — máximo 2 MB
             </p>
             <input
+              id="perfil-avatar"
               type="file"
               accept="image/jpeg,image/png,image/webp"
               onChange={onPickAvatar}
@@ -240,12 +243,12 @@ export function PerfilPage() {
 
         <div className="flex flex-col gap-3">
           {[
-            { label: 'Senha atual', value: senhaAtual, setter: setSenhaAtual },
-            { label: 'Nova senha', value: novaSenha, setter: setNovaSenha },
-            { label: 'Confirmar nova senha', value: confirmarSenha, setter: setConfirmarSenha },
-          ].map(({ label, value, setter }) => (
+            { label: 'Senha atual', id: 'perfil-senha-atual', value: senhaAtual, setter: setSenhaAtual },
+            { label: 'Nova senha', id: 'perfil-nova-senha', value: novaSenha, setter: setNovaSenha },
+            { label: 'Confirmar nova senha', id: 'perfil-confirmar-senha', value: confirmarSenha, setter: setConfirmarSenha },
+          ].map(({ label, id, value, setter }) => (
             <div key={label} className="flex flex-col gap-1">
-              <label className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+              <label htmlFor={id} className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
                 {label}
               </label>
               <div
@@ -253,6 +256,7 @@ export function PerfilPage() {
                 style={{ border: '1px solid var(--border)' }}
               >
                 <input
+                  id={id}
                   type={showSenha ? 'text' : 'password'}
                   value={value}
                   onChange={(e) => setter(e.target.value)}

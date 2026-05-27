@@ -1,4 +1,4 @@
-import { useEffect, useId } from 'react'
+import { useEffect, useId, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { AlertTriangle, Info } from 'lucide-react'
 import { useTheme } from '@/hooks/useTheme'
@@ -59,12 +59,56 @@ export function ConfirmDialog({
   const descriptionId = useId()
   const styles = toneStyles[tone]
   const Icon = tone === 'default' ? Info : AlertTriangle
+  const dialogRef = useRef<HTMLDivElement>(null)
 
+  // Escape e focus trap
   useEffect(() => {
     if (!open) return
+
+    const FOCUSABLE = [
+      'button:not([disabled])',
+      '[href]',
+      'input:not([disabled])',
+      'select:not([disabled])',
+      'textarea:not([disabled])',
+      '[tabindex]:not([tabindex="-1"])',
+    ].join(', ')
+
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !confirming) onCancel()
+      if (event.key === 'Escape' && !confirming) {
+        onCancel()
+        return
+      }
+      if (event.key !== 'Tab') return
+
+      const dialog = dialogRef.current
+      if (!dialog) return
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE))
+      if (focusable.length === 0) return
+
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+
+      if (event.shiftKey) {
+        if (document.activeElement === first) {
+          event.preventDefault()
+          last.focus()
+        }
+      } else {
+        if (document.activeElement === last) {
+          event.preventDefault()
+          first.focus()
+        }
+      }
     }
+
+    // Foca o primeiro elemento ao abrir
+    const dialog = dialogRef.current
+    if (dialog) {
+      const focusable = dialog.querySelectorAll<HTMLElement>(FOCUSABLE)
+      focusable[0]?.focus()
+    }
+
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [open, confirming, onCancel])
@@ -84,6 +128,7 @@ export function ConfirmDialog({
         disabled={confirming}
       />
       <motion.div
+        ref={dialogRef}
         role="alertdialog"
         aria-modal="true"
         aria-labelledby={titleId}

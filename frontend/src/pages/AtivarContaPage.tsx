@@ -232,6 +232,7 @@ export function AtivarContaPage() {
                 <button
                   type="button"
                   onClick={() => setShowSenha((v) => !v)}
+                  aria-label={showSenha ? 'Ocultar senha' : 'Mostrar senha'}
                   style={{ color: 'var(--text-muted)' }}
                 >
                   {showSenha ? <EyeOff size={14} /> : <Eye size={14} />}

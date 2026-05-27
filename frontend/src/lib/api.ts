@@ -90,13 +90,21 @@ export async function apiFetch<T>(path: string, opts: RequestOptions = {}): Prom
     body = JSON.stringify(opts.body)
   }
 
-  const res = await fetch(path, {
-    method: opts.method || 'GET',
-    headers,
-    body,
-    signal: opts.signal,
-    credentials: 'include',
-  })
+  let res: Response
+  try {
+    res = await fetch(path, {
+      method: opts.method || 'GET',
+      headers,
+      body,
+      signal: opts.signal,
+      credentials: 'include',
+    })
+  } catch (err) {
+    if (err instanceof TypeError) {
+      throw new ApiError('Sem conexão. Verifique sua internet.', 0)
+    }
+    throw err
+  }
 
   if (
     res.status === 401 &&
@@ -154,12 +162,20 @@ export async function apiPostMultipart<T>(
     headers['Authorization'] = `Bearer ${token}`
   }
 
-  const res = await fetch(path, {
-    method: 'POST',
-    headers,
-    body: formData,
-    credentials: 'include',
-  })
+  let res: Response
+  try {
+    res = await fetch(path, {
+      method: 'POST',
+      headers,
+      body: formData,
+      credentials: 'include',
+    })
+  } catch (err) {
+    if (err instanceof TypeError) {
+      throw new ApiError('Sem conexão. Verifique sua internet.', 0)
+    }
+    throw err
+  }
 
   if (
     res.status === 401 &&

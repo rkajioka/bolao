@@ -243,6 +243,7 @@ export function EspeciaisPage() {
           ].map(({ key, label, placeholder, excludedCountryIds }, idx) => (
             <div key={key}>
               <label
+                id={`especiais-label-${key}`}
                 className="block text-xs font-bold mb-2 uppercase tracking-wider flex items-center gap-1.5"
                 style={{ color: 'var(--text-muted)' }}
               >
@@ -265,6 +266,7 @@ export function EspeciaisPage() {
                 disabled={bloqueadoEdicao}
                 secured={campoConsolidado(key as keyof typeof form)}
                 excludedCountryIds={excludedCountryIds}
+                ariaLabel={label}
               />
             </div>
           ))}
