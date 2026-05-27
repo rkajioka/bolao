@@ -121,7 +121,7 @@ export function EsqueciSenhaPage() {
             {error && (
               <p
                 className="text-sm px-3 py-2 rounded-xl"
-                style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444' }}
+                style={{ background: 'var(--danger-dim)', color: 'var(--danger)' }}
               >
                 {error}
               </p>

@@ -87,8 +87,8 @@ export function AdminConfigPage() {
                 onClick={() => setActiveTab(t.key)}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-150"
                 style={{
-                  background: activeTab === t.key ? 'rgba(255,255,255,0.10)' : 'transparent',
-                  border: `1px solid ${activeTab === t.key ? 'rgba(255,255,255,0.15)' : 'transparent'}`,
+                  background: activeTab === t.key ? 'var(--glass)' : 'transparent',
+                  border: `1px solid ${activeTab === t.key ? 'var(--border-hover)' : 'transparent'}`,
                   color: activeTab === t.key ? 'var(--text)' : 'var(--text-muted)',
                 }}
               >

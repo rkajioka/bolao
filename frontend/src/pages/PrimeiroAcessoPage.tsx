@@ -128,8 +128,8 @@ export function PrimeiroAcessoPage() {
 
   const inputClass = "w-full pl-10 pr-4 py-3 rounded-xl text-sm transition-all duration-150 outline-none"
   const inputStyle = {
-    background: 'rgba(255,255,255,0.06)',
-    border: '1px solid rgba(255,255,255,0.10)',
+    background: 'var(--glass)',
+    border: '1px solid var(--border)',
     color: 'var(--text)',
   }
 
@@ -212,7 +212,7 @@ export function PrimeiroAcessoPage() {
                 </p>
               )}
               {avatarError && (
-                <p className="text-xs mt-1" style={{ color: '#ef4444' }}>{avatarError}</p>
+                <p className="text-xs mt-1" style={{ color: 'var(--danger)' }}>{avatarError}</p>
               )}
             </div>
           </div>
@@ -235,14 +235,14 @@ export function PrimeiroAcessoPage() {
                   placeholder={placeholder}
                   className={inputClass}
                   style={inputStyle}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = 'rgba(246,198,91,0.5)')}
-                  onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)')}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = 'rgba(212,160,23,0.5)')}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
                 />
               </div>
             </div>
           ))}
 
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '1rem' }}>
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
             <p className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
               Defina sua senha
             </p>
@@ -270,8 +270,8 @@ export function PrimeiroAcessoPage() {
                     autoComplete="new-password"
                     className={inputClass}
                     style={inputStyle}
-                    onFocus={(e) => (e.currentTarget.style.borderColor = 'rgba(246,198,91,0.5)')}
-                    onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)')}
+                    onFocus={(e) => (e.currentTarget.style.borderColor = 'rgba(212,160,23,0.5)')}
+                    onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
                   />
                 </div>
               </div>

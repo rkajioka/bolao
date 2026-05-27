@@ -14,6 +14,7 @@ import {
   Send,
   Upload,
   User,
+  RefreshCw,
 } from 'lucide-react'
 import { equipeService } from '@/services/equipe.service'
 import type { BulkConviteResponse, ConviteResultado, ConviteResumoEnvio, MembroEquipe } from '@/types'
@@ -32,7 +33,7 @@ function StatusBadge({ membro }: { membro: MembroEquipe }) {
     return (
       <span
         className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
-        style={{ background: 'rgba(251,191,36,0.15)', color: '#f59e0b' }}
+        style={{ background: 'var(--highlight-dim)', color: 'var(--highlight)' }}
       >
         <Clock size={10} />
         Convite pendente
@@ -43,7 +44,7 @@ function StatusBadge({ membro }: { membro: MembroEquipe }) {
     return (
       <span
         className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
-        style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444' }}
+        style={{ background: 'var(--danger-dim)', color: 'var(--danger)' }}
       >
         <XCircle size={10} />
         Bloqueado
@@ -54,7 +55,7 @@ function StatusBadge({ membro }: { membro: MembroEquipe }) {
     return (
       <span
         className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
-        style={{ background: 'rgba(99,102,241,0.12)', color: '#818cf8' }}
+        style={{ background: 'var(--info-dim)', color: 'var(--info)' }}
       >
         <Clock size={10} />
         Aguardando ativação
@@ -64,7 +65,7 @@ function StatusBadge({ membro }: { membro: MembroEquipe }) {
   return (
     <span
       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
-      style={{ background: 'rgba(52,211,153,0.12)', color: '#34d399' }}
+      style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}
     >
       <CheckCircle2 size={10} />
       Ativo
@@ -77,8 +78,10 @@ interface MemberCardProps {
   onBloquear?: (id: number, bloqueado: boolean) => void
   onRemover?: (id: number) => void
   onResetSenha?: (id: number, nome: string) => void
+  onReenviarConvite?: (conviteId: number) => void
   bloqueandoId?: number | null
   resetandoSenhaId?: number | null
+  reenviandoConviteId?: number | null
 }
 
 function MemberCard({
@@ -86,11 +89,14 @@ function MemberCard({
   onBloquear,
   onRemover,
   onResetSenha,
+  onReenviarConvite,
   bloqueandoId = null,
   resetandoSenhaId = null,
+  reenviandoConviteId = null,
 }: MemberCardProps) {
   const bloquearBusy = membro.id != null && bloqueandoId === membro.id
   const resetBusy = membro.id != null && resetandoSenhaId === membro.id
+  const reenviarBusy = membro.convite_id != null && reenviandoConviteId === membro.convite_id
   return (
     <motion.div
       layout
@@ -130,7 +136,7 @@ function MemberCard({
           <StatusBadge membro={membro} />
         </div>
 
-        {/* Convite: expira em */}
+        {/* Convite: expira em + botão de reenvio */}
         {membro.tipo === 'convite' && membro.expiracao && (
           <div className="mt-2 flex flex-col gap-1.5">
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
@@ -142,9 +148,19 @@ function MemberCard({
                 minute: '2-digit',
               })}
             </p>
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              Reenvie o convite por e-mail se o participante não recebeu o link.
-            </p>
+            {membro.convite_id != null && (
+              <button
+                type="button"
+                disabled={reenviarBusy}
+                onClick={() => onReenviarConvite?.(membro.convite_id!)}
+                aria-label={`Reenviar convite para ${membro.email}`}
+                className="self-start flex items-center gap-1.5 text-xs px-2 py-1 rounded-lg transition-colors disabled:opacity-50"
+                style={{ background: 'var(--highlight-dim)', color: 'var(--highlight)' }}
+              >
+                <RefreshCw size={11} className={reenviarBusy ? 'animate-spin' : ''} />
+                {reenviarBusy ? 'Reenviando…' : 'Reenviar e-mail'}
+              </button>
+            )}
           </div>
         )}
 
@@ -158,8 +174,8 @@ function MemberCard({
               aria-label={membro.bloqueado ? `Desbloquear ${membro.nome ?? membro.email}` : `Bloquear ${membro.nome ?? membro.email}`}
               className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors disabled:opacity-50"
               style={{
-                background: membro.bloqueado ? 'rgba(52,211,153,0.1)' : 'rgba(239,68,68,0.1)',
-                color: membro.bloqueado ? '#34d399' : '#ef4444',
+                background: membro.bloqueado ? 'var(--accent-dim)' : 'var(--danger-dim)',
+                color: membro.bloqueado ? 'var(--accent)' : 'var(--danger)',
               }}
             >
               {membro.bloqueado ? <Shield size={11} /> : <ShieldOff size={11} />}
@@ -170,7 +186,7 @@ function MemberCard({
               onClick={() => onRemover?.(membro.id!)}
               aria-label={`Remover ${membro.nome ?? membro.email}`}
               className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg"
-              style={{ background: 'rgba(239,68,68,0.08)', color: '#ef4444' }}
+              style={{ background: 'var(--danger-dim)', color: 'var(--danger)' }}
             >
               <Trash2 size={11} />
               Remover
@@ -181,7 +197,7 @@ function MemberCard({
               onClick={() => onResetSenha?.(membro.id!, membro.nome ?? membro.email)}
               aria-label={`Redefinir senha de ${membro.nome ?? membro.email}`}
               className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg disabled:opacity-50"
-              style={{ background: 'rgba(99,102,241,0.1)', color: '#818cf8' }}
+              style={{ background: 'var(--info-dim)', color: 'var(--info)' }}
             >
               Nova senha
             </button>
@@ -304,7 +320,7 @@ function InviteForm({
           <label
             className="inline-flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl cursor-pointer transition-opacity"
             style={{
-              background: 'rgba(255,255,255,0.06)',
+              background: 'var(--glass)',
               border: '1px solid var(--border)',
               color: 'var(--text)',
               opacity: importingFile || loading ? 0.6 : 1,
@@ -375,7 +391,7 @@ function InviteForm({
       )}
 
       {error && (
-        <p className="text-xs px-3 py-2 rounded-lg" style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444' }}>
+        <p className="text-xs px-3 py-2 rounded-lg" style={{ background: 'var(--danger-dim)', color: 'var(--danger)' }}>
           {error}
         </p>
       )}
@@ -459,6 +475,7 @@ export function EquipePage() {
   const [inviteResults, setInviteResults] = useState<ConviteResultado[] | null>(null)
   const [inviteResumo, setInviteResumo] = useState<ConviteResumoEnvio | null>(null)
   const [usuarioRemoverId, setUsuarioRemoverId] = useState<number | null>(null)
+  const [reenviandoConviteId, setReenviandoConviteId] = useState<number | null>(null)
 
   const { data: empresas = [] } = useQuery({
     queryKey: ['empresas', 'owner'],
@@ -507,6 +524,18 @@ export function EquipePage() {
 
   const handleResetSenha = (id: number) => {
     resetSenhaMutation.mutate(id)
+  }
+
+  const handleReenviarConvite = async (conviteId: number) => {
+    setReenviandoConviteId(conviteId)
+    try {
+      await equipeService.reenviarConvite(conviteId, effectiveEmpresaId ?? undefined)
+      success('E-mail de convite reenviado.')
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Erro ao reenviar convite')
+    } finally {
+      setReenviandoConviteId(null)
+    }
   }
 
   const handleInviteSuccess = (payload: BulkConviteResponse) => {
@@ -647,12 +676,14 @@ export function EquipePage() {
                         onBloquear={(id, bloqueado) => bloquearMutation.mutate({ id, bloqueado })}
                         onRemover={(id) => setUsuarioRemoverId(id)}
                         onResetSenha={handleResetSenha}
+                        onReenviarConvite={handleReenviarConvite}
                         bloqueandoId={
                           bloquearMutation.isPending ? bloquearMutation.variables?.id ?? null : null
                         }
                         resetandoSenhaId={
                           resetSenhaMutation.isPending ? resetSenhaMutation.variables ?? null : null
                         }
+                        reenviandoConviteId={reenviandoConviteId}
                       />
                     ))}
                   </AnimatePresence>

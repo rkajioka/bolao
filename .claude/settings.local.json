@@ -12,7 +12,8 @@
       "Bash(python -m py_compile app/routes/perfil.py app/services/equipe_service.py)",
       "Bash(git commit -m 'fix\\(ci\\): usa git reset --hard e npm ci no deploy para evitar conflito de package-lock *)",
       "Bash(git push *)",
-      "Bash(node_modules/.bin/tsc --noEmit)"
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(python -c 'import ast, sys, pathlib *)"
     ]
   }
 }

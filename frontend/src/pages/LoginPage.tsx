@@ -120,15 +120,15 @@ export function LoginPage() {
                 placeholder="seu@email.com"
                 className="w-full pl-10 pr-4 py-3 rounded-xl text-sm transition-all duration-150 outline-none"
                 style={{
-                  background: 'rgba(255,255,255,0.06)',
-                  border: '1px solid rgba(255,255,255,0.10)',
+                  background: 'var(--glass)',
+                  border: '1px solid var(--border)',
                   color: 'var(--text)',
                 }}
                 onFocus={(e) =>
                   (e.currentTarget.style.borderColor = 'rgba(53,208,127,0.5)')
                 }
                 onBlur={(e) =>
-                  (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)')
+                  (e.currentTarget.style.borderColor = 'var(--border)')
                 }
               />
             </div>
@@ -158,15 +158,15 @@ export function LoginPage() {
                 placeholder="••••••••"
                 className="w-full pl-10 pr-11 py-3 rounded-xl text-sm transition-all duration-150 outline-none"
                 style={{
-                  background: 'rgba(255,255,255,0.06)',
-                  border: '1px solid rgba(255,255,255,0.10)',
+                  background: 'var(--glass)',
+                  border: '1px solid var(--border)',
                   color: 'var(--text)',
                 }}
                 onFocus={(e) =>
                   (e.currentTarget.style.borderColor = 'rgba(53,208,127,0.5)')
                 }
                 onBlur={(e) =>
-                  (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)')
+                  (e.currentTarget.style.borderColor = 'var(--border)')
                 }
               />
               <button

@@ -255,6 +255,15 @@ async def enviar_emails_bulk_convites(
         db.close()
 
 
+async def reenviar_email_convite_background(email: str, token: str, empresa_nome: str) -> None:
+    """Reenvia o e-mail de um convite já existente. Cria sua própria sessão DB."""
+    db = SessionLocal()
+    try:
+        await email_service.tentar_enviar_convite_async(db, email, token, empresa_nome)
+    finally:
+        db.close()
+
+
 def listar_convites(db: Session, empresa_id: int) -> list[Convite]:
     return list(
         db.scalars(

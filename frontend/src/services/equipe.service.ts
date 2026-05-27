@@ -107,6 +107,10 @@ export const equipeService = {
     return api.get<ConviteResultado[]>(`/equipe/convites${empresaQs(empresaId)}`)
   },
 
+  async reenviarConvite(conviteId: number, empresaId?: number | null): Promise<void> {
+    await api.post(`/equipe/convites/${conviteId}/reenviar${empresaQs(empresaId)}`)
+  },
+
   async bloquearUsuario(usuarioId: number, bloqueado: boolean, empresaId?: number | null): Promise<void> {
     const params = new URLSearchParams({ bloqueado: String(bloqueado) })
     if (empresaId != null) params.set('empresa_id', String(empresaId))

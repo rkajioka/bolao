@@ -244,6 +244,24 @@ export function JogosPage() {
   if (canLancarResultadoOficial) {
     return (
       <div className="space-y-4">
+        <div
+          className="rounded-2xl px-4 py-3 flex items-start gap-3"
+          style={{ background: 'var(--accent-dim)', border: '1px solid var(--accent)' }}
+          role="note"
+          aria-label="Informação sobre conta de administrador"
+        >
+          <span className="text-lg leading-none mt-0.5" aria-hidden>⚽</span>
+          <div>
+            <p className="text-sm font-semibold" style={{ color: 'var(--accent)' }}>
+              Conta de administrador da plataforma
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+              Esta conta gerencia o torneio. Administradores não participam do bolão e não fazem palpites.
+              Para acompanhar a disputa como participante, use uma conta de usuário comum.
+            </p>
+          </div>
+        </div>
+
         <SectionHeader
           title="Jogos"
           subtitle="Lance os resultados oficiais das partidas"

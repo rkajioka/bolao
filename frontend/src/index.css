@@ -17,6 +17,8 @@
     --highlight-dim: rgba(212, 160, 23, 0.15);
     --danger: #FF5C7A;
     --danger-dim: rgba(255, 92, 122, 0.15);
+    --info: #818cf8;
+    --info-dim: rgba(129, 140, 248, 0.15);
     --nav-h: 64px;
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     --safe-top: env(safe-area-inset-top, 0px);
@@ -48,6 +50,8 @@
     --highlight-dim: rgba(184, 134, 11, 0.12);
     --danger: #E03050;
     --danger-dim: rgba(224, 48, 80, 0.10);
+    --info: #6366f1;
+    --info-dim: rgba(99, 102, 241, 0.12);
     --topbar-bg: rgba(240, 242, 247, 0.88);
     --nav-bg: rgba(240, 242, 247, 0.92);
     --segmented-bg: rgba(0, 0, 0, 0.05);

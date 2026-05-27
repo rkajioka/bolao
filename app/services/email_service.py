@@ -10,6 +10,7 @@ As variantes async usam httpx.AsyncClient para não bloquear o event-loop.
 from __future__ import annotations
 
 import logging
+from html import escape as html_escape
 
 import httpx
 from sqlalchemy.orm import Session
@@ -188,9 +189,10 @@ async def tentar_enviar_convite_async(
     """Versão async de tentar_enviar_convite — para uso em BackgroundTasks."""
     del db
     link = f"{_public_base_url()}/ativar-conta?token={token}"
+    safe_nome = html_escape(empresa_nome)
     assunto = f"Convite para o Bolão — {empresa_nome}"
     corpo_html = (
-        f"<p>Você foi convidado para o bolão <strong>{empresa_nome}</strong>.</p>"
+        f"<p>Você foi convidado para o bolão <strong>{safe_nome}</strong>.</p>"
         f'<p><a href="{link}">Ativar minha conta</a></p>'
         "<p>Se você não esperava este convite, ignore este e-mail.</p>"
     )
@@ -214,22 +216,24 @@ async def tentar_enviar_reset_senha_async(
     """Versão async de tentar_enviar_reset_senha — para uso em BackgroundTasks."""
     del db
     link = f"{_public_base_url()}/redefinir-senha?token={token}"
+    safe_nome = html_escape(empresa_nome)
+    safe_dest = html_escape(destinatario)
     if motivo == "conta_criada":
         assunto = f"Defina sua senha — {empresa_nome}"
         corpo_html = (
-            f"<p>Sua conta no bolão <strong>{empresa_nome}</strong> foi criada.</p>"
+            f"<p>Sua conta no bolão <strong>{safe_nome}</strong> foi criada.</p>"
             f"<p>Use o link abaixo para definir sua senha de acesso com o e-mail "
-            f"<strong>{destinatario}</strong>.</p>"
+            f"<strong>{safe_dest}</strong>.</p>"
             f'<p><a href="{link}">Definir senha</a></p>'
             "<p>O link expira em breve. Se você não esperava este acesso, ignore este e-mail.</p>"
         )
     elif motivo == "reset_gestor":
         assunto = f"Sua senha foi redefinida — {empresa_nome}"
         corpo_html = (
-            f"<p>A senha da sua conta no bolão <strong>{empresa_nome}</strong> foi redefinida "
+            f"<p>A senha da sua conta no bolão <strong>{safe_nome}</strong> foi redefinida "
             "por um administrador.</p>"
             f"<p>Use o link abaixo para definir uma nova senha com o e-mail "
-            f"<strong>{destinatario}</strong>.</p>"
+            f"<strong>{safe_dest}</strong>.</p>"
             f'<p><a href="{link}">Definir nova senha</a></p>'
             "<p>O link expira em breve. Se você não esperava esta alteração, ignore este e-mail.</p>"
         )
@@ -237,7 +241,7 @@ async def tentar_enviar_reset_senha_async(
         assunto = f"Redefinição de senha — {empresa_nome}"
         corpo_html = (
             f"<p>Recebemos um pedido para redefinir a senha da sua conta no bolão "
-            f"<strong>{empresa_nome}</strong>.</p>"
+            f"<strong>{safe_nome}</strong>.</p>"
             f'<p><a href="{link}">Redefinir senha</a></p>'
             "<p>O link expira em breve. Se não foi você, ignore este e-mail.</p>"
         )
@@ -292,9 +296,10 @@ def tentar_enviar_convite(
 ) -> email_dispatch_service.ResultadoEnvio:
     del db
     link = f"{_public_base_url()}/ativar-conta?token={token}"
+    safe_nome = html_escape(empresa_nome)
     assunto = f"Convite para o Bolão — {empresa_nome}"
     corpo_html = (
-        f"<p>Você foi convidado para o bolão <strong>{empresa_nome}</strong>.</p>"
+        f"<p>Você foi convidado para o bolão <strong>{safe_nome}</strong>.</p>"
         f'<p><a href="{link}">Ativar minha conta</a></p>'
         "<p>Se você não esperava este convite, ignore este e-mail.</p>"
     )
@@ -317,22 +322,24 @@ def tentar_enviar_reset_senha(
 ) -> email_dispatch_service.ResultadoEnvio:
     del db
     link = f"{_public_base_url()}/redefinir-senha?token={token}"
+    safe_nome = html_escape(empresa_nome)
+    safe_dest = html_escape(destinatario)
     if motivo == "conta_criada":
         assunto = f"Defina sua senha — {empresa_nome}"
         corpo_html = (
-            f"<p>Sua conta no bolão <strong>{empresa_nome}</strong> foi criada.</p>"
+            f"<p>Sua conta no bolão <strong>{safe_nome}</strong> foi criada.</p>"
             f"<p>Use o link abaixo para definir sua senha de acesso com o e-mail "
-            f"<strong>{destinatario}</strong>.</p>"
+            f"<strong>{safe_dest}</strong>.</p>"
             f'<p><a href="{link}">Definir senha</a></p>'
             "<p>O link expira em breve. Se você não esperava este acesso, ignore este e-mail.</p>"
         )
     elif motivo == "reset_gestor":
         assunto = f"Sua senha foi redefinida — {empresa_nome}"
         corpo_html = (
-            f"<p>A senha da sua conta no bolão <strong>{empresa_nome}</strong> foi redefinida "
+            f"<p>A senha da sua conta no bolão <strong>{safe_nome}</strong> foi redefinida "
             "por um administrador.</p>"
             f"<p>Use o link abaixo para definir uma nova senha com o e-mail "
-            f"<strong>{destinatario}</strong>.</p>"
+            f"<strong>{safe_dest}</strong>.</p>"
             f'<p><a href="{link}">Definir nova senha</a></p>'
             "<p>O link expira em breve. Se você não esperava esta alteração, ignore este e-mail.</p>"
         )
@@ -340,7 +347,7 @@ def tentar_enviar_reset_senha(
         assunto = f"Redefinição de senha — {empresa_nome}"
         corpo_html = (
             f"<p>Recebemos um pedido para redefinir a senha da sua conta no bolão "
-            f"<strong>{empresa_nome}</strong>.</p>"
+            f"<strong>{safe_nome}</strong>.</p>"
             f'<p><a href="{link}">Redefinir senha</a></p>'
             "<p>O link expira em breve. Se não foi você, ignore este e-mail.</p>"
         )

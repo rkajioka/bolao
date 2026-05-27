@@ -215,7 +215,7 @@ export function PerfilPage() {
                 onClick={() => removeAvatarMutation.mutate()}
                 disabled={removeAvatarMutation.isPending || uploadAvatarMutation.isPending}
                 className="flex items-center gap-1.5 text-xs font-medium disabled:opacity-50 w-fit"
-                style={{ color: '#ef4444' }}
+                style={{ color: 'var(--danger)' }}
               >
                 <Trash2 size={13} />
                 {removeAvatarMutation.isPending ? 'Removendo…' : 'Remover foto'}
@@ -236,7 +236,7 @@ export function PerfilPage() {
         </div>
 
         {perfilError && (
-          <p className="text-xs px-3 py-2 rounded-lg" style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444' }}>
+          <p className="text-xs px-3 py-2 rounded-lg" style={{ background: 'var(--danger-dim)', color: 'var(--danger)' }}>
             {perfilError}
           </p>
         )}
@@ -310,7 +310,7 @@ export function PerfilPage() {
         </div>
 
         {senhaError && (
-          <p className="text-xs px-3 py-2 rounded-lg" style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444' }}>
+          <p className="text-xs px-3 py-2 rounded-lg" style={{ background: 'var(--danger-dim)', color: 'var(--danger)' }}>
             {senhaError}
           </p>
         )}

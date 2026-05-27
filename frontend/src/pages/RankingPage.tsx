@@ -317,7 +317,7 @@ export function RankingPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.24 }}
                 className="glass rounded-3xl p-3 mb-5"
-                style={{ border: '1px solid rgba(255,255,255,0.08)' }}
+                style={{ border: '1px solid var(--border)' }}
               >
                 <p className="text-[11px] font-bold uppercase tracking-wider px-1 pb-2" style={{ color: 'var(--text-muted)' }}>
                   Pódio
@@ -364,7 +364,7 @@ export function RankingPage() {
                           </p>
                           <div
                             className={`${layout.avatarSize} rounded-full flex items-center justify-center text-xs font-bold overflow-hidden`}
-                            style={{ background: 'rgba(255,255,255,0.08)', border: `2px solid ${p.color}` }}
+                            style={{ background: 'var(--glass)', border: `2px solid ${p.color}` }}
                           >
                             {linha.imagem_perfil ? (
                               <img src={imgUrl(linha.imagem_perfil)} alt={linha.nome} className="w-full h-full object-cover" />
