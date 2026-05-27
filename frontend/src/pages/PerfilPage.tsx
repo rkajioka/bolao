@@ -1,15 +1,23 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { User, Lock, Building2, Eye, EyeOff, CheckCircle2, Save, Trash2 } from 'lucide-react'
+import { User, Lock, Building2, Eye, EyeOff, CheckCircle2, Save, Trash2, ShieldCheck, ChevronRight, Cookie } from 'lucide-react'
 import { useMutation } from '@tanstack/react-query'
 import { useAuth } from '@/features/auth/AuthContext'
 import { perfilService, PERFIL_AVATAR_MAX_BYTES } from '@/services/perfil.service'
 import { ApiError } from '@/lib/api'
 import { validarSenhaSegura } from '@/lib/passwordPolicy'
 import { UserAvatar } from '@/components/UserAvatar'
+import { useCookieConsent } from '@/hooks/useCookieConsent'
+
+const CONSENT_LABEL: Record<string, { text: string; color: string }> = {
+  accepted: { text: 'Aceito', color: 'var(--accent)' },
+  rejected: { text: 'Rejeitado', color: 'var(--danger)' },
+}
 
 export function PerfilPage() {
   const { user, refreshUser } = useAuth()
+  const { consent, accept, reject, reset } = useCookieConsent()
   const [nome, setNome] = useState(user?.nome ?? '')
   const [funcao, setFuncao] = useState(user?.funcao ?? '')
   const [perfilSaved, setPerfilSaved] = useState(false)
@@ -335,6 +343,108 @@ export function PerfilPage() {
             alterarSenhaMutation.isPending ? 'Salvando…' : 'Alterar senha'
           )}
         </motion.button>
+      </section>
+
+      {/* Privacidade */}
+      <section
+        className="rounded-2xl overflow-hidden"
+        style={{ background: 'var(--glass)', border: '1px solid var(--border)' }}
+      >
+        <div className="flex items-center gap-2 px-4 pt-4 pb-3">
+          <ShieldCheck size={16} style={{ color: 'var(--accent)' }} />
+          <h2 className="font-semibold text-sm" style={{ color: 'var(--text)' }}>
+            Privacidade
+          </h2>
+        </div>
+
+        {/* Link para a política */}
+        <Link
+          to="/privacidade"
+          className="flex items-center justify-between px-4 py-3 transition-colors duration-150"
+          style={{ borderTop: '1px solid var(--border)', color: 'var(--text)' }}
+        >
+          <div className="flex items-center gap-3">
+            <span
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+              style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}
+            >
+              <ShieldCheck size={15} />
+            </span>
+            <span className="text-sm">Política de Privacidade</span>
+          </div>
+          <ChevronRight size={16} style={{ color: 'var(--text-muted)' }} />
+        </Link>
+
+        {/* Status e gerenciamento de cookies */}
+        <div
+          className="px-4 py-3"
+          style={{ borderTop: '1px solid var(--border)' }}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <span
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}
+              >
+                <Cookie size={15} />
+              </span>
+              <div>
+                <p className="text-sm" style={{ color: 'var(--text)' }}>
+                  Cookies
+                </p>
+                <p
+                  className="text-xs font-medium"
+                  style={{
+                    color: consent ? CONSENT_LABEL[consent]?.color : 'var(--text-muted)',
+                  }}
+                >
+                  {consent ? CONSENT_LABEL[consent]?.text : 'Preferência não definida'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            {consent !== 'accepted' && (
+              <button
+                type="button"
+                onClick={accept}
+                className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all duration-150"
+                style={{ background: 'var(--accent)', color: '#070A12' }}
+              >
+                Aceitar
+              </button>
+            )}
+            {consent !== 'rejected' && (
+              <button
+                type="button"
+                onClick={reject}
+                className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all duration-150"
+                style={{
+                  background: 'var(--glass)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text-muted)',
+                }}
+              >
+                Rejeitar
+              </button>
+            )}
+            {consent !== null && (
+              <button
+                type="button"
+                onClick={reset}
+                className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all duration-150"
+                style={{
+                  background: 'var(--glass)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text-muted)',
+                }}
+              >
+                Redefinir
+              </button>
+            )}
+          </div>
+        </div>
       </section>
     </div>
   )
