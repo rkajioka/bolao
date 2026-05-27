@@ -1,6 +1,7 @@
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Shield, Cookie, Database, Mail, Clock, Lock } from 'lucide-react'
+import { ArrowLeft, Shield, Cookie, Database, Mail, Clock } from 'lucide-react'
+import { useAuth } from '@/features/auth/AuthContext'
 import { useCookieConsent } from '@/hooks/useCookieConsent'
 
 function Section({
@@ -78,12 +79,20 @@ function CookieRow({
 
 export function PrivacidadePage() {
   const { consent, accept, reject, reset } = useCookieConsent()
+  const navigate = useNavigate()
+  const { isAuthenticated } = useAuth()
+
+  const handleBack = () => {
+    // Se houver histórico de navegação, volta; caso contrário vai para a tela inicial
+    if (window.history.length > 2) {
+      navigate(-1)
+    } else {
+      navigate(isAuthenticated ? '/jogos' : '/login', { replace: true })
+    }
+  }
 
   return (
-    <div
-      className="min-h-dvh flex flex-col"
-      style={{ background: 'var(--bg)' }}
-    >
+    <div className="min-h-dvh flex flex-col" style={{ background: 'var(--bg)' }}>
       {/* Background gradient decorativo */}
       <div
         className="fixed inset-0 pointer-events-none"
@@ -105,8 +114,9 @@ export function PrivacidadePage() {
         }}
       >
         <div className="max-w-2xl mx-auto flex items-center gap-3 px-4 h-14">
-          <Link
-            to={-1 as unknown as string}
+          <button
+            type="button"
+            onClick={handleBack}
             className="inline-flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-150"
             style={{
               background: 'var(--glass)',
@@ -116,7 +126,7 @@ export function PrivacidadePage() {
             aria-label="Voltar"
           >
             <ArrowLeft size={16} />
-          </Link>
+          </button>
           <div>
             <h1 className="text-sm font-semibold leading-tight" style={{ color: 'var(--text)' }}>
               Política de Privacidade
@@ -137,7 +147,10 @@ export function PrivacidadePage() {
       >
         {/* Intro */}
         <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-          Esta Política de Privacidade descreve como o <strong style={{ color: 'var(--text)' }}>Bolão da Copa</strong> coleta, usa e protege suas informações pessoais. Ao usar nossa plataforma, você concorda com as práticas descritas aqui.
+          Esta Política de Privacidade descreve como o{' '}
+          <strong style={{ color: 'var(--text)' }}>Bolão da Copa</strong> coleta, usa e protege
+          suas informações pessoais. Ao usar nossa plataforma, você concorda com as práticas
+          descritas aqui.
         </p>
 
         {/* Dados coletados */}
@@ -146,12 +159,12 @@ export function PrivacidadePage() {
           <ul className="space-y-1.5 mt-2">
             {[
               { label: 'Nome completo', desc: 'Para identificação na plataforma e no ranking' },
-              { label: 'E-mail', desc: 'Para autenticação, comunicados e recuperação de senha' },
+              { label: 'E-mail', desc: 'Para acesso à conta, comunicados e recuperação de senha' },
               { label: 'Foto de perfil', desc: 'Opcional — exibida no ranking e na equipe' },
               { label: 'Palpites', desc: 'Suas apostas em jogos e eventos especiais' },
               {
                 label: 'Dados de acesso',
-                desc: 'Data/hora de login para segurança da conta (sem rastreamento de comportamento)',
+                desc: 'Data e horário de login para segurança da conta, sem rastreamento de comportamento',
               },
             ].map((item) => (
               <li key={item.label} className="flex gap-2">
@@ -169,24 +182,28 @@ export function PrivacidadePage() {
         {/* Cookies */}
         <Section icon={<Cookie size={16} />} title="Cookies utilizados">
           <p>
-            Utilizamos exclusivamente cookies <strong style={{ color: 'var(--text)' }}>essenciais</strong> para o funcionamento da plataforma. Não usamos cookies de rastreamento, publicidade ou análise de comportamento de terceiros.
+            Utilizamos exclusivamente cookies{' '}
+            <strong style={{ color: 'var(--text)' }}>essenciais</strong> para o funcionamento da
+            plataforma. Não usamos cookies de rastreamento, publicidade ou análise de comportamento
+            de terceiros.
           </p>
           <div className="space-y-2 mt-3">
             <CookieRow
               name="refresh_token"
               type="Essencial"
-              purpose="Mantém sua sessão ativa após o login. Cookie HttpOnly — não acessível por JavaScript."
+              purpose="Mantém sua sessão ativa após o login, evitando que você precise entrar novamente a cada visita."
               duration="7 dias (renovado a cada acesso)"
             />
             <CookieRow
               name="cookie_consent"
               type="Funcional"
-              purpose="Armazena sua preferência de consentimento de cookies (localStorage)."
+              purpose="Salva sua escolha sobre o uso de cookies para não exibirmos o aviso novamente."
               duration="Sem expiração / até você limpar o navegador"
             />
           </div>
           <p className="mt-3 text-xs" style={{ opacity: 0.8 }}>
-            ⚠️ O cookie de sessão (<code style={{ color: 'var(--accent)' }}>refresh_token</code>) é tecnicamente necessário para o login. Ao rejeitar cookies, você ainda poderá acessar a plataforma durante a sessão atual, mas não permanecerá conectado após fechar o navegador.
+            ⚠️ O cookie de sessão é necessário para o login. Ao rejeitar cookies, você poderá
+            navegar durante a visita atual, mas precisará entrar novamente ao reabrir o aplicativo.
           </p>
         </Section>
 
@@ -194,10 +211,10 @@ export function PrivacidadePage() {
         <Section icon={<Shield size={16} />} title="Como usamos seus dados">
           <ul className="space-y-1.5">
             {[
-              'Autenticação e segurança da conta',
-              'Exibição de palpites, ranking e pontuação',
-              'Envio de e-mails transacionais (ativação de conta, recuperação de senha)',
-              'Comunicados do administrador do seu bolão',
+              'Permitir o acesso à sua conta de forma segura',
+              'Exibir seus palpites, pontuação e posição no ranking',
+              'Enviar e-mails de ativação de conta e recuperação de senha',
+              'Encaminhar comunicados do administrador do seu bolão',
             ].map((item) => (
               <li key={item} className="flex gap-2">
                 <span style={{ color: 'var(--accent)' }} className="mt-0.5 shrink-0">
@@ -215,34 +232,27 @@ export function PrivacidadePage() {
         {/* Retenção */}
         <Section icon={<Clock size={16} />} title="Retenção de dados">
           <p>
-            Seus dados permanecem na plataforma enquanto sua conta estiver ativa. Após o encerramento do torneio ou exclusão da conta, os dados podem ser anonimizados ou removidos conforme solicitado pelo administrador da empresa.
+            Seus dados permanecem na plataforma enquanto sua conta estiver ativa. Após o
+            encerramento do torneio ou exclusão da conta, os dados podem ser anonimizados ou
+            removidos conforme solicitado pelo administrador da empresa.
           </p>
         </Section>
 
         {/* Segurança */}
-        <Section icon={<Lock size={16} />} title="Segurança">
-          <ul className="space-y-1.5">
-            {[
-              'Comunicação criptografada via HTTPS/TLS',
-              'Senhas armazenadas com hash seguro (bcrypt)',
-              'Token de sessão em cookie HttpOnly (não acessível por JavaScript)',
-              'Tokens JWT com curta duração e assinatura HMAC-HS256',
-              'Rate limiting para prevenir ataques de força bruta',
-            ].map((item) => (
-              <li key={item} className="flex gap-2">
-                <span style={{ color: 'var(--accent)' }} className="mt-0.5 shrink-0">
-                  •
-                </span>
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
+        <Section icon={<Shield size={16} />} title="Segurança">
+          <p>
+            Toda a comunicação entre seu dispositivo e nossa plataforma é protegida por
+            criptografia. Seus dados são armazenados de forma segura e o acesso é restrito: apenas
+            você e os administradores autorizados do seu bolão podem visualizá-los.
+          </p>
         </Section>
 
         {/* Contato */}
-        <Section icon={<Mail size={16} />} title="Contato e direitos">
+        <Section icon={<Mail size={16} />} title="Seus direitos e contato">
           <p>
-            Você tem o direito de acessar, corrigir ou solicitar a exclusão dos seus dados pessoais. Para exercer esses direitos ou tirar dúvidas, entre em contato com o administrador do seu bolão ou com a empresa responsável pela plataforma.
+            Você tem o direito de acessar, corrigir ou solicitar a exclusão dos seus dados
+            pessoais. Para exercer esses direitos ou tirar dúvidas, entre em contato com o
+            administrador do seu bolão ou com a empresa responsável pela plataforma.
           </p>
         </Section>
 
@@ -305,7 +315,10 @@ export function PrivacidadePage() {
         </div>
 
         {/* Footer note */}
-        <p className="text-[11px] text-center pb-4" style={{ color: 'var(--text-muted)', opacity: 0.6 }}>
+        <p
+          className="text-[11px] text-center pb-4"
+          style={{ color: 'var(--text-muted)', opacity: 0.6 }}
+        >
           Esta política pode ser atualizada periodicamente. Recomendamos revisá-la ocasionalmente.
         </p>
       </motion.main>
