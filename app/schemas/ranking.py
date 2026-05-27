@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -21,6 +23,7 @@ class RankingLinhaRead(BaseModel):
 
 class RankingResponse(BaseModel):
     linhas: list[RankingLinhaRead]
+    updated_at: datetime = Field(description="Momento em que o ranking foi calculado (UTC)")
 
 
 class InsightDestaqueRead(BaseModel):

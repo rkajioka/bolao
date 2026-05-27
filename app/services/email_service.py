@@ -20,6 +20,21 @@ from app.services import email_dispatch_service
 logger = logging.getLogger(__name__)
 
 
+def _mask_email(email: str) -> str:
+    """Mascara o endereço de e-mail para não expor PII em logs.
+
+    Exemplos:
+        joao.silva@empresa.com  → jo***@empresa.com
+        ab@x.com                → a***@x.com
+    """
+    try:
+        local, domain = email.rsplit("@", 1)
+        masked_local = local[:2] + "***" if len(local) > 2 else local[0] + "***"
+        return f"{masked_local}@{domain}"
+    except Exception:
+        return "***@***"
+
+
 def _public_base_url() -> str:
     return get_settings().public_app_url.rstrip("/")
 
@@ -151,13 +166,14 @@ async def _enviar_com_log_async(
             nome_remetente=nome_remetente,
         )
     )
+    dest_log = _mask_email(destinatario)
     if resultado.sucesso:
-        logger.info("E-mail %s enviado para %s", rotulo, destinatario)
-        print(f"[bolao:email] {rotulo} -> {destinatario}: enviado OK", flush=True)
+        logger.info("E-mail %s enviado para %s", rotulo, dest_log)
+        print(f"[bolao:email] {rotulo} -> {dest_log}: enviado OK", flush=True)
     else:
-        logger.error("Falha ao enviar e-mail %s para %s: %s", rotulo, destinatario, resultado.erro)
+        logger.error("Falha ao enviar e-mail %s para %s: %s", rotulo, dest_log, resultado.erro)
         print(
-            f"[bolao:email] {rotulo} -> {destinatario}: FALHA — {resultado.erro}",
+            f"[bolao:email] {rotulo} -> {dest_log}: FALHA — {resultado.erro}",
             flush=True,
         )
     return resultado
@@ -255,13 +271,14 @@ def _enviar_com_log(
             nome_remetente=nome_remetente,
         )
     )
+    dest_log = _mask_email(destinatario)
     if resultado.sucesso:
-        logger.info("E-mail %s enviado para %s", rotulo, destinatario)
-        print(f"[bolao:email] {rotulo} -> {destinatario}: enviado OK", flush=True)
+        logger.info("E-mail %s enviado para %s", rotulo, dest_log)
+        print(f"[bolao:email] {rotulo} -> {dest_log}: enviado OK", flush=True)
     else:
-        logger.error("Falha ao enviar e-mail %s para %s: %s", rotulo, destinatario, resultado.erro)
+        logger.error("Falha ao enviar e-mail %s para %s: %s", rotulo, dest_log, resultado.erro)
         print(
-            f"[bolao:email] {rotulo} -> {destinatario}: FALHA — {resultado.erro}",
+            f"[bolao:email] {rotulo} -> {dest_log}: FALHA — {resultado.erro}",
             flush=True,
         )
     return resultado

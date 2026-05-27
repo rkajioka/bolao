@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -63,7 +65,7 @@ def get_ranking(
         )
         for i, ln in enumerate(linhas_svc)
     ]
-    return RankingResponse(linhas=linhas)
+    return RankingResponse(linhas=linhas, updated_at=datetime.now(UTC))
 
 
 @router.get("/insights", response_model=RankingInsightsRead)

@@ -3,11 +3,16 @@ from datetime import timedelta
 from typing import Any
 from uuid import uuid4
 
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import PyJWTError
 
 from app.core.config import get_settings
 
 settings = get_settings()
+
+# Algoritmo fixado explicitamente — impede ataques de confusão de algoritmo
+# (ex.: troca de HS256 por "none" ou RS256 com chave pública como HMAC).
+_ALGORITHM = "HS256"
 
 
 def create_access_token(
@@ -25,7 +30,7 @@ def create_access_token(
     }
     if extra_claims:
         payload.update(extra_claims)
-    return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+    return jwt.encode(payload, settings.jwt_secret, algorithm=_ALGORITHM)
 
 
 def create_refresh_token(
@@ -44,34 +49,42 @@ def create_refresh_token(
         "typ": "refresh",
         "jti": token_jti,
     }
-    return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm), token_jti
+    return jwt.encode(payload, settings.jwt_secret, algorithm=_ALGORITHM), token_jti
 
 
 def decode_access_token(token: str) -> dict[str, Any]:
-    payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+    payload = jwt.decode(
+        token,
+        settings.jwt_secret,
+        algorithms=[_ALGORITHM],  # lista explícita — rejeita "none" e outros
+    )
     if payload.get("typ") == "refresh":
-        raise JWTError("Tipo de token inválido para acesso")
+        raise PyJWTError("Tipo de token inválido para acesso")
     return payload
 
 
 def decode_refresh_token(token: str) -> dict[str, Any]:
-    payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+    payload = jwt.decode(
+        token,
+        settings.jwt_secret,
+        algorithms=[_ALGORITHM],
+    )
     if payload.get("typ") != "refresh":
-        raise JWTError("Tipo de token inválido para refresh")
+        raise PyJWTError("Tipo de token inválido para refresh")
     if "jti" not in payload:
-        raise JWTError("Refresh token sem jti")
+        raise PyJWTError("Refresh token sem jti")
     return payload
 
 
 def decode_access_token_safe(token: str) -> dict[str, Any] | None:
     try:
         return decode_access_token(token)
-    except JWTError:
+    except PyJWTError:
         return None
 
 
 def decode_refresh_token_safe(token: str) -> dict[str, Any] | None:
     try:
         return decode_refresh_token(token)
-    except JWTError:
+    except PyJWTError:
         return None

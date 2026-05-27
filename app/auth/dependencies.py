@@ -97,6 +97,17 @@ def require_admin(user: Usuario = Depends(get_current_active_user)) -> Usuario:
     return user
 
 
+def _assert_empresa_exists(db: Session, empresa_id: int) -> None:
+    """Levanta 404 se a empresa não existir. Usado para validar empresa_id vindo do owner."""
+    from app.models.empresa import Empresa
+
+    if db.get(Empresa, empresa_id) is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Empresa não encontrada",
+        )
+
+
 def resolve_empresa_id(
     user: Usuario,
     empresa_id: int | None = None,
@@ -129,8 +140,14 @@ def resolve_empresa_id(
 def get_resolved_empresa_id(
     empresa_id: int | None = Query(default=None),
     user: Usuario = Depends(require_admin),
+    db: Session = Depends(get_db),
 ) -> int:
-    return resolve_empresa_id(user, empresa_id)
+    resolved = resolve_empresa_id(user, empresa_id)
+    # Quando o owner passa um empresa_id (tipicamente do localStorage), valida
+    # que a empresa de fato existe no banco — evita operar em IDs fantasmas.
+    if is_owner(user):
+        _assert_empresa_exists(db, resolved)
+    return resolved
 
 
 def require_primeiro_login_concluido(user: Usuario = Depends(get_current_active_user)) -> Usuario:
@@ -170,9 +187,12 @@ def get_empresa_id(user: Usuario = Depends(get_current_active_user)) -> int:
 def get_ranking_empresa_id(
     empresa_id: int | None = Query(default=None),
     user: Usuario = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
 ) -> int:
     if is_owner(user):
-        return resolve_empresa_id(user, empresa_id)
+        resolved = resolve_empresa_id(user, empresa_id)
+        _assert_empresa_exists(db, resolved)
+        return resolved
     if user.empresa_id is None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
