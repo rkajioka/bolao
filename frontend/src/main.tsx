@@ -9,6 +9,7 @@ import { ToastProvider } from '@/components/Toast'
 import { ThemeProvider } from '@/hooks/useTheme'
 import { queryClient } from '@/lib/queryClient'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { CookieBanner } from '@/components/CookieBanner'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -19,6 +20,7 @@ createRoot(document.getElementById('root')!).render(
             <AuthProvider>
               <ToastProvider>
                 <App />
+                <CookieBanner />
               </ToastProvider>
             </AuthProvider>
           </ThemeProvider>

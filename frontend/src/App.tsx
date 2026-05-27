@@ -36,6 +36,9 @@ const EsqueciSenhaPage = lazy(() =>
 const RedefinirSenhaPage = lazy(() =>
   import('@/pages/RedefinirSenhaPage').then((m) => ({ default: m.RedefinirSenhaPage })),
 )
+const PrivacidadePage = lazy(() =>
+  import('@/pages/PrivacidadePage').then((m) => ({ default: m.PrivacidadePage })),
+)
 
 function LoadingScreen() {
   return (
@@ -154,6 +157,14 @@ export default function App() {
         element={
           <Suspense fallback={<LoadingScreen />}>
             <RedefinirSenhaPage />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/privacidade"
+        element={
+          <Suspense fallback={<LoadingScreen />}>
+            <PrivacidadePage />
           </Suspense>
         }
       />

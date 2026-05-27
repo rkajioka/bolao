@@ -9,7 +9,10 @@
       "Bash(python -c \"from app.core.config import Settings; print\\('Settings OK'\\)\")",
       "Bash(git add *)",
       "Bash(python -c \"from app.routes.perfil import router; from app.services.equipe_service import remover_avatar; print\\('OK'\\)\")",
-      "Bash(python -m py_compile app/routes/perfil.py app/services/equipe_service.py)"
+      "Bash(python -m py_compile app/routes/perfil.py app/services/equipe_service.py)",
+      "Bash(git commit -m 'fix\\(ci\\): usa git reset --hard e npm ci no deploy para evitar conflito de package-lock *)",
+      "Bash(git push *)",
+      "Bash(node_modules/.bin/tsc --noEmit)"
     ]
   }
 }
