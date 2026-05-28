@@ -107,7 +107,7 @@ jobs:
             "$PIP" install -r "$APP_DIR/requirements.txt"
 
             echo "-> Buildando frontend..."
-            ( cd "$APP_DIR/frontend" && npm ci && npm run build )
+            ( cd "$APP_DIR/frontend" && npm install && npm run build )
 
             echo "-> Rodando migrations..."
             "$PYTHON" -m alembic upgrade head
