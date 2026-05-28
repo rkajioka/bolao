@@ -35,9 +35,14 @@ jobs:
               . "$HOME/.nvm/nvm.sh"
             fi
 
+            echo "-> Atualizando codigo (antes do preflight sudo)..."
+            git fetch origin main
+            git reset --hard origin/main
+
             echo "-> Preflight sudo (SSH nao tem TTY)..."
             DEPLOY_USER="$(whoami)"
-            if ! sudo -n systemctl daemon-reload 2>/dev/null; then
+            SYSTEMCTL="$(command -v systemctl)"
+            if ! sudo -n "$SYSTEMCTL" daemon-reload 2>/dev/null; then
               echo "FALHA: sudo NOPASSWD nao funciona para o usuario SSH: $DEPLOY_USER"
               echo "O secret EC2_USER no GitHub deve ser esse mesmo usuario."
               echo "No EC2 (sessao interativa), instale/atualize deploy/sudoers-bolao-deploy:"
@@ -45,7 +50,7 @@ jobs:
               echo "  sudo cp $APP_DIR/deploy/sudoers-bolao-deploy /etc/sudoers.d/bolao-deploy"
               echo "  sudo sed -i 's/^ubuntu /'\"$DEPLOY_USER\"' /' /etc/sudoers.d/bolao-deploy"
               echo "  sudo chmod 440 /etc/sudoers.d/bolao-deploy && sudo visudo -cf /etc/sudoers.d/bolao-deploy"
-              echo "  sudo -n systemctl daemon-reload && echo NOPASSWD OK"
+              echo "  sudo -n $SYSTEMCTL daemon-reload && echo NOPASSWD OK"
               exit 1
             fi
 
@@ -68,13 +73,9 @@ jobs:
               exit 1
             }
 
-            echo "-> Atualizando codigo..."
-            git fetch origin main
-            git reset --hard origin/main
-
             echo "-> Sincronizando unit systemd..."
             sudo -n cp "$APP_DIR/bolao.service" /etc/systemd/system/bolao.service
-            sudo -n systemctl daemon-reload
+            sudo -n "$SYSTEMCTL" daemon-reload
 
             echo "-> Garantindo venv Python..."
             if ! "$PYTHON" -c "import sys" >/dev/null 2>&1; then
@@ -91,7 +92,7 @@ jobs:
             "$PYTHON" -m alembic upgrade head
 
             echo "-> Reiniciando servico..."
-            sudo -n systemctl restart bolao
+            sudo -n "$SYSTEMCTL" restart bolao
 
             echo "-> Verificacao local pos-restart..."
             sleep 2
