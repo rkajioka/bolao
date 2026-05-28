@@ -9,8 +9,11 @@ As variantes async usam httpx.AsyncClient para não bloquear o event-loop.
 
 from __future__ import annotations
 
+import base64
 import logging
+from functools import lru_cache
 from html import escape as html_escape
+from pathlib import Path
 
 import httpx
 from sqlalchemy.orm import Session
@@ -19,6 +22,45 @@ from app.core.config import get_settings
 from app.services import email_dispatch_service
 
 logger = logging.getLogger(__name__)
+
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+_ASSINATURA_CANDIDATES = (
+    _PROJECT_ROOT / "frontend" / "public" / "assinatura.png",
+    _PROJECT_ROOT / "frontend" / "dist" / "assinatura.png",
+)
+
+
+def _resolver_caminho_assinatura() -> Path | None:
+    for path in _ASSINATURA_CANDIDATES:
+        if path.is_file():
+            return path
+    return None
+
+
+@lru_cache(maxsize=1)
+def _fragmento_assinatura_html() -> str:
+    path = _resolver_caminho_assinatura()
+    if path is None:
+        logger.warning(
+            "assinatura.png não encontrado em %s; e-mails serão enviados sem assinatura",
+            ", ".join(str(p) for p in _ASSINATURA_CANDIDATES),
+        )
+        return ""
+    encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+    return (
+        "<br><br><br>"
+        '<p style="margin:0;padding:0;">'
+        f'<img src="data:image/png;base64,{encoded}" alt="Assinatura" '
+        'style="display:block;max-width:480px;height:auto;border:0;" />'
+        "</p>"
+    )
+
+
+def _aplicar_assinatura_corpo(corpo_html: str) -> str:
+    fragmento = _fragmento_assinatura_html()
+    if not fragmento:
+        return corpo_html
+    return f"{corpo_html.rstrip()}{fragmento}"
 
 
 def _mask_email(email: str) -> str:
@@ -77,6 +119,7 @@ def enviar_email_outlook(
     corpo_html: str,
     nome_remetente: str,
 ) -> None:
+    corpo_html = _aplicar_assinatura_corpo(corpo_html)
     settings = _credenciais_outlook()
     token = _obter_token_graph()
     url = f"{settings.graph_api_url.rstrip('/')}/users/{settings.outlook_sender}/sendMail"
@@ -128,6 +171,7 @@ async def enviar_email_outlook_async(
     nome_remetente: str,
 ) -> None:
     """Versão async de enviar_email_outlook — não bloqueia o event-loop."""
+    corpo_html = _aplicar_assinatura_corpo(corpo_html)
     settings = _credenciais_outlook()
     token = await _obter_token_graph_async()
     url = f"{settings.graph_api_url.rstrip('/')}/users/{settings.outlook_sender}/sendMail"
