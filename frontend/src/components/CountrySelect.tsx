@@ -119,10 +119,10 @@ export function CountrySelect({
 
       {open && (
         <div
-          className="absolute z-40 mt-2 w-full max-h-64 overflow-auto rounded-xl p-1"
+          className="absolute z-40 mt-2 w-full max-h-72 flex flex-col rounded-xl p-1"
           style={dropdownPanelStyle}
         >
-          <div className="p-1">
+          <div className="shrink-0 p-1 space-y-1">
             <input
               type="text"
               value={query}
@@ -131,46 +131,47 @@ export function CountrySelect({
               className="w-full px-3 py-2 rounded-lg text-sm outline-none"
               style={fieldControlStyle}
             />
+            <button
+              type="button"
+              onClick={() => {
+                onChange('')
+                setQuery('')
+                setOpen(false)
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left text-sm"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              <span>{placeholder}</span>
+            </button>
           </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              onChange('')
-              setQuery('')
-              setOpen(false)
-            }}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left text-sm"
-            style={{ color: 'var(--text-muted)' }}
-          >
-            <span>{placeholder}</span>
-          </button>
-
-          {filteredCountries.map((country) => {
-            const isSelected = String(country.id) === value
-            return (
-              <button
-                key={country.id}
-                type="button"
-                onClick={() => {
-                  onChange(String(country.id))
-                  setQuery('')
-                  setOpen(false)
-                }}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left text-sm transition-colors"
-                style={dropdownOptionStyle({ selected: isSelected })}
-              >
-                <CountryFlag pais={country} size="sm" />
-                <span className="truncate flex-1">{country.nome}</span>
-                {isSelected ? <Check size={14} style={{ color: 'var(--accent)' }} /> : null}
-              </button>
-            )
-          })}
-          {filteredCountries.length === 0 && (
-            <p className="px-3 py-2 text-sm" style={{ color: 'var(--text-muted)' }}>
-              Nenhum país encontrado.
-            </p>
-          )}
+          <div className="min-h-0 flex-1 overflow-y-auto scrollbar-app pr-0.5">
+            {filteredCountries.map((country) => {
+              const isSelected = String(country.id) === value
+              return (
+                <button
+                  key={country.id}
+                  type="button"
+                  onClick={() => {
+                    onChange(String(country.id))
+                    setQuery('')
+                    setOpen(false)
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left text-sm transition-colors"
+                  style={dropdownOptionStyle({ selected: isSelected })}
+                >
+                  <CountryFlag pais={country} size="sm" />
+                  <span className="truncate flex-1">{country.nome}</span>
+                  {isSelected ? <Check size={14} style={{ color: 'var(--accent)' }} /> : null}
+                </button>
+              )
+            })}
+            {filteredCountries.length === 0 && (
+              <p className="px-3 py-2 text-sm" style={{ color: 'var(--text-muted)' }}>
+                Nenhum país encontrado.
+              </p>
+            )}
+          </div>
         </div>
       )}
     </div>

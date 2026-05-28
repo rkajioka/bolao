@@ -53,7 +53,7 @@ export function AutocompleteInput({
       />
       {open && !disabled && filteredOptions.length > 0 && (
         <div
-          className="absolute z-40 mt-1 w-full max-h-44 overflow-auto rounded-xl p-1"
+          className="absolute z-40 mt-1 w-full max-h-44 overflow-auto scrollbar-app rounded-xl p-1 pr-0.5"
           style={dropdownPanelStyle}
         >
           {filteredOptions.map((opt) => (

@@ -180,7 +180,7 @@ export function SelectInput({
           role="listbox"
           tabIndex={-1}
           onKeyDown={onListKeyDown}
-          className="absolute z-50 mt-2 w-full max-h-64 overflow-auto rounded-xl p-1"
+          className="absolute z-50 mt-2 w-full max-h-64 overflow-y-auto scrollbar-app rounded-xl p-1 pr-0.5"
           style={dropdownPanelStyle}
         >
           {options.map((option) => {
