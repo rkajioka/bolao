@@ -103,8 +103,9 @@ async def cache_hashed_assets(request: Request, call_next):
 @app.middleware("http")
 async def serve_spa_on_html_navigation(request: Request, call_next):
     if _frontend_dist.exists() and request.method == "GET":
-        accept = request.headers.get("accept", "")
-        if "text/html" in accept:
+        accept = request.headers.get("accept", "").lower()
+        # Navegação do browser (F5): text/html sem JSON. Fetch da API: application/json ou */*.
+        if "text/html" in accept and "application/json" not in accept:
             path = request.url.path.rstrip("/") or "/"
             if path in _SPA_HTML_PATHS:
                 index = _frontend_dist / "index.html"
@@ -148,7 +149,10 @@ if _frontend_dist.exists():
         return _spa_index_response()
 
     @app.get("/{full_path:path}", include_in_schema=False, response_model=None)
-    def serve_spa(full_path: str) -> FileResponse | JSONResponse:
+    def serve_spa(full_path: str, request: Request) -> FileResponse | JSONResponse:
+        accept = request.headers.get("accept", "").lower()
+        if "application/json" in accept:
+            return JSONResponse({"detail": "Not Found"}, status_code=404)
         path = f"/{full_path}".rstrip("/") or "/"
         if path not in _SPA_HTML_PATHS:
             return JSONResponse({"detail": "Not Found"}, status_code=404)

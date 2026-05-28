@@ -10,6 +10,7 @@ from app.schemas.perfil import AlterarSenhaRequest, PerfilUpdate
 from app.auth.password import hash_password, verify_password
 from app.core.avatar_url import resolver_url_avatar_publica
 from app.services import audit_log_service, auth_service, convite_service
+from app.services.convite_service import convite_esta_pendente
 
 
 def listar_equipe(db: Session, empresa_id: int) -> list[dict]:
@@ -21,17 +22,10 @@ def listar_equipe(db: Session, empresa_id: int) -> list[dict]:
         ).all()
     )
 
-    convites_pendentes = list(
-        db.scalars(
-            select(Convite).where(
-                and_(
-                    Convite.empresa_id == empresa_id,
-                    Convite.usado_em.is_(None),
-                    Convite.expiracao > datetime.now(UTC),
-                )
-            )
-        ).all()
+    convites_empresa = list(
+        db.scalars(select(Convite).where(Convite.empresa_id == empresa_id)).all()
     )
+    convites_pendentes = [c for c in convites_empresa if convite_esta_pendente(c)]
 
     emails_cadastrados = {u.email for u in usuarios}
 

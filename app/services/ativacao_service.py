@@ -13,21 +13,23 @@ from app.services import audit_log_service, convite_service
 def ativar_conta(db: Session, data: AtivarContaRequest, ip: str | None = None) -> Usuario:
     convite = convite_service.validar_token_for_update(db, data.token)
 
-    # Verificar se já existe usuário com este e-mail na empresa
-    usuario_existente = db.scalar(
-        select(Usuario).where(
-            Usuario.email == convite.email,
-            Usuario.empresa_id == convite.empresa_id,
-        )
-    )
-    if usuario_existente is not None and not usuario_existente.primeiro_login:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Esta conta já foi ativada. Faça login normalmente.",
-        )
-
+    usuario_existente = db.scalar(select(Usuario).where(Usuario.email == convite.email))
     if usuario_existente is not None:
-        # Usuário criado previamente pelo admin — apenas atualiza senha e conclui onboarding
+        if (
+            usuario_existente.empresa_id is not None
+            and usuario_existente.empresa_id != convite.empresa_id
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Este e-mail já está vinculado a outro bolão.",
+            )
+        if usuario_existente.empresa_id is None:
+            usuario_existente.empresa_id = convite.empresa_id
+        if not usuario_existente.primeiro_login:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Esta conta já foi ativada. Faça login normalmente.",
+            )
         usuario = usuario_existente
     else:
         usuario = Usuario(

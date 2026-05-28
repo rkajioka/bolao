@@ -54,6 +54,11 @@ export default defineConfig({
   },
   server: {
     proxy: {
+      '/api': {
+        target: API_TARGET,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
       '/auth': { target: API_TARGET, changeOrigin: true },
       '/paises': { target: API_TARGET, changeOrigin: true },
       '/jogos': apiProxy('/jogos'),

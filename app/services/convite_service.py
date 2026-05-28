@@ -38,18 +38,36 @@ def _expiracao_padrao() -> datetime:
     return datetime.now(UTC) + timedelta(hours=_EXPIRACAO_HORAS)
 
 
+def _as_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
+
+
+def convite_esta_pendente(convite: Convite, *, agora: datetime | None = None) -> bool:
+    if convite.usado_em is not None:
+        return False
+    momento = agora or datetime.now(UTC)
+    return _as_utc(convite.expiracao) > momento
+
+
+def _renovar_convite(convite: Convite, criado_por: int) -> str:
+    token = _gerar_token()
+    convite.token = token
+    convite.expiracao = _expiracao_padrao()
+    convite.usado_em = None
+    convite.criado_por = criado_por
+    return token
+
+
 def _get_convite_ativo(db: Session, token: str, *, for_update: bool = False) -> Convite | None:
-    agora = datetime.now(UTC)
-    stmt = select(Convite).where(
-        and_(
-            Convite.token == token,
-            Convite.usado_em.is_(None),
-            Convite.expiracao > agora,
-        )
-    )
+    stmt = select(Convite).where(Convite.token == token)
     if for_update:
         stmt = stmt.with_for_update()
-    return db.scalar(stmt)
+    convite = db.scalar(stmt)
+    if convite is None or not convite_esta_pendente(convite):
+        return None
+    return convite
 
 
 def _prefetch_usuarios_por_email(db: Session, empresa_id: int, emails: list[str]) -> dict[str, Usuario]:
@@ -66,17 +84,14 @@ def _prefetch_usuarios_por_email(db: Session, empresa_id: int, emails: list[str]
     return {u.email: u for u in rows}
 
 
-def _prefetch_convites_pendentes(db: Session, empresa_id: int, emails: list[str]) -> dict[str, Convite]:
+def _prefetch_convites_por_email(db: Session, empresa_id: int, emails: list[str]) -> dict[str, Convite]:
     if not emails:
         return {}
-    agora = datetime.now(UTC)
     rows = db.scalars(
         select(Convite).where(
             and_(
                 Convite.empresa_id == empresa_id,
                 Convite.email.in_(emails),
-                Convite.usado_em.is_(None),
-                Convite.expiracao > agora,
             )
         )
     ).all()
@@ -103,7 +118,7 @@ def criar_bulk_convites(
 
     emails_norm = [str(e).strip().lower() for e in data.emails]
     usuarios_map = _prefetch_usuarios_por_email(db, empresa_id, emails_norm)
-    convites_map = _prefetch_convites_pendentes(db, empresa_id, emails_norm)
+    convites_map = _prefetch_convites_por_email(db, empresa_id, emails_norm)
 
     for email in emails_norm:
         usuario_existente = usuarios_map.get(email)
@@ -112,7 +127,7 @@ def criar_bulk_convites(
             continue
 
         convite_existente = convites_map.get(email)
-        if convite_existente:
+        if convite_existente is not None and convite_esta_pendente(convite_existente):
             resultados.append(
                 ConviteResultadoItem(
                     email=email,
@@ -120,6 +135,26 @@ def criar_bulk_convites(
                     expiracao=convite_existente.expiracao.isoformat(),
                 )
             )
+            continue
+
+        if convite_existente is not None:
+            token = _renovar_convite(convite_existente, criado_por)
+            audit_log_service.log(
+                db,
+                acao="convite.renovado",
+                usuario_id=criado_por,
+                empresa_id=empresa_id,
+                alvo=email,
+                ip=ip,
+            )
+            resultados.append(
+                ConviteResultadoItem(
+                    email=email,
+                    status="convite_criado",
+                    expiracao=convite_existente.expiracao.isoformat(),
+                )
+            )
+            emails_pendentes.append(ConviteEmailPendente(email=email, token=token))
             continue
 
         if not empresa_quota_service.pode_adicionar_usuario(
@@ -302,10 +337,6 @@ def marcar_usado(db: Session, convite: Convite) -> None:
 def status_convite(convite: Convite) -> str:
     if convite.usado_em is not None:
         return "usado"
-    agora = datetime.now(UTC)
-    exp = convite.expiracao
-    if exp.tzinfo is None:
-        exp = exp.replace(tzinfo=UTC)
-    if exp <= agora:
-        return "expirado"
-    return "pendente"
+    if convite_esta_pendente(convite):
+        return "pendente"
+    return "expirado"

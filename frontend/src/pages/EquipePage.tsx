@@ -26,6 +26,7 @@ import { useResolvedEmpresaForAdmin } from '@/hooks/useResolvedEmpresaForAdmin'
 import { useAuth } from '@/features/auth/AuthContext'
 import { empresaService } from '@/services/empresa.service'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { EmptyState } from '@/components/EmptyState'
 import { useToast } from '@/components/Toast'
 
 function StatusBadge({ membro }: { membro: MembroEquipe }) {
@@ -490,7 +491,7 @@ export function EquipePage() {
 
   const effectiveEmpresaId = needsOwnerEmpresaPick ? resolvedEmpresaId : authEmpresaId
 
-  const { data: equipe, isLoading } = useQuery({
+  const { data: equipe, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['equipe', effectiveEmpresaId],
     queryFn: () => equipeService.listarEquipe(effectiveEmpresaId ?? undefined),
     enabled: effectiveEmpresaId != null,
@@ -546,6 +547,7 @@ export function EquipePage() {
 
   const usuarios = equipe?.filter((m) => m.tipo === 'usuario') ?? []
   const convites = equipe?.filter((m) => m.tipo === 'convite') ?? []
+  const totalNaLista = usuarios.length + convites.length
 
   return (
     <div className="pb-24 pt-2 flex flex-col gap-6">
@@ -584,8 +586,9 @@ export function EquipePage() {
                 Equipe
               </h1>
               <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                {usuarios.length} {usuarios.length === 1 ? 'membro' : 'membros'}{' '}
-                {convites.length > 0 && `· ${convites.length} convite${convites.length > 1 ? 's' : ''} pendente${convites.length > 1 ? 's' : ''}`}
+                {totalNaLista} {totalNaLista === 1 ? 'pessoa' : 'pessoas'} na lista
+                {convites.length > 0 &&
+                  ` (${convites.length} convite${convites.length > 1 ? 's' : ''} pendente${convites.length > 1 ? 's' : ''})`}
               </p>
             </div>
             <motion.button
@@ -654,6 +657,26 @@ export function EquipePage() {
                 />
               ))}
             </div>
+          ) : isError ? (
+            <EmptyState
+              icon={<Users size={28} style={{ color: 'var(--text-muted)' }} />}
+              title="Não foi possível carregar a equipe"
+              description={
+                error instanceof ApiError
+                  ? error.message
+                  : 'Verifique sua conexão e tente novamente.'
+              }
+              action={
+                <button
+                  type="button"
+                  onClick={() => void refetch()}
+                  className="text-sm font-medium"
+                  style={{ color: 'var(--accent)' }}
+                >
+                  Tentar novamente
+                </button>
+              }
+            />
           ) : (
             <>
               {usuarios.length === 0 && convites.length === 0 ? (

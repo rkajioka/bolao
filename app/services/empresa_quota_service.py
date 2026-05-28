@@ -1,12 +1,11 @@
-from datetime import UTC, datetime
-
 from fastapi import HTTPException, status
-from sqlalchemy import and_, func, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.convite import Convite
 from app.models.empresa import Empresa
 from app.models.usuario import Usuario
+from app.services.convite_service import convite_esta_pendente
 
 
 def contar_usuarios(db: Session, empresa_id: int) -> int:
@@ -17,17 +16,8 @@ def contar_usuarios(db: Session, empresa_id: int) -> int:
 
 
 def contar_convites_pendentes(db: Session, empresa_id: int) -> int:
-    agora = datetime.now(UTC)
-    total = db.scalar(
-        select(func.count()).select_from(Convite).where(
-            and_(
-                Convite.empresa_id == empresa_id,
-                Convite.usado_em.is_(None),
-                Convite.expiracao > agora,
-            )
-        )
-    )
-    return int(total or 0)
+    rows = db.scalars(select(Convite).where(Convite.empresa_id == empresa_id)).all()
+    return sum(1 for c in rows if convite_esta_pendente(c))
 
 
 def ocupacao_atual(db: Session, empresa_id: int, *, reservas_extras: int = 0) -> int:

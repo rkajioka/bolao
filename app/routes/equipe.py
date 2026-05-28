@@ -1,5 +1,3 @@
-from datetime import UTC, datetime
-
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
@@ -17,6 +15,7 @@ from app.services import convite_service, equipe_service, rate_limit_service, us
 router = APIRouter(prefix="/equipe", tags=["equipe"])
 
 
+@router.get("", include_in_schema=False)
 @router.get("/")
 def listar_equipe(
     db: Session = Depends(get_db),
@@ -101,10 +100,7 @@ def reenviar_convite(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Este convite já foi utilizado",
         )
-    exp = convite.expiracao
-    if exp.tzinfo is None:
-        exp = exp.replace(tzinfo=UTC)
-    if exp <= datetime.now(UTC):
+    if not convite_service.convite_esta_pendente(convite):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Convite expirado. Crie um novo convite para este e-mail.",

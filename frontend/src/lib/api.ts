@@ -145,6 +145,13 @@ export async function apiFetch<T>(path: string, opts: RequestOptions = {}): Prom
     throw new ApiError(detail || 'Erro na requisição', res.status)
   }
 
+  if (res.status !== 204 && !ct.includes('application/json')) {
+    throw new ApiError(
+      'Resposta inválida do servidor. Atualize a página ou contate o suporte.',
+      res.status,
+    )
+  }
+
   return data as T
 }
 
@@ -214,6 +221,13 @@ export async function apiPostMultipart<T>(
         : res.statusText
 
     throw new ApiError(detail || 'Erro na requisição', res.status)
+  }
+
+  if (res.status !== 204 && !ct.includes('application/json')) {
+    throw new ApiError(
+      'Resposta inválida do servidor. Atualize a página ou contate o suporte.',
+      res.status,
+    )
   }
 
   return data as T

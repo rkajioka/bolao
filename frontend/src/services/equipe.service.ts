@@ -4,6 +4,15 @@ import type { BulkConviteResponse, ConviteResultado, ConviteResumoEnvio, MembroE
 const INVITE_CHUNK_SIZE = 5
 const INVITE_CHUNK_PAUSE_MS = 1200
 
+/** Prefixo /api evita colisão Nginx entre SPA (/equipe) e FastAPI. */
+const EQUIPE_API = '/api/equipe'
+
+const INVITE_SUCCESS_STATUSES = new Set<ConviteResultado['status']>([
+  'convite_criado',
+  'convite_pendente',
+  'ja_cadastrado',
+])
+
 function empresaQs(empresaId?: number | null): string {
   if (empresaId == null) return ''
   return `?empresa_id=${empresaId}`
@@ -40,11 +49,11 @@ function mergeResumo(current: ConviteResumoEnvio | null, next: ConviteResumoEnvi
 
 export const equipeService = {
   async listarEquipe(empresaId?: number | null): Promise<MembroEquipe[]> {
-    return api.get<MembroEquipe[]>(`/equipe${empresaQs(empresaId)}`)
+    return api.get<MembroEquipe[]>(`${EQUIPE_API}${empresaQs(empresaId)}`)
   },
 
   async enviarConvites(emails: string[], empresaId?: number | null): Promise<BulkConviteResponse> {
-    return api.post<BulkConviteResponse>(`/equipe/convites${empresaQs(empresaId)}`, { emails })
+    return api.post<BulkConviteResponse>(`${EQUIPE_API}/convites${empresaQs(empresaId)}`, { emails })
   },
 
   async enviarConvitesEmLotes(
@@ -90,7 +99,7 @@ export const equipeService = {
       }
     }
 
-    return {
+    const payload: BulkConviteResponse = {
       itens,
       resumo_envio: resumo ?? {
         total: 0,
@@ -101,28 +110,39 @@ export const equipeService = {
         alerta_owners_limite_enviado: false,
       },
     }
+
+    const hasSuccess = itens.some((item) => INVITE_SUCCESS_STATUSES.has(item.status))
+    if (itens.length > 0 && !hasSuccess) {
+      const firstError = itens.find((item) => item.email_erro)?.email_erro
+      throw new ApiError(
+        firstError ?? 'Nenhum convite foi processado. Tente novamente.',
+        0,
+      )
+    }
+
+    return payload
   },
 
   async listarConvites(empresaId?: number | null): Promise<ConviteResultado[]> {
-    return api.get<ConviteResultado[]>(`/equipe/convites${empresaQs(empresaId)}`)
+    return api.get<ConviteResultado[]>(`${EQUIPE_API}/convites${empresaQs(empresaId)}`)
   },
 
   async reenviarConvite(conviteId: number, empresaId?: number | null): Promise<void> {
-    await api.post(`/equipe/convites/${conviteId}/reenviar${empresaQs(empresaId)}`)
+    await api.post(`${EQUIPE_API}/convites/${conviteId}/reenviar${empresaQs(empresaId)}`)
   },
 
   async bloquearUsuario(usuarioId: number, bloqueado: boolean, empresaId?: number | null): Promise<void> {
     const params = new URLSearchParams({ bloqueado: String(bloqueado) })
     if (empresaId != null) params.set('empresa_id', String(empresaId))
-    await api.patch(`/equipe/${usuarioId}/bloquear?${params.toString()}`)
+    await api.patch(`${EQUIPE_API}/${usuarioId}/bloquear?${params.toString()}`)
   },
 
   async removerUsuario(usuarioId: number, empresaId?: number | null): Promise<void> {
-    await api.delete(`/equipe/${usuarioId}${empresaQs(empresaId)}`)
+    await api.delete(`${EQUIPE_API}/${usuarioId}${empresaQs(empresaId)}`)
   },
 
   async resetSenhaMembro(usuarioId: number, empresaId?: number | null): Promise<void> {
-    await api.patch(`/equipe/${usuarioId}/reset-password${empresaQs(empresaId)}`)
+    await api.patch(`${EQUIPE_API}/${usuarioId}/reset-password${empresaQs(empresaId)}`)
   },
 
   async ativarConta(token: string, nome: string, senha: string, confirmar_senha: string, avatar_url?: string) {
