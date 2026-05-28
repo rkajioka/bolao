@@ -17,6 +17,7 @@ import { useAuth } from '@/features/auth/AuthContext'
 import { useTheme } from '@/hooks/useTheme'
 import { useEmpresaTheme } from '@/hooks/useEmpresaTheme'
 import { cn } from '@/lib/utils'
+import { BrandLogo } from '@/components/BrandLogo'
 import { UserAvatar } from '@/components/UserAvatar'
 import { OwnerNavBlockedDialog } from '@/components/OwnerNavBlockedDialog'
 
@@ -118,12 +119,7 @@ export function AppLayout() {
         <div className="max-w-2xl mx-auto flex items-center justify-between px-4 h-14">
           {/* Logo */}
           <div className="flex items-center gap-2">
-            <div
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black"
-              style={{ background: 'var(--accent)', color: isDark ? '#070A12' : '#fff' }}
-            >
-              B
-            </div>
+            <BrandLogo className="w-7 h-7" />
             <span className="font-bold text-sm tracking-tight" style={{ color: 'var(--text)' }}>
               Bolão da Copa LPC
             </span>

@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '@/features/auth/AuthContext'
+import { BrandLogo } from '@/components/BrandLogo'
 import { useToast } from '@/components/Toast'
 import { ApiError } from '@/lib/api'
 
@@ -82,12 +83,7 @@ export function LoginPage() {
       >
         {/* Logo */}
         <div className="text-center mb-8">
-          <div
-            className="inline-flex w-16 h-16 rounded-2xl items-center justify-center text-2xl font-black mb-4"
-            style={{ background: 'var(--accent)', color: '#070A12' }}
-          >
-            ⚽
-          </div>
+          <BrandLogo className="w-16 h-16 rounded-2xl mb-4" />
           <h1 className="text-2xl font-bold tracking-tight mb-1">Bolão da Copa LPC</h1>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
             Entre para fazer seus palpites
