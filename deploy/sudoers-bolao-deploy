@@ -10,8 +10,6 @@
 #   sudo -n systemctl daemon-reload && echo NOPASSWD OK
 #   sudo -n systemctl restart bolao
 
-Defaults:ubuntu !requiretty
-
 # Ubuntu costuma resolver systemctl em /usr/bin; incluir /bin evita falha de NOPASSWD por path.
 Cmnd_Alias BOLAO_SYSTEMCTL = /usr/bin/systemctl restart bolao, /usr/bin/systemctl daemon-reload, /bin/systemctl restart bolao, /bin/systemctl daemon-reload
 Cmnd_Alias BOLAO_CP_SERVICE = /usr/bin/cp /var/www/bolao/bolao.service /etc/systemd/system/bolao.service, /bin/cp /var/www/bolao/bolao.service /etc/systemd/system/bolao.service
