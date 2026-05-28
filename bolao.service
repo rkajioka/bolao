@@ -34,8 +34,8 @@ After=network.target
 
 [Service]
 Type=exec
-User=ubuntu                          # ajuste para o usuário que faz deploy
-Group=ubuntu
+User=bolao
+Group=bolao
 WorkingDirectory=/var/www/bolao
 
 # Carrega variáveis de ambiente do arquivo .env em produção
