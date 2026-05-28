@@ -41,11 +41,22 @@ jobs:
             if ! sudo -n "$SYSTEMCTL" daemon-reload 2>/dev/null; then
               echo "FALHA: sudo NOPASSWD nao funciona para o usuario SSH: $DEPLOY_USER"
               echo "O secret EC2_USER no GitHub deve ser esse mesmo usuario."
-              echo "No EC2 (sessao interativa), instale/atualize deploy/sudoers-bolao-deploy:"
-              echo "  sudo cp $APP_DIR/deploy/sudoers-bolao-deploy /etc/sudoers.d/bolao-deploy"
+              echo ""
+              echo "No EC2 (SSH interativo, uma vez), rode na ordem:"
+              echo "  sudo chown -R $DEPLOY_USER:$DEPLOY_USER $APP_DIR"
+              echo "  git config --global --add safe.directory $APP_DIR"
+              echo "  cd $APP_DIR && git pull origin main"
+              echo "  bash $APP_DIR/deploy/bootstrap-ec2-deploy.sh"
+              echo ""
+              echo "Se ja instalou sudoers antes: o sed antigo (s/^ubuntu /) deixa"
+              echo "Defaults:ubuntu errado. Reinstale com bootstrap ou:"
               echo "  sudo sed -i \"s/ubuntu/$DEPLOY_USER/g\" /etc/sudoers.d/bolao-deploy"
-              echo "  sudo chmod 440 /etc/sudoers.d/bolao-deploy && sudo visudo -cf /etc/sudoers.d/bolao-deploy"
-              echo "  sudo -n $SYSTEMCTL daemon-reload && echo NOPASSWD OK"
+              echo "  sudo visudo -cf /etc/sudoers.d/bolao-deploy"
+              if [ -f /etc/sudoers.d/bolao-deploy ]; then
+                echo ""
+                echo "Arquivo atual /etc/sudoers.d/bolao-deploy (primeiras linhas):"
+                sudo sed -n '1,12p' /etc/sudoers.d/bolao-deploy 2>/dev/null || true
+              fi
               exit 1
             fi
 

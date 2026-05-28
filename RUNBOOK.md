@@ -244,20 +244,19 @@ O deploy automático roda em push em `main` (`.github/workflows/deploy.yml`).
 
 ### Sudo sem senha (obrigatório uma vez)
 
-O SSH do GitHub Actions **não tem TTY**. Se aparecer `sudo: a terminal is required to authenticate`,
-instale o arquivo [`deploy/sudoers-bolao-deploy`](deploy/sudoers-bolao-deploy) (sessão SSH **interativa** com senha):
+O SSH do GitHub Actions **não tem TTY**. Rode **uma vez** em sessão SSH interativa (como o usuário do secret `EC2_USER`):
 
 ```bash
-cd /var/www/bolao
-git pull origin main
-sudo cp deploy/sudoers-bolao-deploy /etc/sudoers.d/bolao-deploy
-sudo sed -i "s/ubuntu/$(whoami)/g" /etc/sudoers.d/bolao-deploy
-sudo chmod 440 /etc/sudoers.d/bolao-deploy
-sudo visudo -cf /etc/sudoers.d/bolao-deploy
-sudo -n systemctl daemon-reload && echo "NOPASSWD OK"
+sudo chown -R "$(whoami):$(whoami)" /var/www/bolao
+git config --global --add safe.directory /var/www/bolao
+cd /var/www/bolao && git pull origin main
+bash deploy/bootstrap-ec2-deploy.sh
 ```
 
-Depois disso o workflow usa apenas `sudo -n` (systemctl + copiar `bolao.service`).
+O script instala [`deploy/sudoers-bolao-deploy`](deploy/sudoers-bolao-deploy) e testa `sudo -n systemctl daemon-reload`.
+
+**Importante:** use `sed "s/ubuntu/$(whoami)/g"` (substitui tudo, inclusive `Defaults:ubuntu`).
+O sed antigo `s/^ubuntu /` deixa `Defaults:ubuntu` e o CI continua falhando no preflight.
 
 ### Git `dubious ownership` em `/var/www/bolao`
 
