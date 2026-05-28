@@ -25,7 +25,6 @@ def listar_equipe(db: Session, empresa_id: int) -> list[dict]:
     convites_empresa = list(
         db.scalars(select(Convite).where(Convite.empresa_id == empresa_id)).all()
     )
-    convites_pendentes = [c for c in convites_empresa if convite_esta_pendente(c)]
 
     emails_cadastrados = {u.email for u in usuarios}
 
@@ -46,17 +45,19 @@ def listar_equipe(db: Session, empresa_id: int) -> list[dict]:
             "created_at": u.created_at.isoformat(),
         })
 
-    for c in convites_pendentes:
-        if c.email not in emails_cadastrados:
-            resultado.append({
-                "tipo": "convite",
-                "convite_id": c.id,
-                "email": c.email,
-                "expiracao": c.expiracao.isoformat(),
-                "status": "convite_pendente",
-                "criado_por": c.criado_por,
-                "created_at": c.created_at.isoformat(),
-            })
+    for c in convites_empresa:
+        if c.usado_em is not None or c.email in emails_cadastrados:
+            continue
+        status = "convite_pendente" if convite_esta_pendente(c) else "convite_expirado"
+        resultado.append({
+            "tipo": "convite",
+            "convite_id": c.id,
+            "email": c.email,
+            "expiracao": c.expiracao.isoformat(),
+            "status": status,
+            "criado_por": c.criado_por,
+            "created_at": c.created_at.isoformat(),
+        })
 
     return resultado
 

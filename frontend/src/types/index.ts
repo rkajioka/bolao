@@ -57,6 +57,8 @@ export interface UsuarioEmailEntrega {
   alerta_admins_enviado?: boolean
 }
 
+export type StatusConviteEquipe = 'convite_pendente' | 'convite_expirado'
+
 export interface MembroEquipe {
   tipo: 'usuario' | 'convite'
   // campos de usuário
@@ -74,7 +76,7 @@ export interface MembroEquipe {
   // campos de convite
   convite_id?: number
   expiracao?: string
-  status?: string
+  status?: StatusConviteEquipe
   criado_por?: number | null
 }
 

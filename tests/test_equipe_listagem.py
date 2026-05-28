@@ -92,6 +92,68 @@ def test_listar_equipe_inclui_convite_pendente(client) -> None:
     assert r.status_code == 200, r.text
     convites = [item for item in r.json() if item["tipo"] == "convite"]
     assert any(c["email"] == "convidado.listagem@example.com" for c in convites)
+    pendente = next(c for c in convites if c["email"] == "convidado.listagem@example.com")
+    assert pendente["status"] == "convite_pendente"
+
+
+def test_listar_equipe_inclui_convite_expirado(client) -> None:
+    db = SessionLocal()
+    try:
+        admin_id, _ = seed_admin_e_usuario(db)
+        admin = db.get(Usuario, admin_id)
+        assert admin is not None and admin.empresa_id is not None
+        db.add(
+            Convite(
+                empresa_id=admin.empresa_id,
+                email="expirado.listagem@example.com",
+                token="token-expirado-listagem",
+                expiracao=datetime.now(UTC) - timedelta(hours=1),
+                criado_por=admin_id,
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    token = _login(client, "admin-etapa13@example.com", "senhaadmin1")
+    r = client.get(
+        "/equipe",
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    assert r.status_code == 200, r.text
+    convites = [item for item in r.json() if item["tipo"] == "convite"]
+    expirado = next((c for c in convites if c["email"] == "expirado.listagem@example.com"), None)
+    assert expirado is not None
+    assert expirado["status"] == "convite_expirado"
+
+
+def test_listar_equipe_nao_inclui_convite_usado(client) -> None:
+    db = SessionLocal()
+    try:
+        admin_id, _ = seed_admin_e_usuario(db)
+        admin = db.get(Usuario, admin_id)
+        assert admin is not None and admin.empresa_id is not None
+        db.add(
+            Convite(
+                empresa_id=admin.empresa_id,
+                email="usado.listagem@example.com",
+                token="token-usado-listagem",
+                expiracao=datetime.now(UTC) + timedelta(hours=48),
+                usado_em=datetime.now(UTC),
+                criado_por=admin_id,
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    token = _login(client, "admin-etapa13@example.com", "senhaadmin1")
+    r = client.get(
+        "/equipe",
+        headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+    )
+    assert r.status_code == 200, r.text
+    assert not any(item.get("email") == "usado.listagem@example.com" for item in r.json())
 
 
 def test_renovar_convite_expirado_aparece_na_listagem(client) -> None:
@@ -132,9 +194,12 @@ def test_renovar_convite_expirado_aparece_na_listagem(client) -> None:
     api_headers = {**headers, "Accept": "application/json"}
     r_antes = client.get("/equipe", headers=api_headers)
     assert r_antes.status_code == 200
-    assert not any(
-        item.get("email") == "expirado.renova@example.com" for item in r_antes.json()
+    antes = next(
+        (item for item in r_antes.json() if item.get("email") == "expirado.renova@example.com"),
+        None,
     )
+    assert antes is not None
+    assert antes["status"] == "convite_expirado"
 
     r_post = client.post(
         "/equipe/convites",

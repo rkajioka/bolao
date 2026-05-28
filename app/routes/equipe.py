@@ -1,9 +1,10 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
+
+from app.core.client_ip import client_ip
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_resolved_empresa_id, is_owner, require_admin
-from app.core.client_ip import client_ip
 from app.core.config import get_settings
 from app.database import get_db
 from app.models.convite import Convite
@@ -82,12 +83,13 @@ def listar_convites(
 @router.post("/convites/{convite_id}/reenviar", status_code=status.HTTP_204_NO_CONTENT)
 def reenviar_convite(
     convite_id: int,
+    request: Request,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(require_admin),
+    admin: Usuario = Depends(require_admin),
     empresa_id: int = Depends(get_resolved_empresa_id),
 ) -> None:
-    """Reenvia o e-mail de um convite pendente já existente."""
+    """Reenvia o e-mail de convite; se expirado, renova token e prazo antes."""
     convite = db.scalar(
         select(Convite).where(
             and_(Convite.id == convite_id, Convite.empresa_id == empresa_id)
@@ -100,17 +102,22 @@ def reenviar_convite(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Este convite já foi utilizado",
         )
-    if not convite_service.convite_esta_pendente(convite):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Convite expirado. Crie um novo convite para este e-mail.",
+    if convite_service.convite_esta_pendente(convite):
+        token = convite.token
+    else:
+        token = convite_service.renovar_convite_expirado(
+            db,
+            convite,
+            admin.id,
+            empresa_id=empresa_id,
+            ip=client_ip(request),
         )
     empresa = db.get(Empresa, empresa_id)
     empresa_nome = empresa.nome if empresa is not None else "Bolão"
     background_tasks.add_task(
         convite_service.reenviar_email_convite_background,
         convite.email,
-        convite.token,
+        token,
         empresa_nome,
     )
 

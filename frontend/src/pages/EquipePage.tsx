@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -15,6 +15,7 @@ import {
   Upload,
   User,
   RefreshCw,
+  Search,
 } from 'lucide-react'
 import { equipeService } from '@/services/equipe.service'
 import type { BulkConviteResponse, ConviteResultado, ConviteResumoEnvio, MembroEquipe } from '@/types'
@@ -29,8 +30,29 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { EmptyState } from '@/components/EmptyState'
 import { useToast } from '@/components/Toast'
 
+type FiltroConviteEquipe = 'todos' | 'link_expirado'
+
+function matchesBuscaEquipe(membro: MembroEquipe, busca: string): boolean {
+  const term = busca.trim().toLowerCase()
+  if (!term) return true
+  const nome = (membro.nome ?? '').toLowerCase()
+  const email = membro.email.toLowerCase()
+  return nome.includes(term) || email.includes(term)
+}
+
 function StatusBadge({ membro }: { membro: MembroEquipe }) {
   if (membro.tipo === 'convite') {
+    if (membro.status === 'convite_expirado') {
+      return (
+        <span
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
+          style={{ background: 'var(--danger-dim)', color: 'var(--danger)' }}
+        >
+          <XCircle size={10} />
+          Link expirado
+        </span>
+      )
+    }
     return (
       <span
         className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
@@ -137,11 +159,11 @@ function MemberCard({
           <StatusBadge membro={membro} />
         </div>
 
-        {/* Convite: expira em + botão de reenvio */}
+        {/* Convite: expiração + botão de reenvio */}
         {membro.tipo === 'convite' && membro.expiracao && (
           <div className="mt-2 flex flex-col gap-1.5">
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              Expira em{' '}
+              {membro.status === 'convite_expirado' ? 'Expirou em ' : 'Expira em '}
               {new Date(membro.expiracao).toLocaleString('pt-BR', {
                 day: '2-digit',
                 month: '2-digit',
@@ -154,12 +176,24 @@ function MemberCard({
                 type="button"
                 disabled={reenviarBusy}
                 onClick={() => onReenviarConvite?.(membro.convite_id!)}
-                aria-label={`Reenviar convite para ${membro.email}`}
+                aria-label={
+                  membro.status === 'convite_expirado'
+                    ? `Enviar novo link para ${membro.email}`
+                    : `Reenviar convite para ${membro.email}`
+                }
                 className="self-start flex items-center gap-1.5 text-xs px-2 py-1 rounded-lg transition-colors disabled:opacity-50"
-                style={{ background: 'var(--highlight-dim)', color: 'var(--highlight)' }}
+                style={
+                  membro.status === 'convite_expirado'
+                    ? { background: 'var(--danger-dim)', color: 'var(--danger)' }
+                    : { background: 'var(--highlight-dim)', color: 'var(--highlight)' }
+                }
               >
                 <RefreshCw size={11} className={reenviarBusy ? 'animate-spin' : ''} />
-                {reenviarBusy ? 'Reenviando…' : 'Reenviar e-mail'}
+                {reenviarBusy
+                  ? 'Enviando…'
+                  : membro.status === 'convite_expirado'
+                    ? 'Enviar novo link'
+                    : 'Reenviar e-mail'}
               </button>
             )}
           </div>
@@ -477,6 +511,8 @@ export function EquipePage() {
   const [inviteResumo, setInviteResumo] = useState<ConviteResumoEnvio | null>(null)
   const [usuarioRemoverId, setUsuarioRemoverId] = useState<number | null>(null)
   const [reenviandoConviteId, setReenviandoConviteId] = useState<number | null>(null)
+  const [busca, setBusca] = useState('')
+  const [filtroConvite, setFiltroConvite] = useState<FiltroConviteEquipe>('todos')
 
   const { data: empresas = [] } = useQuery({
     queryKey: ['empresas', 'owner'],
@@ -528,10 +564,18 @@ export function EquipePage() {
   }
 
   const handleReenviarConvite = async (conviteId: number) => {
+    const eraExpirado = equipe?.some(
+      (m) => m.convite_id === conviteId && m.status === 'convite_expirado',
+    )
     setReenviandoConviteId(conviteId)
     try {
       await equipeService.reenviarConvite(conviteId, effectiveEmpresaId ?? undefined)
-      success('E-mail de convite reenviado.')
+      await queryClient.invalidateQueries({ queryKey: ['equipe'] })
+      success(
+        eraExpirado
+          ? 'Novo link de ativação enviado por e-mail.'
+          : 'E-mail de convite reenviado.',
+      )
     } catch (err) {
       error(err instanceof Error ? err.message : 'Erro ao reenviar convite')
     } finally {
@@ -548,6 +592,22 @@ export function EquipePage() {
   const usuarios = equipe?.filter((m) => m.tipo === 'usuario') ?? []
   const convites = equipe?.filter((m) => m.tipo === 'convite') ?? []
   const totalNaLista = usuarios.length + convites.length
+  const convitesExpirados = convites.filter((m) => m.status === 'convite_expirado').length
+
+  const todosMembros = useMemo(() => [...usuarios, ...convites], [usuarios, convites])
+
+  const membrosFiltrados = useMemo(() => {
+    return todosMembros.filter((membro) => {
+      if (filtroConvite === 'link_expirado') {
+        if (membro.tipo !== 'convite' || membro.status !== 'convite_expirado') {
+          return false
+        }
+      }
+      return matchesBuscaEquipe(membro, busca)
+    })
+  }, [todosMembros, busca, filtroConvite])
+
+  const filtroAtivo = busca.trim() !== '' || filtroConvite !== 'todos'
 
   return (
     <div className="pb-24 pt-2 flex flex-col gap-6">
@@ -691,25 +751,98 @@ export function EquipePage() {
                 </div>
               ) : (
                 <div className="flex flex-col gap-3">
-                  <AnimatePresence>
-                    {[...usuarios, ...convites].map((membro) => (
-                      <MemberCard
-                        key={membro.tipo === 'usuario' ? `u-${membro.id}` : `c-${membro.convite_id}`}
-                        membro={membro}
-                        onBloquear={(id, bloqueado) => bloquearMutation.mutate({ id, bloqueado })}
-                        onRemover={(id) => setUsuarioRemoverId(id)}
-                        onResetSenha={handleResetSenha}
-                        onReenviarConvite={handleReenviarConvite}
-                        bloqueandoId={
-                          bloquearMutation.isPending ? bloquearMutation.variables?.id ?? null : null
-                        }
-                        resetandoSenhaId={
-                          resetSenhaMutation.isPending ? resetSenhaMutation.variables ?? null : null
-                        }
-                        reenviandoConviteId={reenviandoConviteId}
+                  <div className="flex flex-col gap-2">
+                    <div className="relative">
+                      <Search
+                        size={16}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                        style={{ color: 'var(--text-muted)' }}
+                        aria-hidden
                       />
-                    ))}
-                  </AnimatePresence>
+                      <input
+                        type="search"
+                        value={busca}
+                        onChange={(e) => setBusca(e.target.value)}
+                        placeholder="Buscar por nome ou e-mail…"
+                        aria-label="Buscar na equipe"
+                        className="w-full pl-9 pr-3 py-2.5 rounded-xl text-sm outline-none"
+                        style={{
+                          background: 'var(--glass)',
+                          border: '1px solid var(--border)',
+                          color: 'var(--text)',
+                        }}
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {(
+                        [
+                          { id: 'todos' as const, label: 'Todos' },
+                          {
+                            id: 'link_expirado' as const,
+                            label: `Link expirado${convitesExpirados > 0 ? ` (${convitesExpirados})` : ''}`,
+                          },
+                        ] as const
+                      ).map((opcao) => {
+                        const ativo = filtroConvite === opcao.id
+                        return (
+                          <button
+                            key={opcao.id}
+                            type="button"
+                            onClick={() => setFiltroConvite(opcao.id)}
+                            className="px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
+                            style={
+                              ativo
+                                ? { background: 'var(--accent)', color: '#fff' }
+                                : {
+                                    background: 'var(--glass)',
+                                    border: '1px solid var(--border)',
+                                    color: 'var(--text-muted)',
+                                  }
+                            }
+                          >
+                            {opcao.label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    {filtroAtivo && (
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        Exibindo {membrosFiltrados.length} de {totalNaLista}
+                      </p>
+                    )}
+                  </div>
+
+                  {membrosFiltrados.length === 0 ? (
+                    <EmptyState
+                      icon={<Users size={28} style={{ color: 'var(--text-muted)' }} />}
+                      title="Nenhum resultado"
+                      description={
+                        filtroConvite === 'link_expirado'
+                          ? 'Não há convites com link de ativação expirado.'
+                          : 'Nenhum membro corresponde à busca.'
+                      }
+                    />
+                  ) : (
+                    <AnimatePresence>
+                      {membrosFiltrados.map((membro) => (
+                        <MemberCard
+                          key={membro.tipo === 'usuario' ? `u-${membro.id}` : `c-${membro.convite_id}`}
+                          membro={membro}
+                          onBloquear={(id, bloqueado) => bloquearMutation.mutate({ id, bloqueado })}
+                          onRemover={(id) => setUsuarioRemoverId(id)}
+                          onResetSenha={handleResetSenha}
+                          onReenviarConvite={handleReenviarConvite}
+                          bloqueandoId={
+                            bloquearMutation.isPending ? bloquearMutation.variables?.id ?? null : null
+                          }
+                          resetandoSenhaId={
+                            resetSenhaMutation.isPending ? resetSenhaMutation.variables ?? null : null
+                          }
+                          reenviandoConviteId={reenviandoConviteId}
+                        />
+                      ))}
+                    </AnimatePresence>
+                  )}
                 </div>
               )}
             </>

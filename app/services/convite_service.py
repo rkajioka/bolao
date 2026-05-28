@@ -60,6 +60,28 @@ def _renovar_convite(convite: Convite, criado_por: int) -> str:
     return token
 
 
+def renovar_convite_expirado(
+    db: Session,
+    convite: Convite,
+    criado_por: int,
+    *,
+    empresa_id: int,
+    ip: str | None = None,
+) -> str:
+    """Renova token e expiração de convite expirado (não usado)."""
+    token = _renovar_convite(convite, criado_por)
+    audit_log_service.log(
+        db,
+        acao="convite.renovado",
+        usuario_id=criado_por,
+        empresa_id=empresa_id,
+        alvo=convite.email,
+        ip=ip,
+    )
+    db.commit()
+    return token
+
+
 def _get_convite_ativo(db: Session, token: str, *, for_update: bool = False) -> Convite | None:
     stmt = select(Convite).where(Convite.token == token)
     if for_update:
