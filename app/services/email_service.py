@@ -238,6 +238,8 @@ async def tentar_enviar_convite_async(
     corpo_html = (
         f"<p>Você foi convidado para o bolão <strong>{safe_nome}</strong>.</p>"
         f'<p><a href="{link}">Ativar minha conta</a></p>'
+        "<p>Este link funciona uma única vez e é válido pelas próximas 72 horas. "
+        "Se o prazo expirar, entre em contato com o administrador do bolão.</p>"
         "<p>Se você não esperava este convite, ignore este e-mail.</p>"
     )
     return await _enviar_com_log_async(
@@ -345,6 +347,8 @@ def tentar_enviar_convite(
     corpo_html = (
         f"<p>Você foi convidado para o bolão <strong>{safe_nome}</strong>.</p>"
         f'<p><a href="{link}">Ativar minha conta</a></p>'
+        "<p>Este link funciona uma única vez e é válido pelas próximas 72 horas. "
+        "Se o prazo expirar, entre em contato com o administrador do bolão.</p>"
         "<p>Se você não esperava este convite, ignore este e-mail.</p>"
     )
     return _enviar_com_log(
