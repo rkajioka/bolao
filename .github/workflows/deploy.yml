@@ -29,13 +29,22 @@ jobs:
               . "$HOME/.nvm/nvm.sh"
             fi
 
-            echo "→ Preflight (mesmo ambiente do CI)..."
+            echo "→ Preflight..."
             command -v python3 >/dev/null || { echo "FALHA: python3 ausente"; exit 1; }
-            command -v npm >/dev/null || { echo "FALHA: npm ausente no PATH (rodar Fase B no EC2)"; exit 1; }
+            if ! command -v npm >/dev/null; then
+              echo "→ npm ausente — instalando Node.js 20 (NodeSource)..."
+              curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+              sudo apt-get install -y nodejs
+            fi
+            command -v npm >/dev/null || { echo "FALHA: npm ainda ausente após instalação"; exit 1; }
 
             echo "→ Atualizando código..."
             git fetch origin main
             git reset --hard origin/main
+
+            echo "→ Sincronizando unit systemd..."
+            sudo cp "$APP_DIR/bolao.service" /etc/systemd/system/bolao.service
+            sudo systemctl daemon-reload
 
             echo "→ Garantindo venv Python..."
             if ! "$PYTHON" -c "import sys" >/dev/null 2>&1; then
