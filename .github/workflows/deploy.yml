@@ -17,26 +17,45 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            set -e
-            cd /var/www/bolao
+            set -euo pipefail
+            APP_DIR="/var/www/bolao"
+            PYTHON="$APP_DIR/.venv/bin/python"
+            PIP="$APP_DIR/.venv/bin/pip"
+
+            cd "$APP_DIR"
+
+            export PATH="/usr/local/bin:/usr/bin:$PATH"
+            if [ -f "$HOME/.nvm/nvm.sh" ]; then
+              . "$HOME/.nvm/nvm.sh"
+            fi
+
+            echo "→ Preflight (mesmo ambiente do CI)..."
+            command -v python3 >/dev/null || { echo "FALHA: python3 ausente"; exit 1; }
+            command -v npm >/dev/null || { echo "FALHA: npm ausente no PATH (rodar Fase B no EC2)"; exit 1; }
 
             echo "→ Atualizando código..."
             git fetch origin main
             git reset --hard origin/main
 
-            echo "→ Instalando dependências Python..."
-            if [ ! -x .venv/bin/python ]; then
-              python3 -m venv .venv
+            echo "→ Garantindo venv Python..."
+            if ! "$PYTHON" -c "import sys" >/dev/null 2>&1; then
+              echo "  venv ausente ou quebrado — recriando"
+              rm -rf "$APP_DIR/.venv"
+              python3 -m venv "$APP_DIR/.venv"
             fi
-            .venv/bin/pip install -r requirements.txt --quiet
+            "$PIP" install -r "$APP_DIR/requirements.txt"
 
             echo "→ Buildando frontend..."
-            cd frontend && npm ci --silent && npm run build && cd ..
+            ( cd "$APP_DIR/frontend" && npm ci && npm run build )
 
             echo "→ Rodando migrations..."
-            .venv/bin/python -m alembic upgrade head
+            "$PYTHON" -m alembic upgrade head
 
             echo "→ Reiniciando serviço..."
             sudo systemctl restart bolao
+
+            echo "→ Verificação local pós-restart..."
+            sleep 2
+            systemctl is-active --quiet bolao || { echo "FALHA: bolao não está active"; exit 1; }
 
             echo "✅ Deploy concluído!"

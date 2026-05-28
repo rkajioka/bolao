@@ -36,16 +36,16 @@ After=network.target
 Type=exec
 User=ubuntu                          # ajuste para o usuário que faz deploy
 Group=ubuntu
-WorkingDirectory=/opt/bolao          # ajuste para o diretório do projeto
+WorkingDirectory=/var/www/bolao
 
 # Carrega variáveis de ambiente do arquivo .env em produção
-EnvironmentFile=/opt/bolao/.env
+EnvironmentFile=/var/www/bolao/.env
 
 # Número de workers: sobrescreva via WEB_CONCURRENCY no .env
 # Padrão conservador para t3.small (2 vCPUs, 2 GB RAM).
 Environment="WEB_CONCURRENCY=3"
 
-ExecStart=/opt/bolao/venv/bin/gunicorn \
+ExecStart=/var/www/bolao/.venv/bin/gunicorn \
     --workers ${WEB_CONCURRENCY} \
     --worker-class uvicorn.workers.UvicornWorker \
     --bind 127.0.0.1:8000 \

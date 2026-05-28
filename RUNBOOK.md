@@ -87,8 +87,9 @@ O arquivo [`nginx.conf`](nginx.conf) na raiz do repositório é a referência pa
 
 ### Por que isso importa
 
-Se o Nginx entregar `index.html` para `GET /equipe` com `Accept: application/json`,
-a tela Equipe mostra **0 membros** mesmo com usuários no banco (`Content-Type: text/html`).
+Se o Nginx entregar `index.html` para chamadas de API da equipe, a tela mostra **0 membros**
+mesmo com usuários no banco. O frontend usa **`/api/equipe`** (location `/api/` → sempre FastAPI);
+a rota React continua em `/equipe` (SPA). Após deploy do `nginx.conf` atualizado: `sudo nginx -t && sudo systemctl reload nginx`.
 
 ### Ao adicionar um novo router FastAPI
 
@@ -225,3 +226,74 @@ WHERE wait_event_type = 'Lock';
 Os endpoints com `SELECT FOR UPDATE` são:
 - `POST /auth/ativar-conta` → lock no `Convite` antes de criar o `Usuario`
 - `POST /auth/redefinir-senha` → lock no `PasswordReset` antes de marcar como usado
+
+---
+
+## Deploy EC2 (GitHub Actions + SSH)
+
+Constantes de produção (devem coincidir com `deploy.yml` e `bolao.service`):
+
+| Constante | Valor |
+|-----------|-------|
+| `APP_DIR` | `/var/www/bolao` |
+| `VENV_DIR` | `/var/www/bolao/.venv` |
+| `PYTHON` | `/var/www/bolao/.venv/bin/python` |
+| `GUNICORN` | `/var/www/bolao/.venv/bin/gunicorn` |
+
+O deploy automático roda em push em `main` (`.github/workflows/deploy.yml`). Após alterar `bolao.service` no servidor:
+
+```bash
+sudo cp /var/www/bolao/bolao.service /etc/systemd/system/bolao.service
+sudo systemctl daemon-reload
+sudo systemctl restart bolao
+```
+
+### Descoberta (antes de debugar deploy)
+
+Conectar com o usuário do secret `EC2_USER` e rodar:
+
+```bash
+set -euo pipefail
+echo "=== Systemd ==="
+systemctl cat bolao | grep -E '^(WorkingDirectory|ExecStart|EnvironmentFile|User)='
+echo "=== Venv ==="
+/var/www/bolao/.venv/bin/python -c "import sys; print('OK', sys.executable)" \
+  || echo "RESULTADO: VENV_QUEBRADO"
+echo "=== npm (shell não interativo, igual ao CI) ==="
+bash -lc 'command -v npm; npm -v' || echo "RESULTADO: NPM_AUSENTE_NO_SSH_NAO_INTERATIVO"
+```
+
+### Recuperação manual (site fora ou venv quebrado)
+
+```bash
+APP_DIR=/var/www/bolao
+set -euo pipefail
+cd "$APP_DIR"
+rm -rf .venv
+python3 -m venv .venv
+"$APP_DIR/.venv/bin/pip" install -r requirements.txt
+bash -lc 'command -v npm'   # deve existir; senão instalar Node (abaixo)
+( cd "$APP_DIR/frontend" && npm ci && npm run build )
+"$APP_DIR/.venv/bin/python" -m alembic upgrade head
+sudo systemctl restart bolao
+curl -sf "https://SEU_DOMINIO/health" | grep -q '"status":"ok"' && echo PASS || echo FAIL
+```
+
+### Node ausente no SSH não interativo
+
+O GitHub Actions não carrega `.bashrc`. Teste: `bash -lc 'command -v npm'`. Se falhar:
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
+bash -lc 'node -v && npm -v'
+```
+
+### Validação pós-deploy
+
+```bash
+curl -sf https://SEU_DOMINIO/health
+sudo systemctl is-active bolao
+journalctl -u bolao -n 50 --no-pager
+test -f /var/www/bolao/frontend/dist/index.html && echo "dist OK"
+```
