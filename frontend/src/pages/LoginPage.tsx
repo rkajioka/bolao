@@ -88,7 +88,7 @@ export function LoginPage() {
           >
             ⚽
           </div>
-          <h1 className="text-2xl font-bold tracking-tight mb-1">Bolão da Copa</h1>
+          <h1 className="text-2xl font-bold tracking-tight mb-1">Bolão da Copa LPC</h1>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
             Entre para fazer seus palpites
           </p>
@@ -101,7 +101,7 @@ export function LoginPage() {
               htmlFor="email"
               className="block text-xs font-semibold mb-1.5 uppercase tracking-wider"
               style={{ color: 'var(--text-muted)' }}
-            >
+            > 
               E-mail
             </label>
             <div className="relative">

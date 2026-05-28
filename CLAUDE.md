@@ -58,7 +58,9 @@ Antes de cada deploy em `main`, confirme:
 - [ ] `WEB_CONCURRENCY` definido no `.env` (padrão: 3 para t3.small, 5 para t3.medium)
 - [ ] `DB_POOL_SIZE` e `DB_POOL_MAX_OVERFLOW` revisados — total = `WEB_CONCURRENCY × (POOL_SIZE + MAX_OVERFLOW)` deve ser < `max_connections` do PostgreSQL
 - [ ] `bolao.service` instalado em `/etc/systemd/system/` e habilitado (`systemctl enable bolao`)
-- [ ] Nginx configurado com gzip e headers de segurança (`nginx.conf` na raiz)
+- [ ] Nginx configurado com gzip e headers de segurança (`nginx.conf` na raiz) — rotas da API na raiz (`/equipe`, `/auth`, …), não só `/api/`
+- [ ] Após alterar `nginx.conf`: `sudo nginx -t && sudo systemctl reload nginx` (ver RUNBOOK.md)
+- [ ] `GET /equipe` com `Accept: application/json` retorna JSON, não HTML (DevTools ou curl)
 - [ ] `alembic upgrade head` executado após deploy
 - [ ] Serviço reiniciado: `sudo systemctl restart bolao`
 - [ ] Health check OK: `curl https://<dominio>/health`

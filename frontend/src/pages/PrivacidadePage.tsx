@@ -148,7 +148,7 @@ export function PrivacidadePage() {
         {/* Intro */}
         <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
           Esta Política de Privacidade descreve como o{' '}
-          <strong style={{ color: 'var(--text)' }}>Bolão da Copa</strong> coleta, usa e protege
+          <strong style={{ color: 'var(--text)' }}>Bolão da Copa LPC</strong> coleta, usa e protege
           suas informações pessoais. Ao usar nossa plataforma, você concorda com as práticas
           descritas aqui.
         </p>

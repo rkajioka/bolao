@@ -80,6 +80,72 @@ processo. É uma refatoração relevante mas compatível com a estrutura atual d
 
 ---
 
+## Nginx — API na raiz e rotas duplas (SPA + FastAPI)
+
+O frontend chama a API em `/auth`, `/equipe`, `/ranking`, etc. (sem prefixo `/api/`).
+O arquivo [`nginx.conf`](nginx.conf) na raiz do repositório é a referência para produção.
+
+### Por que isso importa
+
+Se o Nginx entregar `index.html` para `GET /equipe` com `Accept: application/json`,
+a tela Equipe mostra **0 membros** mesmo com usuários no banco (`Content-Type: text/html`).
+
+### Ao adicionar um novo router FastAPI
+
+1. Confira o `prefix` em `app/routes/*.py`.
+2. Se **não** existir página React no mesmo path → adicione o prefixo na regex **só-API** em `nginx.conf`.
+3. Se existir página React no mesmo path (como `/equipe`) → adicione na regex **rotas duplas** e em `frontend/vite.config.ts` (`SPA_HTML_EXACT_PATHS` + `apiProxy`).
+4. No servidor: `sudo nginx -t && sudo systemctl reload nginx`.
+
+### Deploy da config no EC2
+
+```bash
+# 1. Backup
+sudo cp /etc/nginx/sites-available/bolao /etc/nginx/sites-available/bolao.bak.$(date +%F)
+
+# 2. Copiar nginx.conf do repositório para o path usado na instância
+sudo cp /caminho/do/repo/nginx.conf /etc/nginx/sites-available/bolao
+
+# 3. Validar e aplicar
+sudo nginx -t
+sudo systemctl reload nginx
+
+# 4. Backend atrás do proxy (IP real nos logs)
+# Confirme TRUSTED_PROXY=true no .env do serviço bolao
+grep TRUSTED_PROXY /caminho/do/.env
+```
+
+### Verificação pós-deploy
+
+```bash
+# Health
+curl -s https://SEU_DOMINIO/health
+# Esperado: {"status":"ok"}
+
+# API Equipe (substitua o token)
+curl -s -D - -o /tmp/equipe.json \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  "https://SEU_DOMINIO/equipe?empresa_id=2"
+# Esperado no header: Content-Type: application/json
+# Esperado no corpo: array JSON (não HTML)
+```
+
+No navegador (DevTools → Rede, **Desativar cache**):
+
+- `equipe?empresa_id=…` → `Content-Type: application/json`, corpo com membros/convites.
+- F5 em `/equipe` → página React continua carregando (HTML).
+
+### Sintomas de config incorreta
+
+| Sintoma | Causa provável |
+|---------|----------------|
+| Equipe com 0 membros, DB ok | `/equipe` retornando HTML da SPA |
+| 502 Bad Gateway | gunicorn/uvicorn não está em `127.0.0.1:8000` |
+| Login ok, dados vazios | Prefixo de API faltando no `nginx.conf` |
+
+---
+
 ## Rotação de `JWT_SECRET` (Sprint 2.10)
 
 **Impacto**: A variável `JWT_SECRET` assina **todos** os access tokens e refresh tokens em

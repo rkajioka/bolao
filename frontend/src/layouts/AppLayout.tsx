@@ -125,7 +125,7 @@ export function AppLayout() {
               B
             </div>
             <span className="font-bold text-sm tracking-tight" style={{ color: 'var(--text)' }}>
-              Bolão da Copa
+              Bolão da Copa LPC
             </span>
           </div>
 
