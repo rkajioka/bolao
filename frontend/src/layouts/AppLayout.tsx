@@ -119,7 +119,7 @@ export function AppLayout() {
         <div className="max-w-2xl mx-auto flex items-center justify-between px-4 h-14">
           {/* Logo */}
           <div className="flex items-center gap-2">
-            <BrandLogo className="w-7 h-7" />
+            <BrandLogo variant="header" />
             <span className="font-bold text-sm tracking-tight" style={{ color: 'var(--text)' }}>
               Bolão da Copa LPC
             </span>

@@ -24,7 +24,9 @@ from app.services import email_dispatch_service
 logger = logging.getLogger(__name__)
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+_ASSINATURA_CID = "bolao_assinatura_lpc"
 _ASSINATURA_CANDIDATES = (
+    _PROJECT_ROOT / "app" / "resources" / "email" / "assinatura.png",
     _PROJECT_ROOT / "frontend" / "public" / "assinatura.png",
     _PROJECT_ROOT / "frontend" / "dist" / "assinatura.png",
 )
@@ -38,29 +40,56 @@ def _resolver_caminho_assinatura() -> Path | None:
 
 
 @lru_cache(maxsize=1)
-def _fragmento_assinatura_html() -> str:
+def _carregar_assinatura_png() -> bytes | None:
     path = _resolver_caminho_assinatura()
     if path is None:
         logger.warning(
             "assinatura.png não encontrado em %s; e-mails serão enviados sem assinatura",
             ", ".join(str(p) for p in _ASSINATURA_CANDIDATES),
         )
+        return None
+    return path.read_bytes()
+
+
+def _fragmento_assinatura_html() -> str:
+    if _carregar_assinatura_png() is None:
         return ""
-    encoded = base64.b64encode(path.read_bytes()).decode("ascii")
     return (
         "<br><br><br>"
         '<p style="margin:0;padding:0;">'
-        f'<img src="data:image/png;base64,{encoded}" alt="Assinatura" '
-        'style="display:block;max-width:480px;height:auto;border:0;" />'
+        f'<img src="cid:{_ASSINATURA_CID}" alt="Assinatura" '
+        'style="display:block;max-width:320px;height:auto;border:0;" />'
         "</p>"
     )
 
 
-def _aplicar_assinatura_corpo(corpo_html: str) -> str:
+def _anexos_assinatura_inline() -> list[dict]:
+    png = _carregar_assinatura_png()
+    if png is None:
+        return []
+    return [
+        {
+            "@odata.type": "#microsoft.graph.fileAttachment",
+            "name": "assinatura.png",
+            "contentType": "image/png",
+            "contentBytes": base64.b64encode(png).decode("ascii"),
+            "isInline": True,
+            "contentId": _ASSINATURA_CID,
+        }
+    ]
+
+
+def _preparar_corpo_e_anexos(corpo_html: str) -> tuple[str, list[dict]]:
     fragmento = _fragmento_assinatura_html()
     if not fragmento:
-        return corpo_html
-    return f"{corpo_html.rstrip()}{fragmento}"
+        return corpo_html, []
+    return f"{corpo_html.rstrip()}{fragmento}", _anexos_assinatura_inline()
+
+
+def _aplicar_assinatura_corpo(corpo_html: str) -> str:
+    """Compatível com testes legados — retorna só o HTML."""
+    corpo, _ = _preparar_corpo_e_anexos(corpo_html)
+    return corpo
 
 
 def _mask_email(email: str) -> str:
@@ -119,24 +148,24 @@ def enviar_email_outlook(
     corpo_html: str,
     nome_remetente: str,
 ) -> None:
-    corpo_html = _aplicar_assinatura_corpo(corpo_html)
+    corpo_html, anexos = _preparar_corpo_e_anexos(corpo_html)
     settings = _credenciais_outlook()
     token = _obter_token_graph()
     url = f"{settings.graph_api_url.rstrip('/')}/users/{settings.outlook_sender}/sendMail"
-    payload = {
-        "message": {
-            "subject": assunto,
-            "body": {"contentType": "HTML", "content": corpo_html},
-            "from": {
-                "emailAddress": {
-                    "name": nome_remetente,
-                    "address": settings.outlook_sender,
-                }
-            },
-            "toRecipients": [{"emailAddress": {"address": destinatario}}],
+    message: dict = {
+        "subject": assunto,
+        "body": {"contentType": "HTML", "content": corpo_html},
+        "from": {
+            "emailAddress": {
+                "name": nome_remetente,
+                "address": settings.outlook_sender,
+            }
         },
-        "saveToSentItems": True,
+        "toRecipients": [{"emailAddress": {"address": destinatario}}],
     }
+    if anexos:
+        message["attachments"] = anexos
+    payload = {"message": message, "saveToSentItems": True}
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
     response = httpx.post(url, headers=headers, json=payload, timeout=30.0)
     response.raise_for_status()
@@ -171,24 +200,24 @@ async def enviar_email_outlook_async(
     nome_remetente: str,
 ) -> None:
     """Versão async de enviar_email_outlook — não bloqueia o event-loop."""
-    corpo_html = _aplicar_assinatura_corpo(corpo_html)
+    corpo_html, anexos = _preparar_corpo_e_anexos(corpo_html)
     settings = _credenciais_outlook()
     token = await _obter_token_graph_async()
     url = f"{settings.graph_api_url.rstrip('/')}/users/{settings.outlook_sender}/sendMail"
-    payload = {
-        "message": {
-            "subject": assunto,
-            "body": {"contentType": "HTML", "content": corpo_html},
-            "from": {
-                "emailAddress": {
-                    "name": nome_remetente,
-                    "address": settings.outlook_sender,
-                }
-            },
-            "toRecipients": [{"emailAddress": {"address": destinatario}}],
+    message: dict = {
+        "subject": assunto,
+        "body": {"contentType": "HTML", "content": corpo_html},
+        "from": {
+            "emailAddress": {
+                "name": nome_remetente,
+                "address": settings.outlook_sender,
+            }
         },
-        "saveToSentItems": True,
+        "toRecipients": [{"emailAddress": {"address": destinatario}}],
     }
+    if anexos:
+        message["attachments"] = anexos
+    payload = {"message": message, "saveToSentItems": True}
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
     async with httpx.AsyncClient() as client:
         response = await client.post(url, headers=headers, json=payload, timeout=30.0)

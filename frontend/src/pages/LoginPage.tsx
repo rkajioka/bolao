@@ -83,7 +83,7 @@ export function LoginPage() {
       >
         {/* Logo */}
         <div className="text-center mb-8">
-          <BrandLogo className="w-16 h-16 rounded-2xl mb-4" />
+          <BrandLogo variant="login" className="mb-4" />
           <h1 className="text-2xl font-bold tracking-tight mb-1">Bolão da Copa LPC</h1>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
             Entre para fazer seus palpites
