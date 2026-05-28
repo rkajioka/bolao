@@ -36,11 +36,16 @@ jobs:
             fi
 
             echo "-> Preflight sudo (SSH nao tem TTY)..."
-            if ! sudo -n true 2>/dev/null; then
-              echo "FALHA: sudo exige senha. No EC2, instale deploy/sudoers-bolao-deploy:"
+            DEPLOY_USER="$(whoami)"
+            if ! sudo -n systemctl daemon-reload 2>/dev/null; then
+              echo "FALHA: sudo NOPASSWD nao funciona para o usuario SSH: $DEPLOY_USER"
+              echo "O secret EC2_USER no GitHub deve ser esse mesmo usuario."
+              echo "No EC2 (sessao interativa), instale/atualize deploy/sudoers-bolao-deploy:"
+              echo "  git -C $APP_DIR pull origin main"
               echo "  sudo cp $APP_DIR/deploy/sudoers-bolao-deploy /etc/sudoers.d/bolao-deploy"
-              echo "  sudo sed -i 's/^ubuntu /'\"$(whoami)\"' /' /etc/sudoers.d/bolao-deploy"
+              echo "  sudo sed -i 's/^ubuntu /'\"$DEPLOY_USER\"' /' /etc/sudoers.d/bolao-deploy"
               echo "  sudo chmod 440 /etc/sudoers.d/bolao-deploy && sudo visudo -cf /etc/sudoers.d/bolao-deploy"
+              echo "  sudo -n systemctl daemon-reload && echo NOPASSWD OK"
               exit 1
             fi
 

@@ -254,7 +254,7 @@ sudo cp deploy/sudoers-bolao-deploy /etc/sudoers.d/bolao-deploy
 sudo sed -i "s/^ubuntu /$(whoami) /" /etc/sudoers.d/bolao-deploy
 sudo chmod 440 /etc/sudoers.d/bolao-deploy
 sudo visudo -cf /etc/sudoers.d/bolao-deploy
-sudo -n true && echo "NOPASSWD OK"
+sudo -n systemctl daemon-reload && echo "NOPASSWD OK"
 ```
 
 Depois disso o workflow usa apenas `sudo -n` (systemctl + copiar `bolao.service`).

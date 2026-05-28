@@ -6,8 +6,8 @@
 #   sudo chmod 440 /etc/sudoers.d/bolao-deploy
 #   sudo visudo -cf /etc/sudoers.d/bolao-deploy
 #
-# Teste (deve retornar 0 sem pedir senha):
-#   sudo -n systemctl daemon-reload
+# Teste (deve retornar 0 sem pedir senha; NAO use "sudo -n true"):
+#   sudo -n systemctl daemon-reload && echo NOPASSWD OK
 #   sudo -n systemctl restart bolao
 
 Defaults:ubuntu !requiretty
