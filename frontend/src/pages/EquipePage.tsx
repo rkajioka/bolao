@@ -491,7 +491,7 @@ export function EquipePage() {
 
   const effectiveEmpresaId = needsOwnerEmpresaPick ? resolvedEmpresaId : authEmpresaId
 
-  const { data: equipe, isLoading, isError, error, refetch } = useQuery({
+  const { data: equipe, isLoading, isError, error: queryError, refetch } = useQuery({
     queryKey: ['equipe', effectiveEmpresaId],
     queryFn: () => equipeService.listarEquipe(effectiveEmpresaId ?? undefined),
     enabled: effectiveEmpresaId != null,
@@ -662,8 +662,8 @@ export function EquipePage() {
               icon={<Users size={28} style={{ color: 'var(--text-muted)' }} />}
               title="Não foi possível carregar a equipe"
               description={
-                error instanceof ApiError
-                  ? error.message
+                queryError instanceof ApiError
+                  ? queryError.message
                   : 'Verifique sua conexão e tente novamente.'
               }
               action={
