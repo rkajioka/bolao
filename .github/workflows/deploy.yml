@@ -25,13 +25,16 @@ jobs:
             git reset --hard origin/main
 
             echo "→ Instalando dependências Python..."
+            if [ ! -x .venv/bin/python ]; then
+              python3 -m venv .venv
+            fi
             .venv/bin/pip install -r requirements.txt --quiet
 
             echo "→ Buildando frontend..."
             cd frontend && npm ci --silent && npm run build && cd ..
 
             echo "→ Rodando migrations..."
-            .venv/bin/alembic upgrade head
+            .venv/bin/python -m alembic upgrade head
 
             echo "→ Reiniciando serviço..."
             sudo systemctl restart bolao
