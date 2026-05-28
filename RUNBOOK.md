@@ -240,13 +240,24 @@ Constantes de produção (devem coincidir com `deploy.yml` e `bolao.service`):
 | `PYTHON` | `/var/www/bolao/.venv/bin/python` |
 | `GUNICORN` | `/var/www/bolao/.venv/bin/gunicorn` |
 
-O deploy automático roda em push em `main` (`.github/workflows/deploy.yml`). Após alterar `bolao.service` no servidor:
+O deploy automático roda em push em `main` (`.github/workflows/deploy.yml`).
+
+### Sudo sem senha (obrigatório uma vez)
+
+O SSH do GitHub Actions **não tem TTY**. Se aparecer `sudo: a terminal is required to authenticate`,
+instale o arquivo [`deploy/sudoers-bolao-deploy`](deploy/sudoers-bolao-deploy) (sessão SSH **interativa** com senha):
 
 ```bash
-sudo cp /var/www/bolao/bolao.service /etc/systemd/system/bolao.service
-sudo systemctl daemon-reload
-sudo systemctl restart bolao
+cd /var/www/bolao
+git pull origin main
+sudo cp deploy/sudoers-bolao-deploy /etc/sudoers.d/bolao-deploy
+sudo sed -i "s/^ubuntu /$(whoami) /" /etc/sudoers.d/bolao-deploy
+sudo chmod 440 /etc/sudoers.d/bolao-deploy
+sudo visudo -cf /etc/sudoers.d/bolao-deploy
+sudo -n true && echo "NOPASSWD OK"
 ```
+
+Depois disso o workflow usa apenas `sudo -n` (systemctl + copiar `bolao.service`).
 
 ### Descoberta (antes de debugar deploy)
 
@@ -281,13 +292,16 @@ curl -sf "https://SEU_DOMINIO/health" | grep -q '"status":"ok"' && echo PASS || 
 
 ### Node ausente no SSH não interativo
 
-O GitHub Actions não carrega `.bashrc`. Teste: `bash -lc 'command -v npm'`. Se falhar:
+Teste: `bash -lc 'command -v npm'`. O deploy tenta instalar via **nvm** no `$HOME` (sem sudo).
+Se ainda falhar, instale Node manualmente (sessão interativa):
 
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt-get install -y nodejs
 bash -lc 'node -v && npm -v'
 ```
+
+Ou só nvm: `curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash`
 
 ### Validação pós-deploy
 

@@ -17,7 +17,6 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           command_timeout: 30m
-          debug: true
           script: |
             set -eo pipefail
             APP_DIR="/var/www/bolao"
@@ -36,22 +35,41 @@ jobs:
               . "$HOME/.nvm/nvm.sh"
             fi
 
-            echo "-> Preflight..."
-            command -v python3 >/dev/null || { echo "FALHA: python3 ausente"; exit 1; }
-            if ! command -v npm >/dev/null; then
-              echo "-> npm ausente - instalando Node.js 20 (NodeSource)..."
-              curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-              sudo apt-get install -y nodejs
+            echo "-> Preflight sudo (SSH nao tem TTY)..."
+            if ! sudo -n true 2>/dev/null; then
+              echo "FALHA: sudo exige senha. No EC2, instale deploy/sudoers-bolao-deploy:"
+              echo "  sudo cp $APP_DIR/deploy/sudoers-bolao-deploy /etc/sudoers.d/bolao-deploy"
+              echo "  sudo sed -i 's/^ubuntu /'\"$(whoami)\"' /' /etc/sudoers.d/bolao-deploy"
+              echo "  sudo chmod 440 /etc/sudoers.d/bolao-deploy && sudo visudo -cf /etc/sudoers.d/bolao-deploy"
+              exit 1
             fi
-            command -v npm >/dev/null || { echo "FALHA: npm ainda ausente apos instalacao"; exit 1; }
+
+            echo "-> Preflight ferramentas..."
+            command -v python3 >/dev/null || { echo "FALHA: python3 ausente"; exit 1; }
+
+            if ! command -v npm >/dev/null; then
+              echo "-> npm ausente - tentando nvm (sem sudo)..."
+              export NVM_DIR="$HOME/.nvm"
+              if [ ! -s "$NVM_DIR/nvm.sh" ]; then
+                curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+              fi
+              # shellcheck disable=SC1091
+              . "$NVM_DIR/nvm.sh"
+              nvm install 20
+              nvm use 20
+            fi
+            command -v npm >/dev/null || {
+              echo "FALHA: npm ausente. Instale Node no EC2 (RUNBOOK Deploy EC2) e rode o workflow de novo."
+              exit 1
+            }
 
             echo "-> Atualizando codigo..."
             git fetch origin main
             git reset --hard origin/main
 
             echo "-> Sincronizando unit systemd..."
-            sudo cp "$APP_DIR/bolao.service" /etc/systemd/system/bolao.service
-            sudo systemctl daemon-reload
+            sudo -n cp "$APP_DIR/bolao.service" /etc/systemd/system/bolao.service
+            sudo -n systemctl daemon-reload
 
             echo "-> Garantindo venv Python..."
             if ! "$PYTHON" -c "import sys" >/dev/null 2>&1; then
@@ -68,7 +86,7 @@ jobs:
             "$PYTHON" -m alembic upgrade head
 
             echo "-> Reiniciando servico..."
-            sudo systemctl restart bolao
+            sudo -n systemctl restart bolao
 
             echo "-> Verificacao local pos-restart..."
             sleep 2

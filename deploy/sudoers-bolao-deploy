@@ -1,0 +1,17 @@
+# Permissoes sudo sem senha para o deploy via GitHub Actions (SSH nao interativo).
+#
+# Instalacao no EC2 (uma vez; troque "ubuntu" pelo usuario do secret EC2_USER):
+#   sudo cp deploy/sudoers-bolao-deploy /etc/sudoers.d/bolao-deploy
+#   sudo sed -i 's/^ubuntu /SEU_USUARIO /' /etc/sudoers.d/bolao-deploy
+#   sudo chmod 440 /etc/sudoers.d/bolao-deploy
+#   sudo visudo -cf /etc/sudoers.d/bolao-deploy
+#
+# Teste (deve retornar 0 sem pedir senha):
+#   sudo -n systemctl daemon-reload
+#   sudo -n systemctl restart bolao
+
+Defaults:ubuntu !requiretty
+
+ubuntu ALL=(ALL) NOPASSWD: /bin/systemctl restart bolao
+ubuntu ALL=(ALL) NOPASSWD: /bin/systemctl daemon-reload
+ubuntu ALL=(ALL) NOPASSWD: /usr/bin/cp /var/www/bolao/bolao.service /etc/systemd/system/bolao.service
