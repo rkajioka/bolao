@@ -1,4 +1,4 @@
-name: Deploy Produção
+name: Deploy Producao
 
 on:
   push:
@@ -36,42 +36,42 @@ jobs:
               . "$HOME/.nvm/nvm.sh"
             fi
 
-            echo "→ Preflight..."
+            echo "-> Preflight..."
             command -v python3 >/dev/null || { echo "FALHA: python3 ausente"; exit 1; }
             if ! command -v npm >/dev/null; then
-              echo "→ npm ausente — instalando Node.js 20 (NodeSource)..."
+              echo "-> npm ausente - instalando Node.js 20 (NodeSource)..."
               curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
               sudo apt-get install -y nodejs
             fi
-            command -v npm >/dev/null || { echo "FALHA: npm ainda ausente após instalação"; exit 1; }
+            command -v npm >/dev/null || { echo "FALHA: npm ainda ausente apos instalacao"; exit 1; }
 
-            echo "→ Atualizando código..."
+            echo "-> Atualizando codigo..."
             git fetch origin main
             git reset --hard origin/main
 
-            echo "→ Sincronizando unit systemd..."
+            echo "-> Sincronizando unit systemd..."
             sudo cp "$APP_DIR/bolao.service" /etc/systemd/system/bolao.service
             sudo systemctl daemon-reload
 
-            echo "→ Garantindo venv Python..."
+            echo "-> Garantindo venv Python..."
             if ! "$PYTHON" -c "import sys" >/dev/null 2>&1; then
-              echo "  venv ausente ou quebrado — recriando"
+              echo "  venv ausente ou quebrado - recriando"
               rm -rf "$APP_DIR/.venv"
               python3 -m venv "$APP_DIR/.venv"
             fi
             "$PIP" install -r "$APP_DIR/requirements.txt"
 
-            echo "→ Buildando frontend..."
+            echo "-> Buildando frontend..."
             ( cd "$APP_DIR/frontend" && npm ci && npm run build )
 
-            echo "→ Rodando migrations..."
+            echo "-> Rodando migrations..."
             "$PYTHON" -m alembic upgrade head
 
-            echo "→ Reiniciando serviço..."
+            echo "-> Reiniciando servico..."
             sudo systemctl restart bolao
 
-            echo "→ Verificação local pós-restart..."
+            echo "-> Verificacao local pos-restart..."
             sleep 2
-            systemctl is-active --quiet bolao || { echo "FALHA: bolao não está active"; exit 1; }
+            systemctl is-active --quiet bolao || { echo "FALHA: bolao nao esta active"; exit 1; }
 
-            echo "✅ Deploy concluído!"
+            echo "OK: Deploy concluido!"
