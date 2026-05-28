@@ -1,9 +1,6 @@
 import { api, ApiError, apiPostMultipart } from '@/lib/api'
 import type { BulkConviteResponse, ConviteResultado, ConviteResumoEnvio, MembroEquipe } from '@/types'
 
-const INVITE_CHUNK_SIZE = 5
-const INVITE_CHUNK_PAUSE_MS = 1200
-
 /** Prefixo /api evita colisão Nginx entre SPA (/equipe) e FastAPI. */
 const EQUIPE_API = '/api/equipe'
 
@@ -16,35 +13,6 @@ const INVITE_SUCCESS_STATUSES = new Set<ConviteResultado['status']>([
 function empresaQs(empresaId?: number | null): string {
   if (empresaId == null) return ''
   return `?empresa_id=${empresaId}`
-}
-
-function chunkEmails(emails: string[], size: number): string[][] {
-  const chunks: string[][] = []
-  for (let index = 0; index < emails.length; index += size) {
-    chunks.push(emails.slice(index, index + size))
-  }
-  return chunks
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, ms)
-  })
-}
-
-function mergeResumo(current: ConviteResumoEnvio | null, next: ConviteResumoEnvio): ConviteResumoEnvio {
-  if (current == null) {
-    return next
-  }
-  return {
-    total: current.total + next.total,
-    enviados: current.enviados + next.enviados,
-    falhas: current.falhas + next.falhas,
-    bloqueados_limite: current.bloqueados_limite + next.bloqueados_limite,
-    alerta_admins_enviado: current.alerta_admins_enviado || next.alerta_admins_enviado,
-    alerta_owners_limite_enviado:
-      current.alerta_owners_limite_enviado || next.alerta_owners_limite_enviado,
-  }
 }
 
 export const equipeService = {
@@ -61,66 +29,19 @@ export const equipeService = {
     empresaId?: number | null,
     onProgress?: (processed: number, total: number, partial: ConviteResultado[]) => void,
   ): Promise<BulkConviteResponse> {
-    const chunks = chunkEmails(emails, INVITE_CHUNK_SIZE)
-    let itens: ConviteResultado[] = []
-    let resumo: ConviteResumoEnvio | null = null
+    const response = await this.enviarConvites(emails, empresaId)
+    onProgress?.(emails.length, emails.length, response.itens)
 
-    for (let index = 0; index < chunks.length; index += 1) {
-      const chunk = chunks[index]
-      try {
-        const response = await this.enviarConvites(chunk, empresaId)
-        itens = [...itens, ...response.itens]
-        resumo = mergeResumo(resumo, response.resumo_envio)
-        onProgress?.(itens.length, emails.length, response.itens)
-      } catch (error) {
-        const failedItems: ConviteResultado[] = chunk.map((email) => ({
-          email,
-          status: 'falha_requisicao',
-          convite_enviado_por_email: false,
-          email_erro: error instanceof ApiError ? error.message : 'Falha ao enviar lote',
-        }))
-        itens = [...itens, ...failedItems]
-        resumo = mergeResumo(
-          resumo,
-          {
-            total: failedItems.length,
-            enviados: 0,
-            falhas: failedItems.length,
-            bloqueados_limite: 0,
-            alerta_admins_enviado: false,
-            alerta_owners_limite_enviado: false,
-          },
-        )
-        onProgress?.(itens.length, emails.length, failedItems)
-      }
-
-      if (index < chunks.length - 1) {
-        await sleep(INVITE_CHUNK_PAUSE_MS)
-      }
-    }
-
-    const payload: BulkConviteResponse = {
-      itens,
-      resumo_envio: resumo ?? {
-        total: 0,
-        enviados: 0,
-        falhas: 0,
-        bloqueados_limite: 0,
-        alerta_admins_enviado: false,
-        alerta_owners_limite_enviado: false,
-      },
-    }
-
-    const hasSuccess = itens.some((item) => INVITE_SUCCESS_STATUSES.has(item.status))
-    if (itens.length > 0 && !hasSuccess) {
-      const firstError = itens.find((item) => item.email_erro)?.email_erro
+    const hasSuccess = response.itens.some((item) => INVITE_SUCCESS_STATUSES.has(item.status))
+    if (response.itens.length > 0 && !hasSuccess) {
+      const firstError = response.itens.find((item) => item.email_erro)?.email_erro
       throw new ApiError(
         firstError ?? 'Nenhum convite foi processado. Tente novamente.',
         0,
       )
     }
 
-    return payload
+    return response
   },
 
   async listarConvites(empresaId?: number | null): Promise<ConviteResultado[]> {
