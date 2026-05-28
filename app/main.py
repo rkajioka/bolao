@@ -103,10 +103,18 @@ async def cache_hashed_assets(request: Request, call_next):
 @app.middleware("http")
 async def serve_spa_on_html_navigation(request: Request, call_next):
     if _frontend_dist.exists() and request.method == "GET":
+        path = request.url.path.rstrip("/") or "/"
         accept = request.headers.get("accept", "").lower()
+
+        # Serve static files from dist root (favicon, logos, etc.)
+        if path != "/" and "/" not in path.lstrip("/"):
+            candidate = (_frontend_dist / path.lstrip("/")).resolve()
+            dist_root = _frontend_dist.resolve()
+            if candidate.is_file() and str(candidate).startswith(str(dist_root)):
+                return FileResponse(str(candidate))
+
         # Navegação do browser (F5): text/html sem JSON. Fetch da API: application/json ou */*.
         if "text/html" in accept and "application/json" not in accept:
-            path = request.url.path.rstrip("/") or "/"
             if path in _SPA_HTML_PATHS:
                 index = _frontend_dist / "index.html"
                 if index.exists():
