@@ -36,8 +36,9 @@ jobs:
             fi
 
             echo "-> Atualizando codigo (antes do preflight sudo)..."
-            git fetch origin main
-            git reset --hard origin/main
+            # Repo em /var/www pode ter dono diferente do usuario SSH (git >= 2.35.2)
+            git -c "safe.directory=$APP_DIR" fetch origin main
+            git -c "safe.directory=$APP_DIR" reset --hard origin/main
 
             echo "-> Preflight sudo (SSH nao tem TTY)..."
             DEPLOY_USER="$(whoami)"

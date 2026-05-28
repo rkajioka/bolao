@@ -259,6 +259,17 @@ sudo -n systemctl daemon-reload && echo "NOPASSWD OK"
 
 Depois disso o workflow usa apenas `sudo -n` (systemctl + copiar `bolao.service`).
 
+### Git `dubious ownership` em `/var/www/bolao`
+
+Se `git pull` falhar com *detected dubious ownership*, o dono do diretório não é o usuário do deploy.
+O workflow do CI já passa `safe.directory` por comando; em sessão SSH manual:
+
+```bash
+git config --global --add safe.directory /var/www/bolao
+```
+
+Correção estrutural (opcional): `sudo chown -R "$(whoami):$(whoami)" /var/www/bolao`
+
 ### Descoberta (antes de debugar deploy)
 
 Conectar com o usuário do secret `EC2_USER` e rodar:
