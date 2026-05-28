@@ -251,7 +251,7 @@ instale o arquivo [`deploy/sudoers-bolao-deploy`](deploy/sudoers-bolao-deploy) (
 cd /var/www/bolao
 git pull origin main
 sudo cp deploy/sudoers-bolao-deploy /etc/sudoers.d/bolao-deploy
-sudo sed -i "s/^ubuntu /$(whoami) /" /etc/sudoers.d/bolao-deploy
+sudo sed -i "s/ubuntu/$(whoami)/g" /etc/sudoers.d/bolao-deploy
 sudo chmod 440 /etc/sudoers.d/bolao-deploy
 sudo visudo -cf /etc/sudoers.d/bolao-deploy
 sudo -n systemctl daemon-reload && echo "NOPASSWD OK"
@@ -268,7 +268,7 @@ O workflow do CI já passa `safe.directory` por comando; em sessão SSH manual:
 git config --global --add safe.directory /var/www/bolao
 ```
 
-Correção estrutural (opcional): `sudo chown -R "$(whoami):$(whoami)" /var/www/bolao`
+Correção estrutural: `sudo chown -R "$(whoami):$(whoami)" /var/www/bolao` (o CI também tenta isso se `BOLAO_CHOWN` estiver no sudoers).
 
 ### Descoberta (antes de debugar deploy)
 

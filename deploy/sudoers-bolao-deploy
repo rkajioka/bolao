@@ -2,7 +2,7 @@
 #
 # Instalacao no EC2 (uma vez; troque "ubuntu" pelo usuario do secret EC2_USER):
 #   sudo cp deploy/sudoers-bolao-deploy /etc/sudoers.d/bolao-deploy
-#   sudo sed -i 's/^ubuntu /SEU_USUARIO /' /etc/sudoers.d/bolao-deploy
+#   sudo sed -i "s/ubuntu/$(whoami)/g" /etc/sudoers.d/bolao-deploy
 #   sudo chmod 440 /etc/sudoers.d/bolao-deploy
 #   sudo visudo -cf /etc/sudoers.d/bolao-deploy
 #
@@ -15,6 +15,8 @@ Defaults:ubuntu !requiretty
 # Ubuntu costuma resolver systemctl em /usr/bin; incluir /bin evita falha de NOPASSWD por path.
 Cmnd_Alias BOLAO_SYSTEMCTL = /usr/bin/systemctl restart bolao, /usr/bin/systemctl daemon-reload, /bin/systemctl restart bolao, /bin/systemctl daemon-reload
 Cmnd_Alias BOLAO_CP_SERVICE = /usr/bin/cp /var/www/bolao/bolao.service /etc/systemd/system/bolao.service, /bin/cp /var/www/bolao/bolao.service /etc/systemd/system/bolao.service
+Cmnd_Alias BOLAO_CHOWN = /usr/bin/chown -R ubuntu\:ubuntu /var/www/bolao, /bin/chown -R ubuntu\:ubuntu /var/www/bolao
 
 ubuntu ALL=(ALL) NOPASSWD: BOLAO_SYSTEMCTL
 ubuntu ALL=(ALL) NOPASSWD: BOLAO_CP_SERVICE
+ubuntu ALL=(ALL) NOPASSWD: BOLAO_CHOWN

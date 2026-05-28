@@ -35,11 +35,6 @@ jobs:
               . "$HOME/.nvm/nvm.sh"
             fi
 
-            echo "-> Atualizando codigo (antes do preflight sudo)..."
-            # Repo em /var/www pode ter dono diferente do usuario SSH (git >= 2.35.2)
-            git -c "safe.directory=$APP_DIR" fetch origin main
-            git -c "safe.directory=$APP_DIR" reset --hard origin/main
-
             echo "-> Preflight sudo (SSH nao tem TTY)..."
             DEPLOY_USER="$(whoami)"
             SYSTEMCTL="$(command -v systemctl)"
@@ -47,13 +42,27 @@ jobs:
               echo "FALHA: sudo NOPASSWD nao funciona para o usuario SSH: $DEPLOY_USER"
               echo "O secret EC2_USER no GitHub deve ser esse mesmo usuario."
               echo "No EC2 (sessao interativa), instale/atualize deploy/sudoers-bolao-deploy:"
-              echo "  git -C $APP_DIR pull origin main"
               echo "  sudo cp $APP_DIR/deploy/sudoers-bolao-deploy /etc/sudoers.d/bolao-deploy"
-              echo "  sudo sed -i 's/^ubuntu /'\"$DEPLOY_USER\"' /' /etc/sudoers.d/bolao-deploy"
+              echo "  sudo sed -i \"s/ubuntu/$DEPLOY_USER/g\" /etc/sudoers.d/bolao-deploy"
               echo "  sudo chmod 440 /etc/sudoers.d/bolao-deploy && sudo visudo -cf /etc/sudoers.d/bolao-deploy"
               echo "  sudo -n $SYSTEMCTL daemon-reload && echo NOPASSWD OK"
               exit 1
             fi
+
+            echo "-> Garantindo permissao de escrita no repositorio..."
+            if [ ! -w .git ] || { [ -e .git/FETCH_HEAD ] && [ ! -w .git/FETCH_HEAD ]; }; then
+              echo "  .git sem escrita para $DEPLOY_USER - ajustando dono com sudo"
+              if ! sudo -n chown -R "$DEPLOY_USER:$DEPLOY_USER" "$APP_DIR"; then
+                echo "FALHA: chown NOPASSWD nao configurado ou negado."
+                echo "No EC2 (sessao interativa): sudo chown -R $DEPLOY_USER:$DEPLOY_USER $APP_DIR"
+                echo "Reinstale sudoers (inclui BOLAO_CHOWN): deploy/sudoers-bolao-deploy"
+                exit 1
+              fi
+            fi
+
+            echo "-> Atualizando codigo..."
+            git -c "safe.directory=$APP_DIR" fetch origin main
+            git -c "safe.directory=$APP_DIR" reset --hard origin/main
 
             echo "-> Preflight ferramentas..."
             command -v python3 >/dev/null || { echo "FALHA: python3 ausente"; exit 1; }
