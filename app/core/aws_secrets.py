@@ -17,6 +17,7 @@ from __future__ import annotations
 import functools
 import json
 import logging
+import threading
 import time
 from typing import Any
 
@@ -116,6 +117,42 @@ def fetch_secret(secret_name: str, region: str) -> dict[str, Any]:
         len(data),
     )
     return data
+
+
+_DB_URL_TTL = 300  # segundos entre re-fetches do secret para novas conexões
+_db_url_lock = threading.Lock()
+_db_url_cache: dict[str, Any] = {"url": None, "fetched_at": 0.0}
+
+
+def get_current_database_url(secret_name: str, region: str) -> str | None:
+    """Retorna DATABASE_URL do Secrets Manager com cache TTL de 5 minutos.
+
+    Chamado pelo creator function do engine a cada nova conexão criada.
+    Usar cache curto (não lru_cache eterno) para absorver rotações de senha.
+    """
+    with _db_url_lock:
+        now = time.monotonic()
+        if _db_url_cache["url"] is not None and (now - _db_url_cache["fetched_at"]) < _DB_URL_TTL:
+            return _db_url_cache["url"]  # type: ignore[return-value]
+        fetch_secret.cache_clear()
+        try:
+            data = fetch_secret(secret_name, region)
+            url: str | None = data.get("database_url")
+            _db_url_cache["url"] = url
+            _db_url_cache["fetched_at"] = now
+            logger.info("Credenciais do banco re-carregadas do Secrets Manager")
+            return url
+        except Exception as exc:
+            logger.error("Falha ao buscar DATABASE_URL do Secrets Manager: %s", exc)
+            return _db_url_cache["url"]  # type: ignore[return-value]
+
+
+def invalidate_database_url_cache() -> None:
+    """Força re-fetch imediato das credenciais do banco na próxima conexão."""
+    with _db_url_lock:
+        _db_url_cache["fetched_at"] = 0.0
+    fetch_secret.cache_clear()
+    logger.warning("Cache de DATABASE_URL invalidado — próxima conexão buscará credenciais novas")
 
 
 def apply_to_settings(settings_obj: Any, secret_name: str, region: str) -> None:
