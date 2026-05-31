@@ -61,6 +61,7 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------ #
     aws_secret_name: str | None = None   # ex.: "bolao/production"
     aws_region: str = "us-east-1"
+    aws_rds_secret_arn: str | None = None  # ARN do secret gerenciado pelo RDS (rotação automática)
 
     # ------------------------------------------------------------------ #
     # JWT / Cookies                                                        #

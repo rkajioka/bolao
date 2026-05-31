@@ -124,6 +124,47 @@ _db_url_lock = threading.Lock()
 _db_url_cache: dict[str, Any] = {"url": None, "fetched_at": 0.0}
 
 
+_RDS_CREDS_TTL = 300  # segundos entre re-fetches do secret do RDS
+_rds_creds_lock = threading.Lock()
+_rds_creds_cache: dict[str, Any] = {"username": None, "password": None, "fetched_at": 0.0}
+
+
+def get_rds_credentials(rds_secret_arn: str, region: str) -> tuple[str, str] | None:
+    """Busca username+password do secret gerenciado pelo RDS com TTL cache de 5 min.
+
+    Quando o RDS rotaciona a senha, o secret é atualizado automaticamente pela AWS.
+    Na próxima expiração do cache (ou após invalidação), o app pega as novas credenciais.
+    """
+    with _rds_creds_lock:
+        now = time.monotonic()
+        cached = _rds_creds_cache
+        if cached["username"] and (now - cached["fetched_at"]) < _RDS_CREDS_TTL:
+            return cached["username"], cached["password"]  # type: ignore[return-value]
+        try:
+            import boto3
+            client = boto3.session.Session().client("secretsmanager", region_name=region)
+            data = json.loads(client.get_secret_value(SecretId=rds_secret_arn)["SecretString"])
+            username: str = data["username"]
+            password: str = data["password"]
+            _rds_creds_cache["username"] = username
+            _rds_creds_cache["password"] = password
+            _rds_creds_cache["fetched_at"] = now
+            logger.info("Credenciais RDS re-carregadas do secret gerenciado")
+            return username, password
+        except Exception as exc:
+            logger.error("Falha ao buscar credenciais do secret RDS: %s", exc)
+            if cached["username"]:
+                return cached["username"], cached["password"]  # type: ignore[return-value]
+            return None
+
+
+def invalidate_rds_credentials_cache() -> None:
+    """Força re-fetch imediato das credenciais RDS na próxima conexão."""
+    with _rds_creds_lock:
+        _rds_creds_cache["fetched_at"] = 0.0
+    logger.warning("Cache de credenciais RDS invalidado — próxima conexão buscará credenciais novas")
+
+
 def get_current_database_url(secret_name: str, region: str) -> str | None:
     """Retorna DATABASE_URL do Secrets Manager com cache TTL de 5 minutos.
 
