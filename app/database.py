@@ -3,14 +3,19 @@ from urllib.parse import parse_qs, quote_plus, unquote, urlparse
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
-from sqlalchemy.pool import StaticPool
+from sqlalchemy.pool import NullPool, StaticPool
 
 from app.core.config import get_settings
 
 settings = get_settings()
 
 
-def _build_creator(fallback_url: str, aws_secret_name: str | None, aws_region: str, aws_rds_secret_arn: str | None = None):
+def build_db_creator(
+    fallback_url: str,
+    aws_secret_name: str | None,
+    aws_region: str,
+    aws_rds_secret_arn: str | None = None,
+):
     """Retorna função creator para o SQLAlchemy engine.
 
     Busca a DATABASE_URL com TTL cache curto quando Secrets Manager está configurado,
@@ -57,6 +62,26 @@ def _build_creator(fallback_url: str, aws_secret_name: str | None, aws_region: s
     return creator
 
 
+def create_migration_engine():
+    """Engine para Alembic — mesma resolução de credenciais do app (RDS secret / AWS SM)."""
+    if ":memory:" in settings.database_url:
+        return create_engine(
+            settings.database_url,
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+    return create_engine(
+        settings.database_url,
+        creator=build_db_creator(
+            settings.database_url,
+            settings.aws_secret_name,
+            settings.aws_region,
+            settings.aws_rds_secret_arn,
+        ),
+        poolclass=NullPool,
+    )
+
+
 if ":memory:" in settings.database_url:
     engine = create_engine(
         settings.database_url,
@@ -66,7 +91,12 @@ if ":memory:" in settings.database_url:
 else:
     engine = create_engine(
         settings.database_url,
-        creator=_build_creator(settings.database_url, settings.aws_secret_name, settings.aws_region, settings.aws_rds_secret_arn),
+        creator=build_db_creator(
+            settings.database_url,
+            settings.aws_secret_name,
+            settings.aws_region,
+            settings.aws_rds_secret_arn,
+        ),
         pool_pre_ping=True,
         pool_size=settings.db_pool_size,
         max_overflow=settings.db_pool_max_overflow,

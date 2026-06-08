@@ -1,13 +1,11 @@
 from logging.config import fileConfig
 
-from sqlalchemy import create_engine, pool
-
 from alembic import context
 
 import app.models  # noqa: F401 — metadados dos models
 
 from app.core.config import get_settings
-from app.database import Base
+from app.database import Base, create_migration_engine
 
 config = context.config
 settings = get_settings()
@@ -35,7 +33,7 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    connectable = create_engine(get_url(), poolclass=pool.NullPool)
+    connectable = create_migration_engine()
 
     with connectable.connect() as connection:
         context.configure(connection=connection, target_metadata=target_metadata)
