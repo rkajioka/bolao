@@ -45,12 +45,13 @@ EnvironmentFile=/var/www/bolao/.env
 # Padrão conservador para t3.small (2 vCPUs, 2 GB RAM).
 Environment="WEB_CONCURRENCY=3"
 
+# gunicorn --timeout 300: lote de convites expirados (bcrypt × N); demais rotas terminam em ms
 ExecStart=/var/www/bolao/.venv/bin/gunicorn \
     --workers ${WEB_CONCURRENCY} \
     --worker-class uvicorn.workers.UvicornWorker \
     --bind 127.0.0.1:8000 \
-    --timeout 30 \
-    --graceful-timeout 30 \
+    --timeout 300 \
+    --graceful-timeout 60 \
     --keep-alive 5 \
     --max-requests 1000 \
     --max-requests-jitter 100 \

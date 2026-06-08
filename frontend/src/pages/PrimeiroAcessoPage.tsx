@@ -47,9 +47,10 @@ export function PrimeiroAcessoPage() {
 
   useEffect(() => {
     if (!user) return
+    const nomePlaceholder = user.nome === user.email
     setForm((prev) => ({
       ...prev,
-      nome: prev.nome || user.nome || '',
+      nome: prev.nome || (nomePlaceholder ? '' : user.nome || ''),
       funcao: prev.funcao || user.funcao || '',
     }))
   }, [user])
@@ -76,6 +77,10 @@ export function PrimeiroAcessoPage() {
     }
     if (form.nova_senha === SENHA_PADRAO_TEMPORARIA) {
       error('Escolha uma senha diferente da senha temporária padrão.')
+      return
+    }
+    if (user && form.nome.trim().toLowerCase() === user.email.trim().toLowerCase()) {
+      error('Escolha um nome diferente do seu e-mail.')
       return
     }
     const senhaInvalida = validarSenhaSegura(form.nova_senha)

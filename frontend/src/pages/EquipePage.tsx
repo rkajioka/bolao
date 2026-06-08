@@ -16,6 +16,7 @@ import {
   User,
   RefreshCw,
   Search,
+  KeyRound,
 } from 'lucide-react'
 import { equipeService } from '@/services/equipe.service'
 import type { BulkConviteResponse, ConviteResultado, ConviteResumoEnvio, MembroEquipe } from '@/types'
@@ -102,9 +103,13 @@ interface MemberCardProps {
   onRemover?: (id: number) => void
   onResetSenha?: (id: number, nome: string) => void
   onReenviarConvite?: (conviteId: number) => void
+  onAtivarSenhaPadraoConvite?: (conviteId: number) => void
+  onAtivarSenhaPadraoUsuario?: (usuarioId: number) => void
   bloqueandoId?: number | null
   resetandoSenhaId?: number | null
   reenviandoConviteId?: number | null
+  ativandoSenhaPadraoConviteId?: number | null
+  ativandoSenhaPadraoUsuarioId?: number | null
 }
 
 function MemberCard({
@@ -113,13 +118,20 @@ function MemberCard({
   onRemover,
   onResetSenha,
   onReenviarConvite,
+  onAtivarSenhaPadraoConvite,
+  onAtivarSenhaPadraoUsuario,
   bloqueandoId = null,
   resetandoSenhaId = null,
   reenviandoConviteId = null,
+  ativandoSenhaPadraoConviteId = null,
+  ativandoSenhaPadraoUsuarioId = null,
 }: MemberCardProps) {
   const bloquearBusy = membro.id != null && bloqueandoId === membro.id
   const resetBusy = membro.id != null && resetandoSenhaId === membro.id
   const reenviarBusy = membro.convite_id != null && reenviandoConviteId === membro.convite_id
+  const ativarConviteBusy =
+    membro.convite_id != null && ativandoSenhaPadraoConviteId === membro.convite_id
+  const ativarUsuarioBusy = membro.id != null && ativandoSenhaPadraoUsuarioId === membro.id
   return (
     <motion.div
       layout
@@ -172,29 +184,42 @@ function MemberCard({
               })}
             </p>
             {membro.convite_id != null && (
-              <button
-                type="button"
-                disabled={reenviarBusy}
-                onClick={() => onReenviarConvite?.(membro.convite_id!)}
-                aria-label={
-                  membro.status === 'convite_expirado'
-                    ? `Enviar novo link para ${membro.email}`
-                    : `Reenviar convite para ${membro.email}`
-                }
-                className="self-start flex items-center gap-1.5 text-xs px-2 py-1 rounded-lg transition-colors disabled:opacity-50"
-                style={
-                  membro.status === 'convite_expirado'
-                    ? { background: 'var(--danger-dim)', color: 'var(--danger)' }
-                    : { background: 'var(--highlight-dim)', color: 'var(--highlight)' }
-                }
-              >
-                <RefreshCw size={11} className={reenviarBusy ? 'animate-spin' : ''} />
-                {reenviarBusy
-                  ? 'Enviando…'
-                  : membro.status === 'convite_expirado'
-                    ? 'Enviar novo link'
-                    : 'Reenviar e-mail'}
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  disabled={reenviarBusy || ativarConviteBusy}
+                  onClick={() => onReenviarConvite?.(membro.convite_id!)}
+                  aria-label={
+                    membro.status === 'convite_expirado'
+                      ? `Enviar novo link para ${membro.email}`
+                      : `Reenviar convite para ${membro.email}`
+                  }
+                  className="flex items-center gap-1.5 text-xs px-2 py-1 rounded-lg transition-colors disabled:opacity-50"
+                  style={
+                    membro.status === 'convite_expirado'
+                      ? { background: 'var(--danger-dim)', color: 'var(--danger)' }
+                      : { background: 'var(--highlight-dim)', color: 'var(--highlight)' }
+                  }
+                >
+                  <RefreshCw size={11} className={reenviarBusy ? 'animate-spin' : ''} />
+                  {reenviarBusy
+                    ? 'Enviando…'
+                    : membro.status === 'convite_expirado'
+                      ? 'Enviar novo link'
+                      : 'Reenviar e-mail'}
+                </button>
+                <button
+                  type="button"
+                  disabled={reenviarBusy || ativarConviteBusy}
+                  onClick={() => onAtivarSenhaPadraoConvite?.(membro.convite_id!)}
+                  aria-label={`Ativar com senha padrão para ${membro.email}`}
+                  className="flex items-center gap-1.5 text-xs px-2 py-1 rounded-lg transition-colors disabled:opacity-50"
+                  style={{ background: 'rgba(212,160,23,0.14)', color: 'var(--highlight)' }}
+                >
+                  <KeyRound size={11} className={ativarConviteBusy ? 'animate-pulse' : ''} />
+                  {ativarConviteBusy ? 'Ativando…' : 'Ativar com senha padrão'}
+                </button>
+              </div>
             )}
           </div>
         )}
@@ -204,7 +229,7 @@ function MemberCard({
           <div className="flex items-center gap-2 mt-2">
             <button
               type="button"
-              disabled={bloquearBusy || resetBusy}
+              disabled={bloquearBusy || resetBusy || ativarUsuarioBusy}
               onClick={() => onBloquear?.(membro.id!, !membro.bloqueado)}
               aria-label={membro.bloqueado ? `Desbloquear ${membro.nome ?? membro.email}` : `Bloquear ${membro.nome ?? membro.email}`}
               className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors disabled:opacity-50"
@@ -226,16 +251,30 @@ function MemberCard({
               <Trash2 size={11} />
               Remover
             </button>
-            <button
-              type="button"
-              disabled={bloquearBusy || resetBusy}
-              onClick={() => onResetSenha?.(membro.id!, membro.nome ?? membro.email)}
-              aria-label={`Redefinir senha de ${membro.nome ?? membro.email}`}
-              className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg disabled:opacity-50"
-              style={{ background: 'var(--info-dim)', color: 'var(--info)' }}
-            >
-              Nova senha
-            </button>
+            {membro.primeiro_login ? (
+              <button
+                type="button"
+                disabled={bloquearBusy || ativarUsuarioBusy}
+                onClick={() => onAtivarSenhaPadraoUsuario?.(membro.id!)}
+                aria-label={`Ativar com senha padrão para ${membro.nome ?? membro.email}`}
+                className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg disabled:opacity-50"
+                style={{ background: 'rgba(212,160,23,0.14)', color: 'var(--highlight)' }}
+              >
+                <KeyRound size={11} className={ativarUsuarioBusy ? 'animate-pulse' : ''} />
+                {ativarUsuarioBusy ? 'Ativando…' : 'Ativar com senha padrão'}
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={bloquearBusy || resetBusy}
+                onClick={() => onResetSenha?.(membro.id!, membro.nome ?? membro.email)}
+                aria-label={`Redefinir senha de ${membro.nome ?? membro.email}`}
+                className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg disabled:opacity-50"
+                style={{ background: 'var(--info-dim)', color: 'var(--info)' }}
+              >
+                Nova senha
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -510,7 +549,12 @@ export function EquipePage() {
   const [inviteResults, setInviteResults] = useState<ConviteResultado[] | null>(null)
   const [inviteResumo, setInviteResumo] = useState<ConviteResumoEnvio | null>(null)
   const [usuarioRemoverId, setUsuarioRemoverId] = useState<number | null>(null)
+  const [conviteSenhaPadraoId, setConviteSenhaPadraoId] = useState<number | null>(null)
+  const [usuarioSenhaPadraoId, setUsuarioSenhaPadraoId] = useState<number | null>(null)
   const [reenviandoConviteId, setReenviandoConviteId] = useState<number | null>(null)
+  const [ativandoSenhaPadraoConviteId, setAtivandoSenhaPadraoConviteId] = useState<number | null>(null)
+  const [ativandoSenhaPadraoUsuarioId, setAtivandoSenhaPadraoUsuarioId] = useState<number | null>(null)
+  const [provisionarExpiradosOpen, setProvisionarExpiradosOpen] = useState(false)
   const [busca, setBusca] = useState('')
   const [filtroConvite, setFiltroConvite] = useState<FiltroConviteEquipe>('todos')
 
@@ -552,10 +596,61 @@ export function EquipePage() {
       equipeService.resetSenhaMembro(id, effectiveEmpresaId ?? undefined),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['equipe'] })
-      success('Senha redefinida para a padrão. Enviamos as instruções por e-mail.')
+      success('Link de redefinição de senha enviado por e-mail.')
     },
     onError: (err) => {
       error(err instanceof Error ? err.message : 'Erro ao redefinir senha')
+    },
+  })
+
+  const ativarSenhaPadraoConviteMutation = useMutation({
+    mutationFn: (conviteId: number) =>
+      equipeService.ativarSenhaPadraoConvite(conviteId, effectiveEmpresaId ?? undefined),
+    onSuccess: () => {
+      setConviteSenhaPadraoId(null)
+      void queryClient.invalidateQueries({ queryKey: ['equipe'] })
+      success('Acesso liberado com senha padrão.')
+    },
+    onError: (err) => {
+      error(err instanceof ApiError ? err.message : 'Erro ao ativar com senha padrão')
+    },
+    onSettled: () => setAtivandoSenhaPadraoConviteId(null),
+  })
+
+  const ativarSenhaPadraoUsuarioMutation = useMutation({
+    mutationFn: (usuarioId: number) =>
+      equipeService.ativarSenhaPadraoUsuario(usuarioId, effectiveEmpresaId ?? undefined),
+    onSuccess: () => {
+      setUsuarioSenhaPadraoId(null)
+      void queryClient.invalidateQueries({ queryKey: ['equipe'] })
+      success('Acesso liberado com senha padrão.')
+    },
+    onError: (err) => {
+      error(err instanceof ApiError ? err.message : 'Erro ao ativar com senha padrão')
+    },
+    onSettled: () => setAtivandoSenhaPadraoUsuarioId(null),
+  })
+
+  const provisionarExpiradosMutation = useMutation({
+    mutationFn: () =>
+      equipeService.provisionarConvitesExpirados(effectiveEmpresaId ?? undefined),
+    onSuccess: (res) => {
+      setProvisionarExpiradosOpen(false)
+      void queryClient.invalidateQueries({ queryKey: ['equipe'] })
+      if (res.total === 0) {
+        success('Nenhum convite expirado elegível encontrado.')
+        return
+      }
+      if (res.erros > 0) {
+        error(
+          `${res.provisionados} de ${res.total} ativado(s) com senha padrão. ${res.erros} falha(s) — verifique a cota ou conflitos.`,
+        )
+        return
+      }
+      success(`${res.provisionados} convite(s) expirado(s) ativado(s) com senha padrão.`)
+    },
+    onError: (err) => {
+      error(err instanceof ApiError ? err.message : 'Erro ao ativar convites expirados')
     },
   })
 
@@ -626,6 +721,50 @@ export function EquipePage() {
           removerMutation.mutate(usuarioRemoverId)
         }}
       />
+      <ConfirmDialog
+        open={conviteSenhaPadraoId !== null}
+        title="Ativar com senha padrão?"
+        description="O link de convite deixará de funcionar. A pessoa poderá entrar com o e-mail e a senha temporária."
+        confirmLabel="Ativar com senha padrão"
+        tone="warning"
+        confirming={ativarSenhaPadraoConviteMutation.isPending}
+        onCancel={() => {
+          if (!ativarSenhaPadraoConviteMutation.isPending) setConviteSenhaPadraoId(null)
+        }}
+        onConfirm={() => {
+          if (conviteSenhaPadraoId == null) return
+          setAtivandoSenhaPadraoConviteId(conviteSenhaPadraoId)
+          ativarSenhaPadraoConviteMutation.mutate(conviteSenhaPadraoId)
+        }}
+      />
+      <ConfirmDialog
+        open={usuarioSenhaPadraoId !== null}
+        title="Ativar com senha padrão?"
+        description="A senha temporária será redefinida. Sessões ativas serão encerradas."
+        confirmLabel="Ativar com senha padrão"
+        tone="warning"
+        confirming={ativarSenhaPadraoUsuarioMutation.isPending}
+        onCancel={() => {
+          if (!ativarSenhaPadraoUsuarioMutation.isPending) setUsuarioSenhaPadraoId(null)
+        }}
+        onConfirm={() => {
+          if (usuarioSenhaPadraoId == null) return
+          setAtivandoSenhaPadraoUsuarioId(usuarioSenhaPadraoId)
+          ativarSenhaPadraoUsuarioMutation.mutate(usuarioSenhaPadraoId)
+        }}
+      />
+      <ConfirmDialog
+        open={provisionarExpiradosOpen}
+        title="Ativar todos os convites expirados?"
+        description={`${convitesExpirados} convite(s) com link expirado serão convertidos em acesso com senha temporária padrão. Os links de convite deixarão de funcionar.`}
+        confirmLabel="Ativar todos"
+        tone="warning"
+        confirming={provisionarExpiradosMutation.isPending}
+        onCancel={() => {
+          if (!provisionarExpiradosMutation.isPending) setProvisionarExpiradosOpen(false)
+        }}
+        onConfirm={() => provisionarExpiradosMutation.mutate()}
+      />
       {needsOwnerEmpresaPick && (
         <div className={inviteBusy ? 'pointer-events-none opacity-60' : undefined}>
           <OwnerEmpresaPicker value={resolvedEmpresaId} onChange={setOwnerEmpresaId} />
@@ -651,20 +790,41 @@ export function EquipePage() {
                   ` (${convites.length} convite${convites.length > 1 ? 's' : ''} pendente${convites.length > 1 ? 's' : ''})`}
               </p>
             </div>
-            <motion.button
-              type="button"
-              onClick={() => {
-                setShowInvite((value) => !value)
-                setInviteResults(null)
-                setInviteResumo(null)
-              }}
-              whileTap={{ scale: 0.95 }}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-semibold text-sm"
-              style={{ background: 'var(--accent)', color: '#fff' }}
-            >
-              <UserPlus size={15} />
-              Convidar
-            </motion.button>
+            <div className="flex items-center gap-2">
+              {convitesExpirados > 0 && (
+                <motion.button
+                  type="button"
+                  onClick={() => setProvisionarExpiradosOpen(true)}
+                  disabled={provisionarExpiradosMutation.isPending}
+                  whileTap={{ scale: 0.95 }}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-semibold text-sm disabled:opacity-50"
+                  style={{
+                    background: 'rgba(212,160,23,0.18)',
+                    color: 'var(--highlight)',
+                    border: '1px solid rgba(212,160,23,0.35)',
+                  }}
+                >
+                  <KeyRound size={15} />
+                  {provisionarExpiradosMutation.isPending
+                    ? 'Ativando…'
+                    : `Ativar ${convitesExpirados} expirado${convitesExpirados > 1 ? 's' : ''}`}
+                </motion.button>
+              )}
+              <motion.button
+                type="button"
+                onClick={() => {
+                  setShowInvite((value) => !value)
+                  setInviteResults(null)
+                  setInviteResumo(null)
+                }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-semibold text-sm"
+                style={{ background: 'var(--accent)', color: '#fff' }}
+              >
+                <UserPlus size={15} />
+                Convidar
+              </motion.button>
+            </div>
           </div>
 
           <AnimatePresence>
@@ -832,6 +992,8 @@ export function EquipePage() {
                           onRemover={(id) => setUsuarioRemoverId(id)}
                           onResetSenha={handleResetSenha}
                           onReenviarConvite={handleReenviarConvite}
+                          onAtivarSenhaPadraoConvite={setConviteSenhaPadraoId}
+                          onAtivarSenhaPadraoUsuario={setUsuarioSenhaPadraoId}
                           bloqueandoId={
                             bloquearMutation.isPending ? bloquearMutation.variables?.id ?? null : null
                           }
@@ -839,6 +1001,8 @@ export function EquipePage() {
                             resetSenhaMutation.isPending ? resetSenhaMutation.variables ?? null : null
                           }
                           reenviandoConviteId={reenviandoConviteId}
+                          ativandoSenhaPadraoConviteId={ativandoSenhaPadraoConviteId}
+                          ativandoSenhaPadraoUsuarioId={ativandoSenhaPadraoUsuarioId}
                         />
                       ))}
                     </AnimatePresence>

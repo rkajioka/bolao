@@ -76,6 +76,19 @@ class BulkConviteResponse(BaseModel):
     resumo_envio: ConviteResumoEnvio
 
 
+class ProvisionarExpiradosItem(BaseModel):
+    email: str
+    status: str
+    detalhe: str | None = None
+
+
+class ProvisionarExpiradosResponse(BaseModel):
+    total: int
+    provisionados: int
+    erros: int
+    itens: list[ProvisionarExpiradosItem]
+
+
 class BulkConviteRequest(BaseModel):
     emails: list[EmailStr] = Field(min_length=1, max_length=50)
 

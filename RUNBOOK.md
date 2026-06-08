@@ -147,6 +147,62 @@ No navegador (DevTools → Rede, **Desativar cache**):
 
 ---
 
+## Provisionar convites expirados (senha padrão one-shot)
+
+Após deploy de versão com `convite_provision_service`, use para materializar o **backlog**
+de convites expirados (sem usuário ativado). Alternativa na UI: botão **Ativar N expirado(s)**
+na Equipe (lote). Convites avulsos: **Ativar com senha padrão** (um a um).
+
+**Lotes grandes (100+):** exigem `nginx.conf` com timeout de 300s na rota
+`/api/equipe/convites/provisionar-expirados` e `gunicorn --timeout 300` em `bolao.service`
+(ambos no repositório). Após alterar: `sudo nginx -t && sudo systemctl reload nginx` e
+`sudo systemctl restart bolao`. Sem isso, o browser pode receber 502 após ~30s mesmo com
+processamento parcial no servidor.
+
+**Senha temporária:** `Bolao123!` — o participante conclui o cadastro em `/primeiro-acesso`.
+
+### Pré-requisitos
+
+- Backup/snapshot do PostgreSQL recomendado.
+- Mesmo `.env` / venv do serviço `bolao` (`DATABASE_URL` ou `AWS_SECRET_NAME`).
+- Revisar cota (`max_usuarios`): convites **expirados** não entram na ocupação; criar usuários pode exigir aumento de cota em Admin → Empresas.
+
+### Procedimento (uma vez por ambiente)
+
+```bash
+cd /caminho/do/app
+source venv/bin/activate
+
+# 1. Simular (não grava)
+python scripts/provisionar_convites_expirados.py
+# Opcional: --empresa-id N
+
+# 2. Aplicar
+python scripts/provisionar_convites_expirados.py --apply
+```
+
+Saída esperada: linhas `OK email@...` ou `ERRO` (cota, conflito). Exit code ≠ 0 se houve erro.
+
+### Verificação
+
+- `/equipe`: convites expirados viram usuários **Aguardando ativação**.
+- Login de teste: e-mail + `Bolao123!` → `/primeiro-acesso` (nome ≠ e-mail).
+- Endpoint manual (token admin):
+
+```bash
+curl -s -o /dev/null -w "%{http_code}" -X POST \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -H "Accept: application/json" \
+  "https://SEU_DOMINIO/api/equipe/convites/ID/senha-padrao"
+# Esperado: 204
+```
+
+### Rollback de dados
+
+Não há undo automático. Restaurar snapshot ou identificar usuários via `audit_log` (`acao = convite.provisionado_senha_padrao`, `metadata.origem = script`).
+
+---
+
 ## Rotação de `JWT_SECRET` (Sprint 2.10)
 
 **Impacto**: A variável `JWT_SECRET` assina **todos** os access tokens e refresh tokens em

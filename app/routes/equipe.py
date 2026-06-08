@@ -10,8 +10,8 @@ from app.database import get_db
 from app.models.convite import Convite
 from app.models.empresa import Empresa
 from app.models.usuario import Usuario
-from app.schemas.convite import BulkConviteRequest, BulkConviteResponse
-from app.services import convite_service, equipe_service, rate_limit_service, usuario_service
+from app.schemas.convite import BulkConviteRequest, BulkConviteResponse, ProvisionarExpiradosResponse
+from app.services import convite_provision_service, convite_service, equipe_service, rate_limit_service, usuario_service
 
 router = APIRouter(prefix="/equipe", tags=["equipe"])
 
@@ -80,6 +80,34 @@ def listar_convites(
     ]
 
 
+@router.post("/convites/provisionar-expirados", response_model=ProvisionarExpiradosResponse)
+def provisionar_convites_expirados(
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: Usuario = Depends(require_admin),
+    empresa_id: int = Depends(get_resolved_empresa_id),
+    dry_run: bool = False,
+) -> ProvisionarExpiradosResponse:
+    """Provisiona em lote convites expirados com senha padrão (equivalente ao script --apply)."""
+    resultado = convite_provision_service.provisionar_convites_expirados_lote(
+        db,
+        empresa_id,
+        solicitante_id=admin.id,
+        ip=client_ip(request),
+        origem="admin",
+        dry_run=dry_run,
+    )
+    return ProvisionarExpiradosResponse(
+        total=resultado.total,
+        provisionados=resultado.provisionados,
+        erros=resultado.erros,
+        itens=[
+            {"email": item.email, "status": item.status, "detalhe": item.detalhe}
+            for item in resultado.itens
+        ],
+    )
+
+
 @router.post("/convites/{convite_id}/reenviar", status_code=status.HTTP_204_NO_CONTENT)
 def reenviar_convite(
     convite_id: int,
@@ -119,6 +147,64 @@ def reenviar_convite(
         convite.email,
         token,
         empresa_nome,
+    )
+
+
+@router.post("/convites/{convite_id}/senha-padrao", status_code=status.HTTP_204_NO_CONTENT)
+def ativar_convite_senha_padrao(
+    convite_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: Usuario = Depends(require_admin),
+    empresa_id: int = Depends(get_resolved_empresa_id),
+) -> None:
+    """Cria ou libera acesso com senha temporária padrão; invalida o link de convite."""
+    convite = db.scalar(
+        select(Convite).where(
+            and_(Convite.id == convite_id, Convite.empresa_id == empresa_id)
+        )
+    )
+    if convite is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Convite não encontrado")
+
+    usuario_existente = db.scalar(select(Usuario).where(Usuario.email == convite.email))
+    if usuario_existente is not None:
+        if not is_owner(admin) and usuario_existente.tipo_usuario != "usuario":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Administradores só podem ativar com senha padrão participantes da própria empresa",
+            )
+
+    convite_provision_service.provisionar_convite_senha_padrao_por_id(
+        db,
+        convite_id,
+        empresa_id,
+        solicitante_id=admin.id,
+        ip=client_ip(request),
+        origem="admin",
+    )
+
+
+@router.patch("/{usuario_id}/senha-padrao", status_code=status.HTTP_204_NO_CONTENT)
+def reaplicar_senha_padrao_membro(
+    usuario_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: Usuario = Depends(require_admin),
+    empresa_id: int = Depends(get_resolved_empresa_id),
+) -> None:
+    """Reaplica senha temporária padrão para participante aguardando ativação."""
+    usuario = equipe_service.get_usuario_empresa(db, empresa_id, usuario_id)
+    if not is_owner(admin) and usuario.tipo_usuario != "usuario":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Administradores só podem ativar com senha padrão participantes da própria empresa",
+        )
+    convite_provision_service.reaplicar_senha_padrao_usuario(
+        db,
+        usuario,
+        solicitante_id=admin.id,
+        ip=client_ip(request),
     )
 
 

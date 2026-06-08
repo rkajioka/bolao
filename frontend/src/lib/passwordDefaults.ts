@@ -1,1 +1,1 @@
-export const SENHA_PADRAO_TEMPORARIA = 'Bolao123'
+export const SENHA_PADRAO_TEMPORARIA = 'Bolao123!'

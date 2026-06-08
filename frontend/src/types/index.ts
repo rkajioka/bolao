@@ -57,6 +57,19 @@ export interface UsuarioEmailEntrega {
   alerta_admins_enviado?: boolean
 }
 
+export interface ProvisionarExpiradosItem {
+  email: string
+  status: string
+  detalhe?: string | null
+}
+
+export interface ProvisionarExpiradosResponse {
+  total: number
+  provisionados: number
+  erros: number
+  itens: ProvisionarExpiradosItem[]
+}
+
 export type StatusConviteEquipe = 'convite_pendente' | 'convite_expirado'
 
 export interface MembroEquipe {

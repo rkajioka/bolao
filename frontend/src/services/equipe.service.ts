@@ -1,5 +1,11 @@
 import { api, ApiError, apiPostMultipart } from '@/lib/api'
-import type { BulkConviteResponse, ConviteResultado, ConviteResumoEnvio, MembroEquipe } from '@/types'
+import type {
+  BulkConviteResponse,
+  ConviteResultado,
+  ConviteResumoEnvio,
+  MembroEquipe,
+  ProvisionarExpiradosResponse,
+} from '@/types'
 
 /** Prefixo /api evita colisão Nginx entre SPA (/equipe) e FastAPI. */
 const EQUIPE_API = '/api/equipe'
@@ -50,6 +56,20 @@ export const equipeService = {
 
   async reenviarConvite(conviteId: number, empresaId?: number | null): Promise<void> {
     await api.post(`${EQUIPE_API}/convites/${conviteId}/reenviar${empresaQs(empresaId)}`)
+  },
+
+  async ativarSenhaPadraoConvite(conviteId: number, empresaId?: number | null): Promise<void> {
+    await api.post(`${EQUIPE_API}/convites/${conviteId}/senha-padrao${empresaQs(empresaId)}`)
+  },
+
+  async ativarSenhaPadraoUsuario(usuarioId: number, empresaId?: number | null): Promise<void> {
+    await api.patch(`${EQUIPE_API}/${usuarioId}/senha-padrao${empresaQs(empresaId)}`)
+  },
+
+  async provisionarConvitesExpirados(empresaId?: number | null): Promise<ProvisionarExpiradosResponse> {
+    return api.post<ProvisionarExpiradosResponse>(
+      `${EQUIPE_API}/convites/provisionar-expirados${empresaQs(empresaId)}`,
+    )
   },
 
   async bloquearUsuario(usuarioId: number, bloqueado: boolean, empresaId?: number | null): Promise<void> {

@@ -229,6 +229,11 @@ def complete_primeiro_acesso(db: Session, user: Usuario, data: PrimeiroAcessoReq
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Escolha uma senha diferente da senha temporária padrão",
         )
+    if data.nome.strip().lower() == user.email.strip().lower():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Escolha um nome diferente do seu e-mail",
+        )
     user.nome = data.nome
     user.funcao = data.funcao
     user.senha_hash = hash_password(data.nova_senha)
