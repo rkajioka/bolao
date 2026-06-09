@@ -14,6 +14,7 @@ from app.models.jogo import Jogo
 from app.models.palpite_jogo import PalpiteJogo
 from app.models.usuario import Usuario
 from app.services.pontuacao_fase_service import DEFAULTS
+from app.services.ranking_service import condicoes_usuario_ranking
 
 PONTOS_BLOCO_EXPR = (
     PalpiteJogo.pontuacao_placar
@@ -177,16 +178,11 @@ def resolver_periodo_insights(
 
 
 def _condicoes_tenant(empresa_id: int | None) -> list:
-    condicoes = [Usuario.ativo.is_(True)]
-    if empresa_id is not None:
-        condicoes.append(Usuario.empresa_id == empresa_id)
-    return condicoes
+    return condicoes_usuario_ranking(empresa_id)
 
 
 def _contar_participantes_empresa(db: Session, empresa_id: int | None) -> int:
-    stmt = select(func.count(Usuario.id)).where(Usuario.ativo.is_(True))
-    if empresa_id is not None:
-        stmt = stmt.where(Usuario.empresa_id == empresa_id)
+    stmt = select(func.count(Usuario.id)).where(and_(*_condicoes_tenant(empresa_id)))
     return int(db.scalar(stmt) or 0)
 
 

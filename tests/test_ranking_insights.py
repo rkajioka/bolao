@@ -50,6 +50,35 @@ def _insights(client, token: str, empresa_id: int | None = None) -> dict:
     return r.json()
 
 
+def test_insights_participantes_empresa_exclui_aguardando_ativacao(client) -> None:
+    db = SessionLocal()
+    try:
+        seed_owner_admin_e_usuario(db)
+        empresa_id = db.scalar(
+            select(Usuario.empresa_id).where(Usuario.email == "user-etapa13@example.com")
+        )
+        usuario_service.create_usuario(
+            db,
+            UsuarioCreate.model_construct(
+                nome="aguardando.insights@example.com",
+                email="aguardando.insights@example.com",
+                senha_plana="senhaaguardando1",
+                funcao="Jogador",
+                tipo_usuario="usuario",
+                ativo=True,
+                primeiro_login=True,
+                empresa_id=empresa_id,
+            ),
+        )
+    finally:
+        db.close()
+
+    token = _login(client, "user-etapa13@example.com", "senhausuario1")
+    body = _insights(client, token)
+    # admin + user ativados; aguardando não conta
+    assert body["participantes_empresa"] == 2
+
+
 def test_r1_parcial_aguarda_primeiro_bloco(client) -> None:
     db = SessionLocal()
     try:

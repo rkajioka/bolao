@@ -34,9 +34,20 @@ class LinhaRankingInterna:
     pontos_totais: int
 
 
+def condicoes_usuario_ranking(empresa_id: int | None) -> list:
+    """Usuários elegíveis no ranking: ativos com primeiro acesso concluído."""
+    condicoes = [
+        Usuario.ativo.is_(True),
+        Usuario.primeiro_login.is_(False),
+    ]
+    if empresa_id is not None:
+        condicoes.append(Usuario.empresa_id == empresa_id)
+    return condicoes
+
+
 def listar_ranking(db: Session, empresa_id: int | None = None) -> list[LinhaRankingInterna]:
     """
-    Lista usuários ativos com pontuação agregada.
+    Lista participantes ativos com primeiro acesso concluído e pontuação agregada.
     Usuários sem palpites aparecem com zeros nos componentes de pontos.
     """
     agg_jogos = (
@@ -83,10 +94,8 @@ def listar_ranking(db: Session, empresa_id: int | None = None) -> list[LinhaRank
         .select_from(Usuario)
         .outerjoin(agg_jogos, agg_jogos.c.usuario_id == Usuario.id)
         .outerjoin(PalpiteEspecial, PalpiteEspecial.usuario_id == Usuario.id)
-        .where(Usuario.ativo.is_(True))
+        .where(and_(*condicoes_usuario_ranking(empresa_id)))
     )
-    if empresa_id is not None:
-        stmt = stmt.where(Usuario.empresa_id == empresa_id)
     stmt = stmt.order_by(total_expr.desc(), Usuario.nome.asc()).limit(_MAX_RANKING)
 
     rows = db.execute(stmt).all()
