@@ -31,7 +31,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { EmptyState } from '@/components/EmptyState'
 import { useToast } from '@/components/Toast'
 
-type FiltroConviteEquipe = 'todos' | 'link_expirado' | 'aguardando_ativacao'
+type FiltroConviteEquipe = 'todos' | 'ativos' | 'link_expirado' | 'aguardando_ativacao'
 
 function matchesBuscaEquipe(membro: MembroEquipe, busca: string): boolean {
   const term = busca.trim().toLowerCase()
@@ -688,12 +688,18 @@ export function EquipePage() {
   const convites = equipe?.filter((m) => m.tipo === 'convite') ?? []
   const totalNaLista = usuarios.length + convites.length
   const convitesExpirados = convites.filter((m) => m.status === 'convite_expirado').length
+  const ativos = usuarios.filter((m) => !m.primeiro_login).length
   const aguardandoAtivacao = usuarios.filter((m) => m.primeiro_login && !m.bloqueado).length
 
   const todosMembros = useMemo(() => [...usuarios, ...convites], [usuarios, convites])
 
   const membrosFiltrados = useMemo(() => {
     return todosMembros.filter((membro) => {
+      if (filtroConvite === 'ativos') {
+        if (membro.tipo !== 'usuario' || membro.primeiro_login) {
+          return false
+        }
+      }
       if (filtroConvite === 'link_expirado') {
         if (membro.tipo !== 'convite' || membro.status !== 'convite_expirado') {
           return false
@@ -948,6 +954,10 @@ export function EquipePage() {
                         [
                           { id: 'todos' as const, label: 'Todos' },
                           {
+                            id: 'ativos' as const,
+                            label: `Ativos${ativos > 0 ? ` (${ativos})` : ''}`,
+                          },
+                          {
                             id: 'link_expirado' as const,
                             label: `Link expirado${convitesExpirados > 0 ? ` (${convitesExpirados})` : ''}`,
                           },
@@ -991,11 +1001,13 @@ export function EquipePage() {
                       icon={<Users size={28} style={{ color: 'var(--text-muted)' }} />}
                       title="Nenhum resultado"
                       description={
-                        filtroConvite === 'link_expirado'
-                          ? 'Não há convites com link de ativação expirado.'
-                          : filtroConvite === 'aguardando_ativacao'
-                            ? 'Não há participantes aguardando o primeiro acesso.'
-                            : 'Nenhum membro corresponde à busca.'
+                        filtroConvite === 'ativos'
+                          ? 'Nenhum participante concluiu o primeiro acesso ainda.'
+                          : filtroConvite === 'link_expirado'
+                            ? 'Não há convites com link de ativação expirado.'
+                            : filtroConvite === 'aguardando_ativacao'
+                              ? 'Não há participantes aguardando o primeiro acesso.'
+                              : 'Nenhum membro corresponde à busca.'
                       }
                     />
                   ) : (
