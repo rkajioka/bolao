@@ -31,7 +31,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { EmptyState } from '@/components/EmptyState'
 import { useToast } from '@/components/Toast'
 
-type FiltroConviteEquipe = 'todos' | 'link_expirado'
+type FiltroConviteEquipe = 'todos' | 'link_expirado' | 'aguardando_ativacao'
 
 function matchesBuscaEquipe(membro: MembroEquipe, busca: string): boolean {
   const term = busca.trim().toLowerCase()
@@ -688,6 +688,7 @@ export function EquipePage() {
   const convites = equipe?.filter((m) => m.tipo === 'convite') ?? []
   const totalNaLista = usuarios.length + convites.length
   const convitesExpirados = convites.filter((m) => m.status === 'convite_expirado').length
+  const aguardandoAtivacao = usuarios.filter((m) => m.primeiro_login && !m.bloqueado).length
 
   const todosMembros = useMemo(() => [...usuarios, ...convites], [usuarios, convites])
 
@@ -695,6 +696,15 @@ export function EquipePage() {
     return todosMembros.filter((membro) => {
       if (filtroConvite === 'link_expirado') {
         if (membro.tipo !== 'convite' || membro.status !== 'convite_expirado') {
+          return false
+        }
+      }
+      if (filtroConvite === 'aguardando_ativacao') {
+        if (
+          membro.tipo !== 'usuario' ||
+          !membro.primeiro_login ||
+          membro.bloqueado
+        ) {
           return false
         }
       }
@@ -941,6 +951,10 @@ export function EquipePage() {
                             id: 'link_expirado' as const,
                             label: `Link expirado${convitesExpirados > 0 ? ` (${convitesExpirados})` : ''}`,
                           },
+                          {
+                            id: 'aguardando_ativacao' as const,
+                            label: `Aguardando ativação${aguardandoAtivacao > 0 ? ` (${aguardandoAtivacao})` : ''}`,
+                          },
                         ] as const
                       ).map((opcao) => {
                         const ativo = filtroConvite === opcao.id
@@ -979,7 +993,9 @@ export function EquipePage() {
                       description={
                         filtroConvite === 'link_expirado'
                           ? 'Não há convites com link de ativação expirado.'
-                          : 'Nenhum membro corresponde à busca.'
+                          : filtroConvite === 'aguardando_ativacao'
+                            ? 'Não há participantes aguardando o primeiro acesso.'
+                            : 'Nenhum membro corresponde à busca.'
                       }
                     />
                   ) : (
