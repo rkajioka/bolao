@@ -80,6 +80,7 @@ def enviar_comunicado_equipe(
         destinatarios,
         data.assunto,
         data.mensagem,
+        admin.email,
     )
     return ComunicadoEquipeResponse(
         total_destinatarios=len(destinatarios),

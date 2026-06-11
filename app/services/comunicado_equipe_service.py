@@ -113,6 +113,7 @@ async def enviar_comunicados_background(
     destinatarios: list[str],
     assunto: str,
     mensagem: str,
+    admin_email: str,
 ) -> None:
     if not destinatarios:
         return
@@ -121,6 +122,7 @@ async def enviar_comunicados_background(
     db = SessionLocal()
     try:
         falhas_envio: list[email_dispatch_service.FalhaEnvioItem] = []
+        enviados = 0
         for indice, email in enumerate(destinatarios):
             resultado_envio = await email_service.tentar_enviar_comunicado_async(
                 email,
@@ -128,7 +130,9 @@ async def enviar_comunicados_background(
                 mensagem,
                 empresa_nome,
             )
-            if not resultado_envio.sucesso:
+            if resultado_envio.sucesso:
+                enviados += 1
+            else:
                 falhas_envio.append(
                     email_dispatch_service.FalhaEnvioItem(
                         destinatario=email,
@@ -150,6 +154,17 @@ async def enviar_comunicados_background(
                 empresa_nome=empresa_nome,
                 operacao="comunicado da equipe",
                 falhas=falhas_envio,
+            )
+
+        email_admin = admin_email.strip().lower()
+        if email_admin:
+            await email_service.tentar_enviar_resumo_comunicado_admin_async(
+                email_admin,
+                empresa_nome,
+                assunto,
+                total=len(destinatarios),
+                enviados=enviados,
+                falhas=len(falhas_envio),
             )
     finally:
         db.close()

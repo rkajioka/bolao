@@ -311,6 +311,44 @@ async def tentar_enviar_comunicado_async(
     )
 
 
+async def tentar_enviar_resumo_comunicado_admin_async(
+    destinatario_admin: str,
+    empresa_nome: str,
+    assunto_original: str,
+    *,
+    total: int,
+    enviados: int,
+    falhas: int,
+) -> email_dispatch_service.ResultadoEnvio:
+    safe_assunto = html_escape(assunto_original)
+    if falhas == 0:
+        corpo_html = (
+            f"<p>O envio do comunicado <strong>{safe_assunto}</strong> foi concluído.</p>"
+            f"<p><strong>{enviados}</strong> de <strong>{total}</strong> "
+            "destinatário(s) receberam o e-mail com sucesso.</p>"
+        )
+    else:
+        corpo_html = (
+            f"<p>O envio do comunicado <strong>{safe_assunto}</strong> foi concluído.</p>"
+            f"<ul>"
+            f"<li>Total de destinatários: {total}</li>"
+            f"<li>Enviados com sucesso: {enviados}</li>"
+            f"<li>Falhas: {falhas}</li>"
+            f"</ul>"
+            "<p>Os administradores da empresa foram alertados sobre as falhas de entrega.</p>"
+        )
+    assunto_resumo = f"Comunicado processado — {assunto_original.strip()}"
+    if len(assunto_resumo) > 200:
+        assunto_resumo = assunto_resumo[:197] + "…"
+    return await _enviar_com_log_async(
+        destinatario=destinatario_admin,
+        assunto=assunto_resumo,
+        corpo_html=corpo_html,
+        nome_remetente=empresa_nome,
+        rotulo="comunicado-equipe-resumo",
+    )
+
+
 async def tentar_enviar_reset_senha_async(
     db: Session,
     destinatario: str,

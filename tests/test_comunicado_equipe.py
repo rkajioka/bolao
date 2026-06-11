@@ -254,3 +254,29 @@ def test_post_comunicado_producao_sem_destinatarios(client, monkeypatch) -> None
         json={"assunto": "Teste", "mensagem": "Teste"},
     )
     assert r_post.status_code == 400, r_post.text
+
+
+@patch(
+    "app.services.comunicado_equipe_service.email_service.tentar_enviar_resumo_comunicado_admin_async",
+    new_callable=AsyncMock,
+)
+@patch(
+    "app.services.comunicado_equipe_service.email_service.tentar_enviar_comunicado_async",
+    new_callable=AsyncMock,
+)
+def test_comunicado_envia_resumo_ao_admin_ao_concluir(mock_enviar, mock_resumo, client) -> None:
+    mock_enviar.return_value = type("R", (), {"sucesso": True, "erro": None})()
+    mock_resumo.return_value = type("R", (), {"sucesso": True, "erro": None})()
+    headers = _headers_admin(client)
+    payload = {"assunto": "Lembrete", "mensagem": "Texto do aviso."}
+
+    r = client.post("/equipe/comunicado", headers=headers, json=payload)
+    assert r.status_code == 201, r.text
+
+    mock_resumo.assert_awaited_once()
+    args, kwargs = mock_resumo.await_args
+    assert args[0] == "admin-com@example.com"
+    assert args[2] == "Lembrete"
+    assert kwargs["total"] == 1
+    assert kwargs["enviados"] == 1
+    assert kwargs["falhas"] == 0
