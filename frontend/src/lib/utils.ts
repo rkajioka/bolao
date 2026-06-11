@@ -44,8 +44,64 @@ export function flagImgUrl(url: string | null | undefined): string {
   return url.startsWith('/') ? url : `/${url}`
 }
 
+export const BOLAO_TIMEZONE = 'America/Sao_Paulo'
+
+const bolaoDateTimeParts = (date: Date) =>
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: BOLAO_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(date)
+
+const partValue = (parts: Intl.DateTimeFormatPart[], type: Intl.DateTimeFormatPartTypes) =>
+  parts.find((p) => p.type === type)?.value ?? ''
+
+/** ISO UTC → valor para `<input type="datetime-local">` em horário de Brasília. */
+export function isoToDatetimeLocal(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return ''
+  const parts = bolaoDateTimeParts(date)
+  return `${partValue(parts, 'year')}-${partValue(parts, 'month')}-${partValue(parts, 'day')}T${partValue(parts, 'hour')}:${partValue(parts, 'minute')}`
+}
+
+/** Valor de `<input type="datetime-local">` (Brasília) → ISO UTC para a API. */
+export function datetimeLocalToIso(value: string): string {
+  const [datePart, timePart] = value.split('T')
+  if (!datePart || !timePart) return value
+
+  const [year, month, day] = datePart.split('-').map(Number)
+  const [hour, minute] = timePart.split(':').map(Number)
+  if ([year, month, day, hour, minute].some((n) => Number.isNaN(n))) return value
+
+  let guess = Date.UTC(year, month - 1, day, hour + 3, minute)
+  for (let i = 0; i < 6; i++) {
+    const parts = bolaoDateTimeParts(new Date(guess))
+    const y = Number(partValue(parts, 'year'))
+    const m = Number(partValue(parts, 'month'))
+    const d = Number(partValue(parts, 'day'))
+    const h = Number(partValue(parts, 'hour'))
+    const min = Number(partValue(parts, 'minute'))
+    if (y === year && m === month && d === day && h === hour && min === minute) {
+      return new Date(guess).toISOString()
+    }
+    const deltaMin = (year - y) * 525_600
+      + (month - m) * 43_200
+      + (day - d) * 1_440
+      + (hour - h) * 60
+      + (minute - min)
+    guess += deltaMin * 60_000
+  }
+  return new Date(guess).toISOString()
+}
+
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleString('pt-BR', {
+    timeZone: BOLAO_TIMEZONE,
     day: '2-digit',
     month: '2-digit',
     hour: '2-digit',
@@ -55,6 +111,7 @@ export function formatDate(iso: string): string {
 
 export function formatDateShort(iso: string): string {
   return new Date(iso).toLocaleDateString('pt-BR', {
+    timeZone: BOLAO_TIMEZONE,
     day: '2-digit',
     month: '2-digit',
   })
@@ -62,6 +119,7 @@ export function formatDateShort(iso: string): string {
 
 export function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('pt-BR', {
+    timeZone: BOLAO_TIMEZONE,
     hour: '2-digit',
     minute: '2-digit',
   })

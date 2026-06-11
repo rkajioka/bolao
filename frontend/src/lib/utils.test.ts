@@ -1,9 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   comparePalpiteSegmentKeys,
+  datetimeLocalToIso,
   deadlineText,
   flagImgUrl,
+  formatDate,
   imgUrl,
+  isoToDatetimeLocal,
   jogoBloqueado,
   mensagemPodioRepetidoEspeciais,
   nomeSelecaoParaCard,
@@ -61,6 +64,25 @@ describe('imgUrl / flagImgUrl', () => {
     expect(flagImgUrl('https://flagcdn.com/w40/br.png')).toBe('https://flagcdn.com/w40/br.png')
     expect(flagImgUrl('/static/bandeiras/br.png')).toBe('/static/bandeiras/br.png')
     expect(flagImgUrl(null)).toBe('')
+  })
+})
+
+describe('timezone Brasília', () => {
+  it('isoToDatetimeLocal converte UTC para horário de Brasília', () => {
+    expect(isoToDatetimeLocal('2026-06-11T18:30:00.000Z')).toBe('2026-06-11T15:30')
+  })
+
+  it('datetimeLocalToIso converte Brasília para UTC', () => {
+    expect(datetimeLocalToIso('2026-06-11T15:30')).toBe('2026-06-11T18:30:00.000Z')
+  })
+
+  it('round-trip mantém o horário de Brasília', () => {
+    const local = '2026-06-11T19:00'
+    expect(isoToDatetimeLocal(datetimeLocalToIso(local))).toBe(local)
+  })
+
+  it('formatDate usa fuso de Brasília', () => {
+    expect(formatDate('2026-06-11T22:00:00.000Z')).toMatch(/11\/06\/2026.*19:00/)
   })
 })
 

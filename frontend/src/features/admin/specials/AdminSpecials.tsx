@@ -2,7 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { SelectInput } from '@/components/SelectInput'
 import type { ConfiguracaoBolao, PontuacaoFase } from '@/types'
-import { formatDate, mensagemPodioRepetidoEspeciais } from '@/lib/utils'
+import {
+  datetimeLocalToIso,
+  formatDate,
+  isoToDatetimeLocal,
+  mensagemPodioRepetidoEspeciais,
+} from '@/lib/utils'
 import { adminService } from '@/services/admin.service'
 
 interface AdminSpecialsProps {
@@ -328,16 +333,21 @@ export function AdminSpecials({ success, error, variant, empresaId }: AdminSpeci
             className="block text-xs font-bold mb-2 uppercase tracking-wider"
             style={{ color: 'var(--text-muted)' }}
           >
-            Bloqueio de especiais
+            Bloqueio de especiais (horário de Brasília)
           </label>
           <input
             id="bloqueio-especiais"
             type="datetime-local"
-            value={(form?.data_bloqueio_palpites_especiais || '').slice(0, 16)}
+            value={isoToDatetimeLocal(form?.data_bloqueio_palpites_especiais)}
             onChange={(e) =>
               setForm((old) =>
                 old
-                  ? { ...old, data_bloqueio_palpites_especiais: e.target.value ? new Date(e.target.value).toISOString() : null }
+                  ? {
+                      ...old,
+                      data_bloqueio_palpites_especiais: e.target.value
+                        ? datetimeLocalToIso(e.target.value)
+                        : null,
+                    }
                   : old,
               )
             }
