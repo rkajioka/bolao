@@ -297,9 +297,7 @@ async def tentar_enviar_comunicado_async(
     mensagem: str,
     empresa_nome: str,
 ) -> email_dispatch_service.ResultadoEnvio:
-    safe_nome = html_escape(empresa_nome)
     corpo_html = (
-        f"<p>Mensagem da equipe do bolão <strong>{safe_nome}</strong>:</p>"
         f"{_mensagem_texto_para_html(mensagem)}"
         "<p><em>Este é um aviso administrativo do bolão. "
         "Não responda a este e-mail.</em></p>"

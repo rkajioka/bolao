@@ -37,6 +37,64 @@ import {
 
 type FiltroConviteEquipe = 'todos' | 'ativos' | 'link_expirado' | 'aguardando_ativacao'
 
+function EquipeHeaderIconButton({
+  label,
+  onClick,
+  disabled,
+  active,
+  children,
+  tone = 'neutral',
+}: {
+  label: string
+  onClick: () => void
+  disabled?: boolean
+  active?: boolean
+  children: React.ReactNode
+  tone?: 'neutral' | 'accent' | 'warning'
+}) {
+  const toneStyles = {
+    neutral: {
+      bg: 'var(--glass)',
+      color: 'var(--text)',
+      border: '1px solid var(--border)',
+      activeBg: 'rgba(255,255,255,0.08)',
+    },
+    accent: {
+      bg: 'var(--accent)',
+      color: '#fff',
+      border: 'none',
+      activeBg: 'var(--accent)',
+    },
+    warning: {
+      bg: 'rgba(212,160,23,0.18)',
+      color: 'var(--highlight)',
+      border: '1px solid rgba(212,160,23,0.35)',
+      activeBg: 'rgba(212,160,23,0.28)',
+    },
+  }
+  const s = toneStyles[tone]
+
+  return (
+    <motion.button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      whileTap={{ scale: disabled ? 1 : 0.95 }}
+      aria-label={label}
+      title={label}
+      className="flex items-center justify-center w-9 h-9 rounded-xl disabled:opacity-50 shrink-0"
+      style={{
+        background: active ? s.activeBg : s.bg,
+        color: s.color,
+        border: s.border,
+        boxShadow: active ? '0 0 0 1px var(--accent)' : undefined,
+      }}
+    >
+      {children}
+    </motion.button>
+  )
+}
+
 function matchesBuscaEquipe(membro: MembroEquipe, busca: string): boolean {
   const term = busca.trim().toLowerCase()
   if (!term) return true
@@ -814,26 +872,29 @@ export function EquipePage() {
             </div>
             <div className="flex items-center gap-2">
               {convitesExpirados > 0 && (
-                <motion.button
-                  type="button"
-                  onClick={() => setProvisionarExpiradosOpen(true)}
+                <EquipeHeaderIconButton
+                  label={
+                    provisionarExpiradosMutation.isPending
+                      ? 'Ativando convites expirados com senha padrão…'
+                      : `Ativar ${convitesExpirados} convite${convitesExpirados > 1 ? 's' : ''} expirado${convitesExpirados > 1 ? 's' : ''} com senha padrão`
+                  }
+                  tone="warning"
                   disabled={provisionarExpiradosMutation.isPending}
-                  whileTap={{ scale: 0.95 }}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-semibold text-sm disabled:opacity-50"
-                  style={{
-                    background: 'rgba(212,160,23,0.18)',
-                    color: 'var(--highlight)',
-                    border: '1px solid rgba(212,160,23,0.35)',
-                  }}
+                  onClick={() => setProvisionarExpiradosOpen(true)}
                 >
-                  <KeyRound size={15} />
-                  {provisionarExpiradosMutation.isPending
-                    ? 'Ativando…'
-                    : `Ativar ${convitesExpirados} expirado${convitesExpirados > 1 ? 's' : ''}`}
-                </motion.button>
+                  <KeyRound
+                    size={18}
+                    className={provisionarExpiradosMutation.isPending ? 'animate-spin' : undefined}
+                  />
+                </EquipeHeaderIconButton>
               )}
-              <motion.button
-                type="button"
+              <EquipeHeaderIconButton
+                label={
+                  showComunicado
+                    ? 'Fechar envio de e-mail à equipe'
+                    : 'Enviar e-mail personalizado à equipe (assunto e mensagem)'
+                }
+                active={showComunicado}
                 onClick={() => {
                   setShowComunicado((value) => {
                     const next = !value
@@ -841,19 +902,17 @@ export function EquipePage() {
                     return next
                   })
                 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-semibold text-sm"
-                style={{
-                  background: 'var(--glass)',
-                  color: 'var(--text)',
-                  border: '1px solid var(--border)',
-                }}
               >
-                <Send size={15} />
-                Enviar e-mail
-              </motion.button>
-              <motion.button
-                type="button"
+                <Send size={18} />
+              </EquipeHeaderIconButton>
+              <EquipeHeaderIconButton
+                label={
+                  showInvite
+                    ? 'Fechar convite de novas pessoas'
+                    : 'Convidar novas pessoas por e-mail'
+                }
+                tone="accent"
+                active={showInvite}
                 onClick={() => {
                   setShowInvite((value) => {
                     const next = !value
@@ -863,13 +922,9 @@ export function EquipePage() {
                   setInviteResults(null)
                   setInviteResumo(null)
                 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-semibold text-sm"
-                style={{ background: 'var(--accent)', color: '#fff' }}
               >
-                <UserPlus size={15} />
-                Convidar
-              </motion.button>
+                <UserPlus size={18} />
+              </EquipeHeaderIconButton>
             </div>
           </div>
 
