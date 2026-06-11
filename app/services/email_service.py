@@ -280,6 +280,39 @@ async def tentar_enviar_convite_async(
     )
 
 
+def _mensagem_texto_para_html(mensagem: str) -> str:
+    """Texto plano → parágrafos HTML seguros."""
+    partes: list[str] = []
+    for linha in mensagem.splitlines():
+        if linha.strip():
+            partes.append(f"<p>{html_escape(linha)}</p>")
+        else:
+            partes.append("<br>")
+    return "".join(partes) or "<p></p>"
+
+
+async def tentar_enviar_comunicado_async(
+    destinatario: str,
+    assunto: str,
+    mensagem: str,
+    empresa_nome: str,
+) -> email_dispatch_service.ResultadoEnvio:
+    safe_nome = html_escape(empresa_nome)
+    corpo_html = (
+        f"<p>Mensagem da equipe do bolão <strong>{safe_nome}</strong>:</p>"
+        f"{_mensagem_texto_para_html(mensagem)}"
+        "<p><em>Este é um aviso administrativo do bolão. "
+        "Não responda a este e-mail.</em></p>"
+    )
+    return await _enviar_com_log_async(
+        destinatario=destinatario,
+        assunto=assunto.strip(),
+        corpo_html=corpo_html,
+        nome_remetente=empresa_nome,
+        rotulo="comunicado-equipe",
+    )
+
+
 async def tentar_enviar_reset_senha_async(
     db: Session,
     destinatario: str,

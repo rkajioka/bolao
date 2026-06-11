@@ -50,6 +50,15 @@ export interface BulkConviteResponse {
   resumo_envio: ConviteResumoEnvio
 }
 
+export interface ComunicadoEquipePreview {
+  total_destinatarios: number
+  modo_teste: boolean
+}
+
+export interface ComunicadoEquipeResponse extends ComunicadoEquipePreview {
+  enfileirado: boolean
+}
+
 export interface UsuarioEmailEntrega {
   email_enviado?: boolean | null
   email_erro?: string | null

@@ -11,7 +11,19 @@ from app.models.convite import Convite
 from app.models.empresa import Empresa
 from app.models.usuario import Usuario
 from app.schemas.convite import BulkConviteRequest, BulkConviteResponse, ProvisionarExpiradosResponse
-from app.services import convite_provision_service, convite_service, equipe_service, rate_limit_service, usuario_service
+from app.schemas.comunicado import (
+    ComunicadoEquipePreviewResponse,
+    ComunicadoEquipeRequest,
+    ComunicadoEquipeResponse,
+)
+from app.services import (
+    comunicado_equipe_service,
+    convite_provision_service,
+    convite_service,
+    equipe_service,
+    rate_limit_service,
+    usuario_service,
+)
 
 router = APIRouter(prefix="/equipe", tags=["equipe"])
 
@@ -24,6 +36,55 @@ def listar_equipe(
     empresa_id: int = Depends(get_resolved_empresa_id),
 ) -> list:
     return equipe_service.listar_equipe(db, empresa_id)
+
+
+@router.get("/comunicado/preview", response_model=ComunicadoEquipePreviewResponse)
+def preview_comunicado_equipe(
+    db: Session = Depends(get_db),
+    admin: Usuario = Depends(require_admin),
+    empresa_id: int = Depends(get_resolved_empresa_id),
+) -> ComunicadoEquipePreviewResponse:
+    return comunicado_equipe_service.preview_comunicado(db, empresa_id, admin)
+
+
+@router.post(
+    "/comunicado",
+    response_model=ComunicadoEquipeResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def enviar_comunicado_equipe(
+    data: ComunicadoEquipeRequest,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    admin: Usuario = Depends(require_admin),
+    empresa_id: int = Depends(get_resolved_empresa_id),
+) -> ComunicadoEquipeResponse:
+    settings = get_settings()
+    rate_limit_service.enforce_limit(
+        key=f"comunicado_equipe:{empresa_id}",
+        limit=settings.rate_limit_comunicado_equipe_requests,
+        window_seconds=settings.rate_limit_comunicado_equipe_window_seconds,
+    )
+    destinatarios, empresa_nome, modo_teste = comunicado_equipe_service.preparar_comunicado(
+        db,
+        empresa_id,
+        admin,
+        data,
+        client_ip(request),
+    )
+    background_tasks.add_task(
+        comunicado_equipe_service.enviar_comunicados_background,
+        empresa_id,
+        empresa_nome,
+        destinatarios,
+        data.assunto,
+        data.mensagem,
+    )
+    return ComunicadoEquipeResponse(
+        total_destinatarios=len(destinatarios),
+        modo_teste=modo_teste,
+    )
 
 
 @router.post(

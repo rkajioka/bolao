@@ -1,6 +1,8 @@
 import { api, ApiError, apiPostMultipart } from '@/lib/api'
 import type {
   BulkConviteResponse,
+  ComunicadoEquipePreview,
+  ComunicadoEquipeResponse,
   ConviteResultado,
   ConviteResumoEnvio,
   MembroEquipe,
@@ -70,6 +72,17 @@ export const equipeService = {
     return api.post<ProvisionarExpiradosResponse>(
       `${EQUIPE_API}/convites/provisionar-expirados${empresaQs(empresaId)}`,
     )
+  },
+
+  async previewComunicado(empresaId?: number | null): Promise<ComunicadoEquipePreview> {
+    return api.get<ComunicadoEquipePreview>(`${EQUIPE_API}/comunicado/preview${empresaQs(empresaId)}`)
+  },
+
+  async enviarComunicado(
+    payload: { assunto: string; mensagem: string },
+    empresaId?: number | null,
+  ): Promise<ComunicadoEquipeResponse> {
+    return api.post<ComunicadoEquipeResponse>(`${EQUIPE_API}/comunicado${empresaQs(empresaId)}`, payload)
   },
 
   async bloquearUsuario(usuarioId: number, bloqueado: boolean, empresaId?: number | null): Promise<void> {

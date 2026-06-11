@@ -89,7 +89,10 @@ class Settings(BaseSettings):
     rate_limit_avatar_perfil_requests: int = 10   # POST /perfil/avatar (por usuário autenticado)
     rate_limit_convites_bulk_requests: int = 15
     rate_limit_convites_bulk_window_seconds: int = 300
+    rate_limit_comunicado_equipe_requests: int = 3
+    rate_limit_comunicado_equipe_window_seconds: int = 3600
     rate_limit_window_seconds: int = 60
+    comunicado_modo_teste: bool = True
 
     # ------------------------------------------------------------------ #
     # Geral                                                                #

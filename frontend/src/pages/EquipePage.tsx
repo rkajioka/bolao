@@ -30,6 +30,10 @@ import { empresaService } from '@/services/empresa.service'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { EmptyState } from '@/components/EmptyState'
 import { useToast } from '@/components/Toast'
+import {
+  ComunicadoEquipePanel,
+  ComunicadoEquipePanelHeader,
+} from '@/pages/EquipePage/ComunicadoEquipePanel'
 
 type FiltroConviteEquipe = 'todos' | 'ativos' | 'link_expirado' | 'aguardando_ativacao'
 
@@ -542,10 +546,12 @@ function InviteResults({
 export function EquipePage() {
   const queryClient = useQueryClient()
   const { success, error } = useToast()
-  const { empresaId: authEmpresaId } = useAuth()
+  const { empresaId: authEmpresaId, user } = useAuth()
   const { resolvedEmpresaId, setOwnerEmpresaId, needsOwnerEmpresaPick } = useResolvedEmpresaForAdmin()
   const [showInvite, setShowInvite] = useState(false)
+  const [showComunicado, setShowComunicado] = useState(false)
   const [inviteBusy, setInviteBusy] = useState(false)
+  const [comunicadoBusy, setComunicadoBusy] = useState(false)
   const [inviteResults, setInviteResults] = useState<ConviteResultado[] | null>(null)
   const [inviteResumo, setInviteResumo] = useState<ConviteResumoEnvio | null>(null)
   const [usuarioRemoverId, setUsuarioRemoverId] = useState<number | null>(null)
@@ -782,7 +788,7 @@ export function EquipePage() {
         onConfirm={() => provisionarExpiradosMutation.mutate()}
       />
       {needsOwnerEmpresaPick && (
-        <div className={inviteBusy ? 'pointer-events-none opacity-60' : undefined}>
+        <div className={inviteBusy || comunicadoBusy ? 'pointer-events-none opacity-60' : undefined}>
           <OwnerEmpresaPicker value={resolvedEmpresaId} onChange={setOwnerEmpresaId} />
         </div>
       )}
@@ -829,7 +835,31 @@ export function EquipePage() {
               <motion.button
                 type="button"
                 onClick={() => {
-                  setShowInvite((value) => !value)
+                  setShowComunicado((value) => {
+                    const next = !value
+                    if (next) setShowInvite(false)
+                    return next
+                  })
+                }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-semibold text-sm"
+                style={{
+                  background: 'var(--glass)',
+                  color: 'var(--text)',
+                  border: '1px solid var(--border)',
+                }}
+              >
+                <Send size={15} />
+                Enviar e-mail
+              </motion.button>
+              <motion.button
+                type="button"
+                onClick={() => {
+                  setShowInvite((value) => {
+                    const next = !value
+                    if (next) setShowComunicado(false)
+                    return next
+                  })
                   setInviteResults(null)
                   setInviteResumo(null)
                 }}
@@ -878,6 +908,30 @@ export function EquipePage() {
                       onBusyChange={setInviteBusy}
                     />
                   )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {showComunicado && (
+              <motion.div
+                key="comunicado-form"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden"
+              >
+                <div
+                  className="rounded-2xl p-4"
+                  style={{ background: 'var(--glass)', border: '1px solid var(--border)' }}
+                >
+                  <ComunicadoEquipePanelHeader />
+                  <ComunicadoEquipePanel
+                    empresaId={effectiveEmpresaId ?? undefined}
+                    adminEmail={user?.email}
+                    onBusyChange={setComunicadoBusy}
+                  />
                 </div>
               </motion.div>
             )}
