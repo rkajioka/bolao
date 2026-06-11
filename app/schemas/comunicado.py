@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field, field_validator
 class ComunicadoEquipeRequest(BaseModel):
     assunto: str = Field(min_length=1, max_length=200)
     mensagem: str = Field(min_length=1, max_length=4000)
+    modo_teste: bool = True
 
     @field_validator("assunto", "mensagem", mode="before")
     @classmethod

@@ -22,13 +22,14 @@ export function ComunicadoEquipePanel({
   const { success, error: toastError } = useToast()
   const [assunto, setAssunto] = useState('')
   const [mensagem, setMensagem] = useState('')
+  const [modoTeste, setModoTeste] = useState(true)
   const [loading, setLoading] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
 
   const { data: preview, isLoading: previewLoading } = useQuery({
-    queryKey: ['equipe', 'comunicado-preview', empresaId],
-    queryFn: () => equipeService.previewComunicado(empresaId ?? undefined),
+    queryKey: ['equipe', 'comunicado-preview', empresaId, modoTeste],
+    queryFn: () => equipeService.previewComunicado(empresaId ?? undefined, modoTeste),
     enabled: empresaId != null,
   })
 
@@ -55,8 +56,9 @@ export function ComunicadoEquipePanel({
     setFormError(null)
     try {
       const lockedEmpresaId = empresaId
+      const lockedModoTeste = modoTeste
       const response = await equipeService.enviarComunicado(
-        { assunto: assunto.trim(), mensagem: mensagem.trim() },
+        { assunto: assunto.trim(), mensagem: mensagem.trim(), modo_teste: lockedModoTeste },
         lockedEmpresaId,
       )
       setAssunto('')
@@ -90,8 +92,8 @@ export function ComunicadoEquipePanel({
   }
 
   const totalDestinatarios = preview?.total_destinatarios ?? 0
-  const confirmDescription = preview?.modo_teste
-    ? 'Enviar e-mail de teste para você?'
+  const confirmDescription = modoTeste
+    ? 'Enviar e-mail de teste apenas para você?'
     : `Enviar para ${totalDestinatarios} participantes ativos (inclui admins)?`
 
   return (
@@ -110,19 +112,46 @@ export function ComunicadoEquipePanel({
       />
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        {preview?.modo_teste && (
-          <div
-            className="rounded-xl px-3 py-2.5 text-xs leading-relaxed"
-            style={{
-              background: 'rgba(212,160,23,0.12)',
-              border: '1px solid rgba(212,160,23,0.35)',
-              color: 'var(--highlight)',
-            }}
-          >
-            <strong>Modo teste:</strong> este e-mail será enviado apenas para o seu endereço
-            {adminEmail ? ` (${adminEmail})` : ''}.
-          </div>
-        )}
+        <label
+          className="flex items-start gap-3 rounded-xl px-3 py-2.5 cursor-pointer"
+          style={{
+            background: modoTeste ? 'rgba(212,160,23,0.12)' : 'var(--glass)',
+            border: modoTeste
+              ? '1px solid rgba(212,160,23,0.35)'
+              : '1px solid var(--border)',
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={modoTeste}
+            onChange={(e) => setModoTeste(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--highlight)]"
+          />
+          <span className="flex flex-col gap-0.5 min-w-0">
+            <span className="text-sm font-medium" style={{ color: 'var(--text)' }}>
+              Modo teste — enviar apenas para mim
+            </span>
+            <span className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+              {modoTeste ? (
+                <>
+                  O e-mail vai só para{' '}
+                  <strong style={{ color: 'var(--highlight)' }}>
+                    {adminEmail ?? 'seu endereço'}
+                  </strong>
+                  . Desmarque para enviar a todos os participantes ativos.
+                </>
+              ) : (
+                <>
+                  O e-mail será enviado a{' '}
+                  <strong style={{ color: 'var(--accent)' }}>
+                    {previewLoading ? '…' : totalDestinatarios}
+                  </strong>{' '}
+                  participantes ativos (inclui admins). Marque para testar só com você.
+                </>
+              )}
+            </span>
+          </span>
+        </label>
 
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium" style={{ color: 'var(--text)' }}>
@@ -171,7 +200,9 @@ export function ComunicadoEquipePanel({
         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
           {previewLoading
             ? 'Calculando destinatários…'
-            : `Destinatários: ${totalDestinatarios}`}
+            : modoTeste
+              ? 'Destinatários: 1 (modo teste)'
+              : `Destinatários: ${totalDestinatarios} participantes ativos`}
         </p>
 
         {formError && (

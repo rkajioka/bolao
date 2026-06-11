@@ -40,9 +40,10 @@ def resolver_destinatarios_comunicado(
     db: Session,
     empresa_id: int,
     admin: Usuario,
+    *,
+    modo_teste: bool,
 ) -> list[str]:
-    settings = get_settings()
-    if settings.comunicado_modo_teste:
+    if modo_teste:
         return [_normalizar_email(admin.email)]
 
     emails = db.scalars(
@@ -63,12 +64,15 @@ def preview_comunicado(
     db: Session,
     empresa_id: int,
     admin: Usuario,
+    *,
+    modo_teste: bool,
 ) -> ComunicadoEquipePreviewResponse:
-    settings = get_settings()
-    destinatarios = resolver_destinatarios_comunicado(db, empresa_id, admin)
+    destinatarios = resolver_destinatarios_comunicado(
+        db, empresa_id, admin, modo_teste=modo_teste
+    )
     return ComunicadoEquipePreviewResponse(
         total_destinatarios=len(destinatarios),
-        modo_teste=settings.comunicado_modo_teste,
+        modo_teste=modo_teste,
     )
 
 
@@ -79,13 +83,15 @@ def preparar_comunicado(
     data: ComunicadoEquipeRequest,
     ip: str | None,
 ) -> tuple[list[str], str, bool]:
-    settings = get_settings()
     empresa = db.get(Empresa, empresa_id)
     if empresa is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empresa não encontrada")
 
-    destinatarios = resolver_destinatarios_comunicado(db, empresa_id, admin)
-    if not destinatarios and not settings.comunicado_modo_teste:
+    modo_teste = data.modo_teste
+    destinatarios = resolver_destinatarios_comunicado(
+        db, empresa_id, admin, modo_teste=modo_teste
+    )
+    if not destinatarios and not modo_teste:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Nenhum participante ativo encontrado",
@@ -98,13 +104,13 @@ def preparar_comunicado(
         usuario_id=admin.id,
         empresa_id=empresa_id,
         alvo=f"{len(destinatarios)} destinatário(s)"
-        + (" (modo teste)" if settings.comunicado_modo_teste else ""),
-        metadata={"assunto": assunto_truncado},
+        + (" (modo teste)" if modo_teste else ""),
+        metadata={"assunto": assunto_truncado, "modo_teste": modo_teste},
         ip=ip,
     )
     db.commit()
 
-    return destinatarios, empresa.nome, settings.comunicado_modo_teste
+    return destinatarios, empresa.nome, modo_teste
 
 
 async def enviar_comunicados_background(

@@ -18,9 +18,16 @@ const INVITE_SUCCESS_STATUSES = new Set<ConviteResultado['status']>([
   'ja_cadastrado',
 ])
 
-function empresaQs(empresaId?: number | null): string {
-  if (empresaId == null) return ''
-  return `?empresa_id=${empresaId}`
+function empresaQs(empresaId?: number | null, extra?: Record<string, string | boolean>): string {
+  const params = new URLSearchParams()
+  if (empresaId != null) params.set('empresa_id', String(empresaId))
+  if (extra) {
+    for (const [key, value] of Object.entries(extra)) {
+      params.set(key, String(value))
+    }
+  }
+  const qs = params.toString()
+  return qs ? `?${qs}` : ''
 }
 
 export const equipeService = {
@@ -74,12 +81,17 @@ export const equipeService = {
     )
   },
 
-  async previewComunicado(empresaId?: number | null): Promise<ComunicadoEquipePreview> {
-    return api.get<ComunicadoEquipePreview>(`${EQUIPE_API}/comunicado/preview${empresaQs(empresaId)}`)
+  async previewComunicado(
+    empresaId?: number | null,
+    modoTeste = true,
+  ): Promise<ComunicadoEquipePreview> {
+    return api.get<ComunicadoEquipePreview>(
+      `${EQUIPE_API}/comunicado/preview${empresaQs(empresaId, { modo_teste: modoTeste })}`,
+    )
   },
 
   async enviarComunicado(
-    payload: { assunto: string; mensagem: string },
+    payload: { assunto: string; mensagem: string; modo_teste: boolean },
     empresaId?: number | null,
   ): Promise<ComunicadoEquipeResponse> {
     return api.post<ComunicadoEquipeResponse>(`${EQUIPE_API}/comunicado${empresaQs(empresaId)}`, payload)

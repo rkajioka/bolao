@@ -170,11 +170,9 @@ def test_post_comunicado_escapa_html(mock_enviar, client) -> None:
     assert "&lt;script&gt;" in html_fn("<script>alert(1)</script>")
 
 
-def test_preview_comunicado_producao(client, monkeypatch) -> None:
-    settings = get_settings()
-    monkeypatch.setattr(settings, "comunicado_modo_teste", False)
+def test_preview_comunicado_producao(client) -> None:
     headers = _headers_admin(client)
-    r = client.get("/equipe/comunicado/preview", headers=headers)
+    r = client.get("/equipe/comunicado/preview?modo_teste=false", headers=headers)
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["total_destinatarios"] == 3
@@ -185,27 +183,29 @@ def test_preview_comunicado_producao(client, monkeypatch) -> None:
     "app.services.comunicado_equipe_service.email_service.tentar_enviar_comunicado_async",
     new_callable=AsyncMock,
 )
-def test_post_comunicado_producao_destinatarios(mock_enviar, client, monkeypatch) -> None:
+def test_post_comunicado_producao_destinatarios(mock_enviar, client) -> None:
     mock_enviar.return_value = type("R", (), {"sucesso": True, "erro": None})()
-    settings = get_settings()
-    monkeypatch.setattr(settings, "comunicado_modo_teste", False)
     headers = _headers_admin(client)
-    payload = {"assunto": "Aviso geral", "mensagem": "Mensagem para todos."}
+    payload = {
+        "assunto": "Aviso geral",
+        "mensagem": "Mensagem para todos.",
+        "modo_teste": False,
+    }
 
     r = client.post("/equipe/comunicado", headers=headers, json=payload)
     assert r.status_code == 201, r.text
     assert r.json()["total_destinatarios"] == 3
 
 
-def test_producao_exclui_primeiro_login_e_bloqueado(client, monkeypatch) -> None:
+def test_producao_exclui_primeiro_login_e_bloqueado(client) -> None:
     from app.services import comunicado_equipe_service
 
-    settings = get_settings()
-    monkeypatch.setattr(settings, "comunicado_modo_teste", False)
     db = SessionLocal()
     try:
         _, admin, membros = _seed_empresa_com_membros(db)
-        emails = comunicado_equipe_service.resolver_destinatarios_comunicado(db, admin.empresa_id, admin)
+        emails = comunicado_equipe_service.resolver_destinatarios_comunicado(
+            db, admin.empresa_id, admin, modo_teste=False
+        )
     finally:
         db.close()
 
@@ -218,9 +218,7 @@ def test_producao_exclui_primeiro_login_e_bloqueado(client, monkeypatch) -> None
     del membros
 
 
-def test_post_comunicado_producao_sem_destinatarios(client, monkeypatch) -> None:
-    settings = get_settings()
-    monkeypatch.setattr(settings, "comunicado_modo_teste", False)
+def test_post_comunicado_producao_sem_destinatarios(client) -> None:
     db = SessionLocal()
     try:
         emp = Empresa(nome="Vazia", codigo_empresa="emp-vazia", ativo=True, max_usuarios=50)
@@ -244,14 +242,14 @@ def test_post_comunicado_producao_sem_destinatarios(client, monkeypatch) -> None
         db.close()
 
     headers = {"Authorization": f"Bearer {token}"}
-    r_preview = client.get("/equipe/comunicado/preview", headers=headers)
+    r_preview = client.get("/equipe/comunicado/preview?modo_teste=false", headers=headers)
     assert r_preview.status_code == 200
     assert r_preview.json()["total_destinatarios"] == 0
 
     r_post = client.post(
         "/equipe/comunicado",
         headers=headers,
-        json={"assunto": "Teste", "mensagem": "Teste"},
+        json={"assunto": "Teste", "mensagem": "Teste", "modo_teste": False},
     )
     assert r_post.status_code == 400, r_post.text
 

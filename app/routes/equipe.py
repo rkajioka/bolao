@@ -43,8 +43,11 @@ def preview_comunicado_equipe(
     db: Session = Depends(get_db),
     admin: Usuario = Depends(require_admin),
     empresa_id: int = Depends(get_resolved_empresa_id),
+    modo_teste: bool = True,
 ) -> ComunicadoEquipePreviewResponse:
-    return comunicado_equipe_service.preview_comunicado(db, empresa_id, admin)
+    return comunicado_equipe_service.preview_comunicado(
+        db, empresa_id, admin, modo_teste=modo_teste
+    )
 
 
 @router.post(

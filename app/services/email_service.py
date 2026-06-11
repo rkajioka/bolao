@@ -299,8 +299,7 @@ async def tentar_enviar_comunicado_async(
 ) -> email_dispatch_service.ResultadoEnvio:
     corpo_html = (
         f"{_mensagem_texto_para_html(mensagem)}"
-        "<p><em>Este é um aviso administrativo do bolão. "
-        "Não responda a este e-mail.</em></p>"
+        "<p><em>Não responda a este e-mail.</em></p>"
     )
     return await _enviar_com_log_async(
         destinatario=destinatario,
