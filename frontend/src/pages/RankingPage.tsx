@@ -12,7 +12,7 @@ import { CountryFlag } from '@/components/CountryFlag'
 import { rankingService } from '@/services/ranking.service'
 import type { ConfiguracaoBolao, Pais, RankingLinha } from '@/types'
 import { regrasService } from '@/services/regras.service'
-import { api } from '@/lib/api'
+import { api, ApiError } from '@/lib/api'
 import { useAuth } from '@/features/auth/AuthContext'
 import { OwnerEmpresaPicker } from '@/components/OwnerEmpresaPicker'
 import { useResolvedEmpresaForAdmin } from '@/hooks/useResolvedEmpresaForAdmin'
@@ -141,7 +141,7 @@ export function RankingPage() {
   const effectiveEmpresaId = needsOwnerEmpresaPick ? resolvedEmpresaId : authEmpresaId
   const rankingEnabled = !needsOwnerEmpresaPick || effectiveEmpresaId != null
 
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading, isError, error: queryError, refetch } = useQuery({
     queryKey: ['ranking', effectiveEmpresaId],
     queryFn: () => rankingService.get(needsOwnerEmpresaPick ? effectiveEmpresaId : undefined),
     enabled: rankingEnabled,
@@ -276,7 +276,11 @@ export function RankingPage() {
         <EmptyState
           icon={<Trophy size={28} style={{ color: 'var(--text-muted)' }} />}
           title="Não foi possível carregar o ranking"
-          description="Verifique sua conexão e tente novamente."
+          description={
+            queryError instanceof ApiError
+              ? queryError.message
+              : 'Verifique sua conexão e tente novamente.'
+          }
           action={
             <button
               type="button"

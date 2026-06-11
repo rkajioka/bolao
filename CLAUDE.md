@@ -61,6 +61,7 @@ Antes de cada deploy em `main`, confirme:
 - [ ] Nginx configurado com gzip e headers de segurança (`nginx.conf` na raiz) — rotas da API na raiz (`/equipe`, `/auth`, …), não só `/api/`
 - [ ] Após alterar `nginx.conf`: `sudo nginx -t && sudo systemctl reload nginx` (ver RUNBOOK.md)
 - [ ] Chamadas da tela Equipe usam `/api/equipe` (JSON); F5 em `/equipe` abre a SPA (curl com `Accept: application/json` em `/api/equipe`)
+- [ ] Chamadas da tela Ranking usam `/api/ranking` e `/api/ranking/insights` (JSON); F5 em `/ranking` abre a SPA; rotas duplas com `Cache-Control: no-store` e `Vary: Accept`
 - [ ] `alembic upgrade head` executado após deploy
 - [ ] Serviço reiniciado: `sudo systemctl restart bolao`
 - [ ] Health check OK: `curl https://<dominio>/health`

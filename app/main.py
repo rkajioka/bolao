@@ -118,7 +118,10 @@ async def serve_spa_on_html_navigation(request: Request, call_next):
             if path in _SPA_HTML_PATHS:
                 index = _frontend_dist / "index.html"
                 if index.exists():
-                    return FileResponse(str(index))
+                    response = FileResponse(str(index))
+                    response.headers["Cache-Control"] = "no-store"
+                    response.headers["Vary"] = "Accept"
+                    return response
     return await call_next(request)
 
 app.include_router(health.router, tags=["health"])

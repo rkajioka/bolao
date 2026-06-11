@@ -82,20 +82,26 @@ processo. É uma refatoração relevante mas compatível com a estrutura atual d
 
 ## Nginx — API na raiz e rotas duplas (SPA + FastAPI)
 
-O frontend chama a API em `/auth`, `/equipe`, `/ranking`, etc. (sem prefixo `/api/`).
+O frontend chama a API em `/auth`, `/paises`, etc. na raiz. Endpoints que **colidem** com rotas do React Router usam prefixo **`/api/`** no fetch (ex.: `/api/equipe`, `/api/ranking`); a navegação continua em `/equipe`, `/ranking`, etc.
+
 O arquivo [`nginx.conf`](nginx.conf) na raiz do repositório é a referência para produção.
 
 ### Por que isso importa
 
-Se o Nginx entregar `index.html` para chamadas de API da equipe, a tela mostra **0 membros**
-mesmo com usuários no banco. O frontend usa **`/api/equipe`** (location `/api/` → sempre FastAPI);
-a rota React continua em `/equipe` (SPA). Após deploy do `nginx.conf` atualizado: `sudo nginx -t && sudo systemctl reload nginx`.
+Se o Nginx entregar `index.html` para chamadas de API, o client rejeita a resposta (espera JSON). Exemplos:
+
+- **Equipe:** frontend usa **`/api/equipe`** (location `/api/` → sempre FastAPI); rota React em `/equipe`.
+- **Ranking:** frontend usa **`/api/ranking`** e **`/api/ranking/insights`**; rota React em `/ranking`.
+
+Rotas duplas restantes (`/jogos`, `/grupos`, `/perfil`) ainda compartilham URL com a API; o `nginx.conf` envia JSON quando `Accept: application/json` e aplica **`Cache-Control: no-store`** + **`Vary: Accept`** na resposta SPA para evitar cache de HTML na mesma URL.
+
+Após deploy do `nginx.conf` atualizado: `sudo nginx -t && sudo systemctl reload nginx`.
 
 ### Ao adicionar um novo router FastAPI
 
 1. Confira o `prefix` em `app/routes/*.py`.
 2. Se **não** existir página React no mesmo path → adicione o prefixo na regex **só-API** em `nginx.conf`.
-3. Se existir página React no mesmo path (como `/equipe`) → adicione na regex **rotas duplas** e em `frontend/vite.config.ts` (`SPA_HTML_EXACT_PATHS` + `apiProxy`).
+3. Se existir página React no mesmo path → preferir fetch em **`/api/<router>`** no frontend (padrão Equipe/Ranking); alternativamente, rota dupla em `nginx.conf` + `frontend/vite.config.ts` (`SPA_HTML_EXACT_PATHS` + `apiProxy`) com headers `no-store` e `Vary: Accept` na SPA.
 4. No servidor: `sudo nginx -t && sudo systemctl reload nginx`.
 
 ### Deploy da config no EC2
@@ -124,24 +130,36 @@ curl -s https://SEU_DOMINIO/health
 # Esperado: {"status":"ok"}
 
 # API Equipe (substitua o token)
-curl -s -D - -o /tmp/equipe.json \
+curl -sI \
   -H "Accept: application/json" \
   -H "Authorization: Bearer SEU_TOKEN" \
-  "https://SEU_DOMINIO/equipe?empresa_id=2"
-# Esperado no header: Content-Type: application/json
-# Esperado no corpo: array JSON (não HTML)
+  "https://SEU_DOMINIO/api/equipe?empresa_id=2"
+# Esperado: Content-Type: application/json
+
+# API Ranking
+curl -sI \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  "https://SEU_DOMINIO/api/ranking"
+# Esperado: Content-Type: application/json
+
+# SPA Ranking (HTML com no-store e Vary)
+curl -sI -H "Accept: text/html" "https://SEU_DOMINIO/ranking"
+# Esperado: Content-Type: text/html; Cache-Control: no-store; Vary: Accept
 ```
 
-No navegador (DevTools → Rede, **Desativar cache**):
+No navegador (DevTools → Rede, **com cache habilitado**):
 
-- `equipe?empresa_id=…` → `Content-Type: application/json`, corpo com membros/convites.
-- F5 em `/equipe` → página React continua carregando (HTML).
+- `/api/equipe?empresa_id=…` → `Content-Type: application/json`.
+- `/api/ranking` → `Content-Type: application/json` (não HTML cacheado em `/ranking`).
+- F5 em `/equipe` e `/ranking` → páginas React carregam (HTML).
 
 ### Sintomas de config incorreta
 
 | Sintoma | Causa provável |
 |---------|----------------|
-| Equipe com 0 membros, DB ok | `/equipe` retornando HTML da SPA |
+| Equipe com 0 membros, DB ok | Fetch em `/equipe` em vez de `/api/equipe` |
+| Ranking: "Não foi possível carregar" | Fetch em `/ranking` retornando HTML (cache ou rota dupla) |
 | 502 Bad Gateway | gunicorn/uvicorn não está em `127.0.0.1:8000` |
 | Login ok, dados vazios | Prefixo de API faltando no `nginx.conf` |
 
