@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -22,10 +23,27 @@ class ConfiguracaoBolaoRead(ConfiguracaoBolaoBase):
     id: int
     empresa_id: int
     marcadores_brasil_habilitado: bool
+    override_bloqueio_palpites_especiais: bool | None = None
+    palpites_especiais_bloqueados: bool = False
     data_bloqueio_palpites_especiais_efetiva: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
 
-class ConfiguracaoBolaoWrite(ConfiguracaoBolaoBase):
+class ConfiguracaoBolaoWrite(BaseModel):
     """Corpo do PUT — substitui todos os campos configuráveis da linha ativa."""
+
+    data_bloqueio_palpites_especiais: datetime | None = None
+    pontos_campeao: int = Field(ge=0)
+    pontos_vice_campeao: int = Field(ge=0)
+    pontos_terceiro_lugar: int = Field(ge=0)
+    pontos_artilheiro_pais: int = Field(ge=0)
+    pontos_placar_exato: int = Field(ge=0)
+    pontos_resultado_correto: int = Field(ge=0)
+    pontos_classificado_mata_mata: int = Field(ge=0)
+    pontos_marcador_brasil: int | None = Field(default=None, ge=0)
+    pontos_marcador_brasil_com_quantidade: int | None = Field(default=None, ge=0)
+
+
+class OverrideBloqueioPalpitesEspeciaisWrite(BaseModel):
+    modo: Literal["automatico", "travado", "destravado"]

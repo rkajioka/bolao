@@ -1,10 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import get_current_active_user, get_resolved_empresa_id, require_admin
+from app.auth.dependencies import (
+    get_current_active_user,
+    get_resolved_empresa_id,
+    require_admin,
+    require_tenant_admin,
+)
 from app.database import get_db
 from app.models.usuario import Usuario
-from app.schemas.configuracao_bolao import ConfiguracaoBolaoRead, ConfiguracaoBolaoWrite
+from app.schemas.configuracao_bolao import (
+    ConfiguracaoBolaoRead,
+    ConfiguracaoBolaoWrite,
+    OverrideBloqueioPalpitesEspeciaisWrite,
+)
 from app.services import auditoria_admin_service, configuracao_bolao_service, pontuacao_service
 from app.services.regra_negocio import ConflitoRegraNegocioError
 
@@ -53,5 +62,27 @@ def put_configuracao_bolao(
         entidade_id=row.id,
         status="success",
         detalhes={"empresa_id": empresa_id},
+    )
+    return configuracao_bolao_service.configuracao_para_read(db, row)
+
+
+@router.patch("/palpites-especiais-bloqueio", response_model=ConfiguracaoBolaoRead)
+def patch_override_bloqueio_palpites_especiais(
+    data: OverrideBloqueioPalpitesEspeciaisWrite,
+    db: Session = Depends(get_db),
+    admin: Usuario = Depends(require_tenant_admin),
+) -> ConfiguracaoBolaoRead:
+    assert admin.empresa_id is not None
+    row = configuracao_bolao_service.definir_override_bloqueio_palpites_especiais(
+        db, admin.empresa_id, data.modo
+    )
+    auditoria_admin_service.registrar_evento(
+        db,
+        admin,
+        acao="configuracao_bolao.override_bloqueio_especiais",
+        entidade="configuracao_bolao",
+        entidade_id=row.id,
+        status="success",
+        detalhes={"empresa_id": admin.empresa_id, "modo": data.modo},
     )
     return configuracao_bolao_service.configuracao_para_read(db, row)

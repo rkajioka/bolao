@@ -6,6 +6,7 @@ from app.auth.dependencies import (
     require_admin,
     require_owner,
     require_primeiro_login_concluido,
+    require_tenant_admin,
 )
 from app.auth.jwt import create_access_token, decode_access_token, decode_access_token_safe
 from app.auth.password import hash_password, verify_password
@@ -23,4 +24,5 @@ __all__ = [
     "require_admin",
     "require_owner",
     "require_primeiro_login_concluido",
+    "require_tenant_admin",
 ]

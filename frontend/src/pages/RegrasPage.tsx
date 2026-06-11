@@ -91,7 +91,7 @@ export function RegrasPage() {
               title: 'Palpites especiais',
               description: config?.data_bloqueio_palpites_especiais
                 ? `Fechamento configurado: ${formatDate(config.data_bloqueio_palpites_especiais)}`
-                : 'Fecham automaticamente 1 hora antes do primeiro jogo da Copa (horário de Brasília), salvo outra data definida pelo administrador.',
+                : 'Fecham no horário do primeiro jogo da rodada 1 de grupos (ou na data definida pelo administrador).',
             },
           ].map(({ title, description }) => (
             <div

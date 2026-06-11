@@ -133,7 +133,6 @@ export function AdminSpecials({ success, error, variant, empresaId }: AdminSpeci
   }, [paisOptions, resultadoForm])
 
   const marcadoresBrasilHabilitado = Boolean(form?.marcadores_brasil_habilitado)
-  const bloqueioEspeciaisTravado = config?.data_bloqueio_palpites_especiais != null
   const resultadoEspecialFinalizado = Boolean(resultadoEspecial?.finalizado)
 
   const handleSaveConfiguracao = async () => {
@@ -141,9 +140,7 @@ export function AdminSpecials({ success, error, variant, empresaId }: AdminSpeci
     setSavingConfig(true)
     try {
       const payload: Parameters<typeof adminService.updateConfig>[0] = {
-        data_bloqueio_palpites_especiais: bloqueioEspeciaisTravado
-          ? config?.data_bloqueio_palpites_especiais ?? form.data_bloqueio_palpites_especiais
-          : form.data_bloqueio_palpites_especiais,
+        data_bloqueio_palpites_especiais: form.data_bloqueio_palpites_especiais,
         pontos_campeao: form.pontos_campeao,
         pontos_vice_campeao: form.pontos_vice_campeao,
         pontos_terceiro_lugar: form.pontos_terceiro_lugar,
@@ -318,7 +315,7 @@ export function AdminSpecials({ success, error, variant, empresaId }: AdminSpeci
           Data de bloqueio atual:{' '}
           {config?.data_bloqueio_palpites_especiais
             ? formatDate(config.data_bloqueio_palpites_especiais)
-            : 'Automática (1h antes do primeiro jogo, horário de Brasília)'}
+            : 'Automática (horário do primeiro jogo da rodada 1 de grupos)'}
         </p>
       </div>
 
@@ -344,15 +341,9 @@ export function AdminSpecials({ success, error, variant, empresaId }: AdminSpeci
                   : old,
               )
             }
-            disabled={bloqueioEspeciaisTravado}
-            className={`${scoringInputClassName} text-left disabled:opacity-60 disabled:cursor-not-allowed`}
+            className={`${scoringInputClassName} text-left`}
             style={scoringFieldStyle}
           />
-          {bloqueioEspeciaisTravado && (
-            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-              Após definida, a data de bloqueio não pode ser alterada.
-            </p>
-          )}
         </div>
 
         <div className="space-y-2">

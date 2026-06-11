@@ -10,13 +10,23 @@ import { SectionHeader } from '@/components/SectionHeader'
 import { EmptyState } from '@/components/EmptyState'
 import { CountryFlag } from '@/components/CountryFlag'
 import { CountrySelect } from '@/components/CountrySelect'
-import { regrasService } from '@/services/regras.service'
-import type { PalpiteEspecial, Pais } from '@/types'
+import { regrasService, type OverrideBloqueioEspeciaisModo } from '@/services/regras.service'
+import type { ConfiguracaoBolao, PalpiteEspecial, Pais } from '@/types'
+
+function statusBloqueioEspeciais(config: ConfiguracaoBolao | undefined): string {
+  const override = config?.override_bloqueio_palpites_especiais ?? null
+  const bloqueado = config?.palpites_especiais_bloqueados ?? false
+  if (override === true) return 'Edição travada manualmente.'
+  if (override === false) return 'Edição liberada manualmente (ignora o prazo automático).'
+  if (bloqueado) return 'Prazo automático encerrado.'
+  return 'Prazo automático em vigor (edição aberta).'
+}
 
 export function EspeciaisPage() {
   const { success, error } = useToast()
   const queryClient = useQueryClient()
-  const { isOwner } = useAuth()
+  const { user, isOwner } = useAuth()
+  const isTenantAdmin = user?.tipo_usuario === 'admin'
 
   const { data: palpite, isLoading: loadingPalpite, isError: palpiteError, refetch: refetchPalpite } = useQuery({
     queryKey: ['palpites-especiais', 'me'],
@@ -41,6 +51,7 @@ export function EspeciaisPage() {
     artilheiro_pais_id: '',
   })
   const [saving, setSaving] = useState(false)
+  const [togglingBloqueio, setTogglingBloqueio] = useState(false)
 
   useEffect(() => {
     if (palpite) {
@@ -54,12 +65,27 @@ export function EspeciaisPage() {
     }
   }, [palpite])
 
-  const bloqueado = palpite?.bloqueado ?? false
+  const overrideBloqueio = config?.override_bloqueio_palpites_especiais ?? null
+  const bloqueado = palpite?.bloqueado ?? config?.palpites_especiais_bloqueados ?? false
   const somenteConsulta = isOwner
   const bloqueadoEdicao = bloqueado || somenteConsulta || loadingPalpite
   const prazoUltimaEdicao = config?.data_bloqueio_palpites_especiais_efetiva
     ?? config?.data_bloqueio_palpites_especiais
     ?? null
+
+  const handleOverrideBloqueio = async (modo: OverrideBloqueioEspeciaisModo) => {
+    setTogglingBloqueio(true)
+    try {
+      await regrasService.setOverrideBloqueioEspeciais(modo)
+      await queryClient.invalidateQueries({ queryKey: ['configuracao-bolao', 'minha'] })
+      await queryClient.invalidateQueries({ queryKey: ['palpites-especiais', 'me'] })
+      success('Bloqueio atualizado')
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Erro ao atualizar bloqueio')
+    } finally {
+      setTogglingBloqueio(false)
+    }
+  }
 
   const valoresSalvos = useMemo(
     () => ({
@@ -154,6 +180,57 @@ export function EspeciaisPage() {
         />
       ) : (
         <>
+      {isTenantAdmin && (
+        <div
+          className="glass rounded-2xl p-4 space-y-3"
+          style={{ border: '1px solid var(--border)' }}
+        >
+          <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
+            Gestão do bolão
+          </p>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            {statusBloqueioEspeciais(config)}
+          </p>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            Prazo automático:{' '}
+            {prazoUltimaEdicao
+              ? formatDate(prazoUltimaEdicao)
+              : 'Calendário ainda não definido'}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => void handleOverrideBloqueio('travado')}
+              disabled={togglingBloqueio || overrideBloqueio === true}
+              className="px-3 py-2 rounded-xl text-xs font-semibold disabled:opacity-40"
+              style={{ background: 'var(--danger-dim)', border: '1px solid rgba(255,92,122,0.35)', color: 'var(--danger)' }}
+            >
+              Travar edição
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleOverrideBloqueio('destravado')}
+              disabled={togglingBloqueio || overrideBloqueio === false}
+              className="px-3 py-2 rounded-xl text-xs font-semibold disabled:opacity-40"
+              style={{ background: 'var(--accent-dim)', border: '1px solid var(--accent)', color: 'var(--accent)' }}
+            >
+              Destravar edição
+            </button>
+            {overrideBloqueio !== null && (
+              <button
+                type="button"
+                onClick={() => void handleOverrideBloqueio('automatico')}
+                disabled={togglingBloqueio}
+                className="px-3 py-2 rounded-xl text-xs font-semibold disabled:opacity-40"
+                style={{ background: 'var(--segmented-bg)', border: '1px solid var(--border)', color: 'var(--text)' }}
+              >
+                Usar prazo automático
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {!somenteConsulta && (
         <div
           className="flex items-start gap-3 px-4 py-3 rounded-2xl"
@@ -162,7 +239,11 @@ export function EspeciaisPage() {
           <Clock size={16} className="mt-0.5 shrink-0" style={{ color: 'var(--text-muted)' }} />
           <div>
             <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
-              {bloqueado ? 'Prazo encerrado' : 'Prazo para última edição'}
+              {overrideBloqueio === false
+                ? 'Edição liberada'
+                : bloqueado
+                  ? 'Prazo encerrado'
+                  : 'Prazo para última edição'}
             </p>
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
               {prazoUltimaEdicao
@@ -188,14 +269,16 @@ export function EspeciaisPage() {
         </div>
       )}
 
-      {bloqueado && !somenteConsulta && (
+      {bloqueado && !somenteConsulta && overrideBloqueio !== false && (
         <div
           className="flex items-center gap-3 px-4 py-3 rounded-2xl"
           style={{ background: 'var(--danger-dim)', border: '1px solid rgba(255,92,122,0.3)' }}
         >
           <Lock size={16} style={{ color: 'var(--danger)', flexShrink: 0 }} />
           <p className="text-sm" style={{ color: 'var(--danger)' }}>
-            Os palpites especiais foram bloqueados pelo administrador.
+            {overrideBloqueio === true
+              ? 'Os palpites especiais foram travados pelo administrador.'
+              : 'O prazo para editar palpites especiais encerrou.'}
           </p>
         </div>
       )}

@@ -97,6 +97,20 @@ def require_admin(user: Usuario = Depends(get_current_active_user)) -> Usuario:
     return user
 
 
+def require_tenant_admin(user: Usuario = Depends(get_current_active_user)) -> Usuario:
+    if user.tipo_usuario != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso restrito ao administrador do bolão",
+        )
+    if user.empresa_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Administrador sem bolão vinculado",
+        )
+    return user
+
+
 def _assert_empresa_exists(db: Session, empresa_id: int) -> None:
     """Levanta 404 se a empresa não existir. Usado para validar empresa_id vindo do owner."""
     from app.models.empresa import Empresa

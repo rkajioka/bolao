@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, UniqueConstraint, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -17,6 +17,10 @@ class ConfiguracaoBolao(Base):
 
     data_bloqueio_palpites_especiais: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
+        nullable=True,
+    )
+    override_bloqueio_palpites_especiais: Mapped[bool | None] = mapped_column(
+        Boolean,
         nullable=True,
     )
 

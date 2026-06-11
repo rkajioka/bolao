@@ -5,6 +5,7 @@ Configurações do bolão por empresa.
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Literal
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -15,22 +16,11 @@ from app.schemas.configuracao_bolao import ConfiguracaoBolaoRead, ConfiguracaoBo
 from app.services import empresa_service
 from app.services.regra_negocio import assert_pontuacao_editavel_empresa
 
-
-def _normalizar_data_utc(valor: datetime) -> datetime:
-    if valor.tzinfo is None:
-        return valor.replace(tzinfo=UTC)
-    return valor.astimezone(UTC)
-
-
-def _datas_bloqueio_especiais_equivalentes(
-    atual: datetime | None,
-    novo: datetime | None,
-) -> bool:
-    if atual is None and novo is None:
-        return True
-    if atual is None or novo is None:
-        return False
-    return _normalizar_data_utc(atual) == _normalizar_data_utc(novo)
+_MODO_PARA_OVERRIDE: dict[str, bool | None] = {
+    "automatico": None,
+    "travado": True,
+    "destravado": False,
+}
 
 
 def get_configuracao_empresa(db: Session, empresa_id: int) -> ConfiguracaoBolao | None:
@@ -47,6 +37,7 @@ def configuracao_para_read(db: Session, config: ConfiguracaoBolao) -> Configurac
         not in {
             "marcadores_brasil_habilitado",
             "data_bloqueio_palpites_especiais_efetiva",
+            "palpites_especiais_bloqueados",
         }
         and hasattr(config, name)
     }
@@ -56,6 +47,7 @@ def configuracao_para_read(db: Session, config: ConfiguracaoBolao) -> Configurac
     attrs["data_bloqueio_palpites_especiais_efetiva"] = get_data_bloqueio_palpites_especiais_efetiva(
         db, config.empresa_id
     )
+    attrs["palpites_especiais_bloqueados"] = palpites_especiais_esta_bloqueado(db, config.empresa_id)
     return ConfiguracaoBolaoRead(**attrs)
 
 
@@ -66,6 +58,7 @@ def ensure_configuracao_empresa(db: Session, empresa_id: int) -> ConfiguracaoBol
     c = ConfiguracaoBolao(
         empresa_id=empresa_id,
         data_bloqueio_palpites_especiais=None,
+        override_bloqueio_palpites_especiais=None,
         pontos_campeao=35,
         pontos_vice_campeao=25,
         pontos_terceiro_lugar=20,
@@ -83,20 +76,25 @@ def ensure_configuracao_empresa(db: Session, empresa_id: int) -> ConfiguracaoBol
 
 
 def _pontos_alterados(c: ConfiguracaoBolao, data: ConfiguracaoBolaoWrite) -> bool:
-    return any(
-        getattr(c, field) != getattr(data, field)
-        for field in (
-            "pontos_campeao",
-            "pontos_vice_campeao",
-            "pontos_terceiro_lugar",
-            "pontos_artilheiro_pais",
-            "pontos_placar_exato",
-            "pontos_resultado_correto",
-            "pontos_classificado_mata_mata",
-            "pontos_marcador_brasil",
-            "pontos_marcador_brasil_com_quantidade",
-        )
+    campos = (
+        "pontos_campeao",
+        "pontos_vice_campeao",
+        "pontos_terceiro_lugar",
+        "pontos_artilheiro_pais",
+        "pontos_placar_exato",
+        "pontos_resultado_correto",
+        "pontos_classificado_mata_mata",
     )
+    if any(getattr(c, field) != getattr(data, field) for field in campos):
+        return True
+    if data.pontos_marcador_brasil is not None and c.pontos_marcador_brasil != data.pontos_marcador_brasil:
+        return True
+    if (
+        data.pontos_marcador_brasil_com_quantidade is not None
+        and c.pontos_marcador_brasil_com_quantidade != data.pontos_marcador_brasil_com_quantidade
+    ):
+        return True
+    return False
 
 
 def atualizar_configuracao_empresa(
@@ -105,16 +103,7 @@ def atualizar_configuracao_empresa(
     c = ensure_configuracao_empresa(db, empresa_id)
     if _pontos_alterados(c, data):
         assert_pontuacao_editavel_empresa(db, empresa_id)
-    if c.data_bloqueio_palpites_especiais is not None:
-        if not _datas_bloqueio_especiais_equivalentes(
-            c.data_bloqueio_palpites_especiais,
-            data.data_bloqueio_palpites_especiais,
-        ):
-            raise ValueError(
-                "A data de bloqueio dos palpites especiais já foi definida e não pode mais ser alterada"
-            )
-    else:
-        c.data_bloqueio_palpites_especiais = data.data_bloqueio_palpites_especiais
+    c.data_bloqueio_palpites_especiais = data.data_bloqueio_palpites_especiais
     c.pontos_campeao = data.pontos_campeao
     c.pontos_vice_campeao = data.pontos_vice_campeao
     c.pontos_terceiro_lugar = data.pontos_terceiro_lugar
@@ -123,8 +112,10 @@ def atualizar_configuracao_empresa(
     c.pontos_resultado_correto = data.pontos_resultado_correto
     c.pontos_classificado_mata_mata = data.pontos_classificado_mata_mata
     if empresa_service.marcadores_brasil_habilitado(db, empresa_id):
-        c.pontos_marcador_brasil = data.pontos_marcador_brasil
-        c.pontos_marcador_brasil_com_quantidade = data.pontos_marcador_brasil_com_quantidade
+        if data.pontos_marcador_brasil is not None:
+            c.pontos_marcador_brasil = data.pontos_marcador_brasil
+        if data.pontos_marcador_brasil_com_quantidade is not None:
+            c.pontos_marcador_brasil_com_quantidade = data.pontos_marcador_brasil_com_quantidade
     db.commit()
     db.refresh(c)
     return c
@@ -149,6 +140,14 @@ def get_data_bloqueio_palpites_especiais_efetiva(db: Session, empresa_id: int) -
 
 
 def palpites_especiais_esta_bloqueado(db: Session, empresa_id: int) -> bool:
+    cfg = get_configuracao_empresa(db, empresa_id)
+    if cfg is None:
+        return False
+    override = cfg.override_bloqueio_palpites_especiais
+    if override is True:
+        return True
+    if override is False:
+        return False
     ts = get_data_bloqueio_palpites_especiais_efetiva(db, empresa_id)
     if ts is None:
         return False
@@ -156,3 +155,15 @@ def palpites_especiais_esta_bloqueado(db: Session, empresa_id: int) -> bool:
     if ts.tzinfo is None:
         ts = ts.replace(tzinfo=UTC)
     return agora >= ts
+
+
+def definir_override_bloqueio_palpites_especiais(
+    db: Session,
+    empresa_id: int,
+    modo: Literal["automatico", "travado", "destravado"],
+) -> ConfiguracaoBolao:
+    c = ensure_configuracao_empresa(db, empresa_id)
+    c.override_bloqueio_palpites_especiais = _MODO_PARA_OVERRIDE[modo]
+    db.commit()
+    db.refresh(c)
+    return c

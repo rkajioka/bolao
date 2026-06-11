@@ -266,6 +266,8 @@ export interface ConfiguracaoBolao {
   marcadores_brasil_habilitado?: boolean
   data_bloqueio_palpites_especiais: string | null
   data_bloqueio_palpites_especiais_efetiva?: string | null
+  override_bloqueio_palpites_especiais?: boolean | null
+  palpites_especiais_bloqueados?: boolean
   pontos_campeao: number
   pontos_vice_campeao: number
   pontos_terceiro_lugar: number
